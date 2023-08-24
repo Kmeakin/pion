@@ -38,23 +38,22 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
 
     /// Bring a value up-to-date with any new unification solutions that
     /// might now be present at the head of in the given value.
-    pub fn update_metas(&self, value: &Value<'core>) -> Value<'core> {
-        let mut forced_value = value.clone();
-        while let Value::Stuck(Head::Meta(var), spine) = &forced_value {
-            match self.get_meta(*var) {
-                Some(value) => forced_value = self.apply_spine(value.clone(), spine),
-                None => break,
+    pub fn update_metas(&self, mut value: Value<'core>) -> Value<'core> {
+        while let Value::Stuck(Head::Meta(var), spine) = value {
+            match self.get_meta(var) {
+                Some(head) => value = self.apply_spine(head.clone(), spine),
+                None => return Value::Stuck(Head::Meta(var), spine),
             }
         }
-        forced_value
+        value
     }
 
     /// Apply an expression to an elimination spine.
-    fn apply_spine(&self, head: Value<'core>, spine: &[Elim<'core>]) -> Value<'core> {
-        (spine.iter()).fold(head, |head, elim| match elim {
-            Elim::FunApp(plicity, arg) => self.fun_app(*plicity, head, arg.clone()),
-            Elim::FieldProj(label) => self.field_proj(head, *label),
-            Elim::Match(cases) => self.match_scrut(head, cases.clone()),
+    fn apply_spine(&self, head: Value<'core>, spine: Vec<Elim<'core>>) -> Value<'core> {
+        (spine.into_iter()).fold(head, |head, elim| match elim {
+            Elim::FunApp(plicity, arg) => self.fun_app(plicity, head, arg),
+            Elim::FieldProj(label) => self.field_proj(head, label),
+            Elim::Match(cases) => self.match_scrut(head, cases),
         })
     }
 
@@ -294,7 +293,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
 
     /// Quote a [value][Value] back into a [expr][Expr].
     pub fn quote(&mut self, value: &Value<'core>) -> Expr<'core> {
-        let value = self.elim_env().update_metas(value);
+        let value = self.elim_env().update_metas(value.clone());
         match value {
             Value::Lit(lit) => Expr::Lit(lit),
             Value::Stuck(head, spine) => {
