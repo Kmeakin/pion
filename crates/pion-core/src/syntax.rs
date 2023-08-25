@@ -366,6 +366,10 @@ impl<'arena, P> Cases<'arena, P> {
             default_case,
         }
     }
+
+    pub fn len(&self) -> usize { self.pattern_cases.len() }
+
+    pub fn is_empty(&self) -> bool { self.pattern_cases.is_empty() }
 }
 
 pub type PatternCase<'arena, P> = (P, Value<'arena>);
