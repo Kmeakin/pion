@@ -305,7 +305,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                     Elim::FieldProj(label) => Expr::field_proj(self.bump, head, *label),
                     Elim::Match(cases) => {
                         let mut cases = cases.clone();
-                        let mut pattern_cases = Vec::new();
+                        let mut pattern_cases = SliceVec::new(self.bump, cases.len());
                         let default = loop {
                             match self.elim_env().split_cases(cases) {
                                 SplitCases::Case((lit, expr), next_cases) => {
@@ -318,10 +318,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                                 SplitCases::None => break None,
                             }
                         };
-                        Expr::Match(
-                            self.bump.alloc((head, default)),
-                            self.bump.alloc_slice_fill_iter(pattern_cases),
-                        )
+                        Expr::r#match(self.bump, head, pattern_cases.into(), default)
                     }
                 })
             }
