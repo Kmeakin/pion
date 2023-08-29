@@ -126,8 +126,8 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             return Ok(());
         }
 
-        let left = self.elim_env().update_metas(left);
-        let right = self.elim_env().update_metas(right);
+        let left = self.elim_env().update_metas(left.clone());
+        let right = self.elim_env().update_metas(right.clone());
 
         match (&left, &right) {
             (Value::Lit(left), Value::Lit(right)) if left == right => Ok(()),
@@ -418,7 +418,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
 
         for elim in spine {
             match elim {
-                Elim::FunApp(_, arg) => match self.elim_env().update_metas(arg) {
+                Elim::FunApp(_, arg) => match self.elim_env().update_metas(arg.clone()) {
                     Value::Stuck(Head::Local(source_var), spine)
                         if spine.is_empty() && self.renaming.set_local(source_var) => {}
                     Value::Stuck(Head::Local(source_var), _) => {
@@ -465,7 +465,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         meta_var: Level,
         value: &Value<'core>,
     ) -> Result<Expr<'core>, RenameError> {
-        let value = self.elim_env().update_metas(value);
+        let value = self.elim_env().update_metas(value.clone());
         match value {
             Value::Lit(lit) => Ok(Expr::Lit(lit)),
             Value::Stuck(head, spine) => {

@@ -275,7 +275,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let mut r#type = fun_type.clone();
 
                 if args.is_empty() {
-                    r#type = self.elim_env().update_metas(&r#type);
+                    r#type = self.elim_env().update_metas(r#type);
                     (expr, r#type) = self.insert_implicit_apps(fun_span, expr, r#type);
 
                     match r#type {
@@ -306,7 +306,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 }
 
                 for (arity, arg) in args.iter().enumerate() {
-                    r#type = self.elim_env().update_metas(&r#type);
+                    r#type = self.elim_env().update_metas(r#type);
 
                     let arg_plicity = Plicity::from(arg.plicity);
                     if arg_plicity == Plicity::Explicit {
@@ -378,7 +378,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         expr: &'hir hir::Expr<'hir>,
         expected: &Type<'core>,
     ) -> CheckExpr<'core> {
-        let expected = self.elim_env().update_metas(expected);
+        let expected = self.elim_env().update_metas(expected.clone());
 
         let Check(core_expr) = (|| match expr {
             hir::Expr::Error => CheckExpr::ERROR,
@@ -690,7 +690,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             return self.check_expr(body, expected);
         };
 
-        let expected = self.elim_env().update_metas(expected);
+        let expected = self.elim_env().update_metas(expected.clone());
         let param_plicity = Plicity::from(param.plicity);
 
         match expected {
@@ -743,7 +743,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         mut r#type: Type<'core>,
     ) -> (Expr<'core>, Type<'core>) {
         while let Value::FunType(Plicity::Implicit, name, param_type, body_type) =
-            self.elim_env().update_metas(&r#type)
+            self.elim_env().update_metas(r#type.clone())
         {
             let source = MetaSource::ImplicitArg { span, name };
             let arg_expr = self.push_unsolved_expr(source, param_type.clone());
