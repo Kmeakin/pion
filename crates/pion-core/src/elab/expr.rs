@@ -607,7 +607,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         let (expr, from) = match (expr, to) {
             (Expr::FunLit(..), _) => (expr, from),
             (_, Type::FunType(Plicity::Explicit, ..)) => {
-                let (expr, from) = self.insert_implicit_apps(span, expr, from.clone());
+                let (expr, from) = self.insert_implicit_apps(span, expr, from);
                 (expr, from)
             }
             _ => (expr, from),
