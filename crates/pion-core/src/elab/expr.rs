@@ -550,7 +550,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     }
                 }
 
-                self.check_fun_lit(params, body, &expected)
+                self.check_fun_lit(params, body, expected.clone())
             }
             hir::Expr::Match(..) => todo!(),
             hir::Expr::If((scrut, then, r#else)) => {
@@ -684,13 +684,13 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         &mut self,
         params: &'hir [hir::FunParam<'hir>],
         body: &'hir hir::Expr<'hir>,
-        expected: &Type<'core>,
+        expected: Type<'core>,
     ) -> CheckExpr<'core> {
         let Some((param, rest_params)) = params.split_first() else {
-            return self.check_expr(body, expected);
+            return self.check_expr(body, &expected);
         };
 
-        let expected = self.elim_env().update_metas(expected.clone());
+        let expected = self.elim_env().update_metas(expected);
         let param_plicity = Plicity::from(param.plicity);
 
         match expected {
@@ -704,7 +704,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let arg_value = self.local_env.next_var();
                 self.local_env.push_param(name, expected_domain.clone());
                 let expected = self.elim_env().apply_closure(next_expected, arg_value);
-                let Check(body_expr) = self.check_fun_lit(rest_params, body, &expected);
+                let Check(body_expr) = self.check_fun_lit(rest_params, body, expected);
                 self.local_env.pop();
 
                 let expr = Expr::fun_lit(self.bump, param_plicity, name, domain_expr, body_expr);
@@ -718,7 +718,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let arg_value = self.local_env.next_var();
                 self.local_env.push_param(name, domain.clone());
                 let expected = self.elim_env().apply_closure(codomain, arg_value);
-                let Check(body_expr) = self.check_fun_lit(params, body, &expected);
+                let Check(body_expr) = self.check_fun_lit(params, body, expected);
                 self.local_env.pop();
 
                 let expr =
