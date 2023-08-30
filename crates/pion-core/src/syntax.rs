@@ -58,6 +58,7 @@ impl<'core> Expr<'core> {
 
     pub const TYPE: Self = Self::Prim(Prim::Type);
     pub const INT: Self = Self::Prim(Prim::Int);
+    pub const BOOL: Self = Self::Prim(Prim::Bool);
 
     pub fn is_error(&self) -> bool { matches!(self, Self::Error) }
 

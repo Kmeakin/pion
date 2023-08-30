@@ -359,7 +359,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
             hir::Expr::Match(..) => todo!(),
             hir::Expr::If((scrut, then, r#else)) => {
-                let Check(scrut_expr) = self.check_expr(scrut, &Type::BOOL);
+                let Check(scrut_expr) = self.check_expr_is_bool(scrut);
                 let Synth(then_expr, then_type) = self.synth_expr(then);
                 let Check(else_expr) = self.check_expr(r#else, &then_type);
                 let expr = Expr::r#if(self.bump, scrut_expr, then_expr, else_expr);
@@ -378,8 +378,18 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         expected: &Type<'core>,
     ) -> CheckExpr<'core> {
         let expected = self.elim_env().update_metas(expected.clone());
+        let Check(core_expr) = self.check_expr_inner(expr, &expected);
+        let type_expr = self.quote_env().quote(&expected);
+        self.type_map.insert_expr(expr, type_expr);
+        Check(core_expr)
+    }
 
-        let Check(core_expr) = (|| match expr {
+    pub fn check_expr_inner(
+        &mut self,
+        expr: &'hir hir::Expr<'hir>,
+        expected: &Type<'core>,
+    ) -> CheckExpr<'core> {
+        match expr {
             hir::Expr::Error => CheckExpr::ERROR,
 
             hir::Expr::Let((pat, r#type, init, body)) => {
@@ -391,7 +401,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let init_value = self.eval_env().eval(&init_expr);
 
                 let Check(body_expr) = self.with_def(name, pat_type, init_value, |this| {
-                    this.check_expr(body, &expected)
+                    this.check_expr(body, expected)
                 });
 
                 let expr = Expr::r#let(self.bump, name, type_expr, init_expr, body_expr);
@@ -399,14 +409,14 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
             hir::Expr::ArrayLit(elems) => {
                 let Type::Stuck(Head::Prim(Prim::Array), ref args) = expected else {
-                    return self.synth_and_convert_expr(expr, &expected);
+                    return self.synth_and_convert_expr(expr, expected);
                 };
                 #[rustfmt::skip]
                 let [Elim::FunApp(Plicity::Explicit, elem_type), Elim::FunApp(Plicity::Explicit, expected_len)] = &args[..] else {
-                    return self.synth_and_convert_expr(expr, &expected);
+                    return self.synth_and_convert_expr(expr, expected);
                 };
                 let Value::Lit(Lit::Int(expected_len)) = expected_len else {
-                    return self.synth_and_convert_expr(expr, &expected);
+                    return self.synth_and_convert_expr(expr, expected);
                 };
                 if elems.len() != *expected_len as usize {
                     #[allow(clippy::cast_possible_truncation)]
@@ -428,7 +438,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 }));
                 CheckExpr::new(Expr::ArrayLit(elem_exprs))
             }
-            hir::Expr::TupleLit(elems) => match &expected {
+            hir::Expr::TupleLit(elems) => match expected {
                 Value::RecordType(telescope)
                     if telescope.len() == elems.len()
                         && Symbol::are_tuple_labels(telescope.labels()) =>
@@ -465,9 +475,9 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     let expr = Expr::RecordType(type_fields.into());
                     CheckExpr::new(expr)
                 }
-                _ => self.synth_and_convert_expr(expr, &expected),
+                _ => self.synth_and_convert_expr(expr, expected),
             },
-            hir::Expr::RecordLit(fields) => match &expected {
+            hir::Expr::RecordLit(fields) => match expected {
                 Value::RecordType(telescope)
                     if fields.len() == telescope.len()
                         && Iterator::eq(
@@ -490,7 +500,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     let expr = Expr::RecordLit(expr_fields.into());
                     CheckExpr::new(expr)
                 }
-                _ => self.synth_and_convert_expr(expr, &expected),
+                _ => self.synth_and_convert_expr(expr, expected),
             },
             // TODO: check for duplicate params
             hir::Expr::FunLit(params, body) => {
@@ -504,18 +514,19 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                             expected_domain,
                             ref next_expected,
                         ) if expected_domain.is_unit_type() => {
-                            let Check(body_expr) = self.with_param(name, Type::UNIT_TYPE, |this| {
-                                let expected = this
-                                    .elim_env()
-                                    .apply_closure(next_expected.clone(), Value::UNIT_LIT);
-                                this.check_expr(body, &expected)
-                            });
+                            let Check(body_expr) =
+                                self.with_param(*name, Type::UNIT_TYPE, |this| {
+                                    let expected = this
+                                        .elim_env()
+                                        .apply_closure(next_expected.clone(), Value::UNIT_LIT);
+                                    this.check_expr(body, &expected)
+                                });
 
                             let domain_expr = self.quote_env().quote(expected_domain);
                             let expr = Expr::fun_lit(
                                 self.bump,
                                 Plicity::Explicit,
-                                name,
+                                *name,
                                 domain_expr,
                                 body_expr,
                             );
@@ -544,7 +555,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                                     self.bump.alloc(body_type),
                                 ),
                             );
-                            return Check::new(self.convert_expr(span, expr, r#type, &expected));
+                            return Check::new(self.convert_expr(span, expr, r#type, expected));
                         }
                     }
                 }
@@ -553,9 +564,9 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
             hir::Expr::Match(..) => todo!(),
             hir::Expr::If((scrut, then, r#else)) => {
-                let Check(scrut_expr) = self.check_expr(scrut, &Type::BOOL);
-                let Check(then_expr) = self.check_expr(then, &expected);
-                let Check(else_expr) = self.check_expr(r#else, &expected);
+                let Check(scrut_expr) = self.check_expr_is_bool(scrut);
+                let Check(then_expr) = self.check_expr(then, expected);
+                let Check(else_expr) = self.check_expr(r#else, expected);
                 let expr = Expr::r#if(self.bump, scrut_expr, then_expr, else_expr);
                 CheckExpr::new(expr)
             }
@@ -570,12 +581,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             | hir::Expr::FieldProj(..)
             | hir::Expr::FunArrow(..)
             | hir::Expr::FunType(..)
-            | hir::Expr::FunCall(..) => self.synth_and_convert_expr(expr, &expected),
-        })();
-
-        let type_expr = self.quote_env().quote(&expected);
-        self.type_map.insert_expr(expr, type_expr);
-        Check(core_expr)
+            | hir::Expr::FunCall(..) => self.synth_and_convert_expr(expr, expected),
+        }
     }
 
     fn synth_and_convert_expr(
@@ -624,8 +631,20 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 }
 
 impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
+    /// Specialization of `check_expr()` for `Type::TYPE`: avoids cloning and
+    /// quoting
     pub fn check_expr_is_type(&mut self, expr: &'hir hir::Expr<'hir>) -> CheckExpr<'core> {
-        self.check_expr(expr, &Type::TYPE)
+        let Check(core_expr) = self.check_expr_inner(expr, &Type::TYPE);
+        self.type_map.insert_expr(expr, Expr::TYPE);
+        Check(core_expr)
+    }
+
+    /// Specialization of `check_expr()` for `Type::BOOL`: avoids cloning and
+    /// quoting
+    pub fn check_expr_is_bool(&mut self, expr: &'hir hir::Expr<'hir>) -> CheckExpr<'core> {
+        let Check(core_expr) = self.check_expr_inner(expr, &Type::BOOL);
+        self.type_map.insert_expr(expr, Expr::BOOL);
+        Check(core_expr)
     }
 
     // FIXME: check for duplicate params
