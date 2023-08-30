@@ -126,16 +126,16 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             return Ok(());
         }
 
-        let left = self.elim_env().update_metas(left);
-        let right = self.elim_env().update_metas(right);
+        let left = self.elim_env().update_metas(left.clone());
+        let right = self.elim_env().update_metas(right.clone());
 
-        match (&left, &right) {
+        match (left, right) {
             (Value::Lit(left), Value::Lit(right)) if left == right => Ok(()),
 
             (Value::Stuck(left_head, left_spine), Value::Stuck(right_head, right_spine))
                 if left_head == right_head =>
             {
-                self.unify_spines(left_spine, right_spine)
+                self.unify_spines(&left_spine, &right_spine)
             }
 
             (
@@ -152,7 +152,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
 
             (Value::FunLit(left_plicity, _, _, left_body), right_value)
             | (right_value, Value::FunLit(left_plicity, _, _, left_body)) => {
-                self.unify_fun_lit(*left_plicity, left_body, right_value)
+                self.unify_fun_lit(left_plicity, left_body, right_value)
             }
 
             (Value::ArrayLit(left_values), Value::ArrayLit(right_values)) => {
@@ -169,17 +169,17 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
 
             (Value::RecordLit(left_fields), right_value)
             | (right_value, Value::RecordLit(left_fields)) => {
-                self.unify_record_lit(left_fields, right_value)
+                self.unify_record_lit(left_fields, &right_value)
             }
 
             // One of the values has a metavariable at its head, so we
             // attempt to solve it using pattern unification.
             (Value::Stuck(Head::Meta(left_meta_var), left_spine), right_value)
             | (right_value, Value::Stuck(Head::Meta(left_meta_var), left_spine)) => {
-                self.solve(*left_meta_var, left_spine, right_value)
+                self.solve(left_meta_var, &left_spine, &right_value)
             }
 
-            _ if left.is_error() || right.is_error() => Ok(()),
+            (left, right) if left.is_error() || right.is_error() => Ok(()),
 
             _ => Err(UnifyError::Mismatch),
         }
@@ -253,17 +253,14 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
     /// Unify two [closures][Closure].
     fn unify_closures(
         &mut self,
-        left_closure: &Closure<'core>,
-        right_closure: &Closure<'core>,
+        left_closure: Closure<'core>,
+        right_closure: Closure<'core>,
     ) -> Result<(), UnifyError> {
-        let var = Value::local(self.local_env.to_level());
+        let left_var = Value::local(self.local_env.to_level());
+        let right_var = Value::local(self.local_env.to_level());
 
-        let left_value = self
-            .elim_env()
-            .apply_closure(left_closure.clone(), var.clone());
-        let right_value = self
-            .elim_env()
-            .apply_closure(right_closure.clone(), var.clone());
+        let left_value = self.elim_env().apply_closure(left_closure, left_var);
+        let right_value = self.elim_env().apply_closure(right_closure, right_var);
 
         self.local_env.push();
         let result = self.unify(&left_value, &right_value);
@@ -275,8 +272,8 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
     /// Unify two [telescopes][Telescope].
     fn unify_telescopes(
         &mut self,
-        left_telescope: &Telescope<'core>,
-        right_telescope: &Telescope<'core>,
+        mut left_telescope: Telescope<'core>,
+        mut right_telescope: Telescope<'core>,
     ) -> Result<(), UnifyError> {
         if left_telescope.len() != right_telescope.len() {
             return Err(UnifyError::Mismatch);
@@ -287,8 +284,6 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         }
 
         let len = self.local_env;
-        let mut left_telescope = left_telescope.clone();
-        let mut right_telescope = right_telescope.clone();
 
         while let Some(((_, left_value, left_cont), (_, right_value, right_cont))) = Option::zip(
             self.elim_env().split_telescope(left_telescope),
@@ -332,7 +327,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     right_cases = right_cont;
                 }
                 (SplitCases::Default(_, left_value), SplitCases::Default(_, right_value)) => {
-                    return self.unify_closures(&left_value, &right_value);
+                    return self.unify_closures(left_value, right_value);
                 }
                 (SplitCases::None, SplitCases::None) => return Ok(()),
                 _ => return Err(UnifyError::Mismatch),
@@ -348,16 +343,16 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
     fn unify_fun_lit(
         &mut self,
         left_plicity: Plicity,
-        left_body: &Closure<'core>,
-        right_value: &Value<'core>,
+        left_body: Closure<'core>,
+        right_value: Value<'core>,
     ) -> Result<(), UnifyError> {
-        let var = Value::local(self.local_env.to_level());
-        let left_value = self
-            .elim_env()
-            .apply_closure(left_body.clone(), var.clone());
+        let left_var = Value::local(self.local_env.to_level());
+        let right_var = Value::local(self.local_env.to_level());
+
+        let left_value = self.elim_env().apply_closure(left_body, left_var);
         let right_value = self
             .elim_env()
-            .fun_app(left_plicity, right_value.clone(), var.clone());
+            .fun_app(left_plicity, right_value, right_var);
 
         self.local_env.push();
         let result = self.unify(&left_value, &right_value);
@@ -418,7 +413,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
 
         for elim in spine {
             match elim {
-                Elim::FunApp(_, arg) => match self.elim_env().update_metas(arg) {
+                Elim::FunApp(_, arg) => match self.elim_env().update_metas(arg.clone()) {
                     Value::Stuck(Head::Local(source_var), spine)
                         if spine.is_empty() && self.renaming.set_local(source_var) => {}
                     Value::Stuck(Head::Local(source_var), _) => {
@@ -465,20 +460,19 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         meta_var: Level,
         value: &Value<'core>,
     ) -> Result<Expr<'core>, RenameError> {
-        let value = self.elim_env().update_metas(value);
         match value {
-            Value::Lit(lit) => Ok(Expr::Lit(lit)),
+            Value::Lit(lit) => Ok(Expr::Lit(*lit)),
             Value::Stuck(head, spine) => {
                 let head = match head {
                     Head::Error => Expr::Error,
-                    Head::Prim(prim) => Expr::Prim(prim),
-                    Head::Local(source_var) => match self.renaming.get_as_index(source_var) {
-                        None => return Err(RenameError::EscapingLocalVar(source_var)),
+                    Head::Prim(prim) => Expr::Prim(*prim),
+                    Head::Local(source_var) => match self.renaming.get_as_index(*source_var) {
+                        None => return Err(RenameError::EscapingLocalVar(*source_var)),
                         Some(target_var) => Expr::Local(Symbol::intern("FIXME"), target_var),
                     },
-                    Head::Meta(var) => match meta_var == var {
+                    Head::Meta(var) => match meta_var == *var {
                         true => return Err(RenameError::InfiniteSolution),
-                        false => Expr::Meta(var),
+                        false => Expr::Meta(*var),
                     },
                 };
                 (spine.iter()).try_fold(head, |head, elim| match elim {
@@ -511,18 +505,18 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             }
             Value::FunType(plicity, name, domain, codomain) => {
                 let domain = self.rename(meta_var, domain)?;
-                let codomain = self.rename_closure(meta_var, &codomain)?;
-                Ok(Expr::fun_type(self.bump, plicity, name, domain, codomain))
+                let codomain = self.rename_closure(meta_var, codomain)?;
+                Ok(Expr::fun_type(self.bump, *plicity, *name, domain, codomain))
             }
             Value::FunLit(plicity, name, domain, body) => {
                 let domain = self.rename(meta_var, domain)?;
-                let body = self.rename_closure(meta_var, &body)?;
-                Ok(Expr::fun_lit(self.bump, plicity, name, domain, body))
+                let body = self.rename_closure(meta_var, body)?;
+                Ok(Expr::fun_lit(self.bump, *plicity, *name, domain, body))
             }
             Value::ArrayLit(values) => {
                 let mut exprs = SliceVec::new(self.bump, values.len());
 
-                for value in values {
+                for value in *values {
                     exprs.push(self.rename(meta_var, value)?);
                 }
 
@@ -535,7 +529,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             Value::RecordLit(value_fields) => {
                 let mut expr_fields = SliceVec::new(self.bump, value_fields.len());
 
-                for (label, value) in value_fields {
+                for (label, value) in *value_fields {
                     expr_fields.push((*label, self.rename(meta_var, value)?));
                 }
 
@@ -564,10 +558,10 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
     fn rename_telescope(
         &mut self,
         meta_var: Level,
-        telescope: Telescope<'core>,
+        telescope: &Telescope<'core>,
     ) -> Result<&'core [(Symbol, Expr<'core>)], RenameError> {
         let initial_renaming_len = self.renaming.len();
-        let mut telescope = telescope;
+        let mut telescope = telescope.clone();
         let mut expr_fields = SliceVec::new(self.bump, telescope.len());
 
         while let Some((label, value, cont)) = self.elim_env().split_telescope(telescope) {

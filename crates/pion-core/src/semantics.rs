@@ -38,15 +38,14 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
 
     /// Bring a value up-to-date with any new unification solutions that
     /// might now be present at the head of in the given value.
-    pub fn update_metas(&self, value: &Value<'core>) -> Value<'core> {
-        let mut forced_value = value.clone();
-        while let Value::Stuck(Head::Meta(var), spine) = &forced_value {
-            match self.get_meta(*var) {
-                Some(value) => forced_value = self.apply_spine(value.clone(), spine),
-                None => break,
+    pub fn update_metas(&self, mut value: Value<'core>) -> Value<'core> {
+        while let Value::Stuck(Head::Meta(var), spine) = value {
+            match self.get_meta(var) {
+                Some(head) => value = self.apply_spine(head.clone(), &spine),
+                None => return Value::Stuck(Head::Meta(var), spine),
             }
         }
-        forced_value
+        value
     }
 
     /// Apply an expression to an elimination spine.
@@ -294,18 +293,17 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
 
     /// Quote a [value][Value] back into a [expr][Expr].
     pub fn quote(&mut self, value: &Value<'core>) -> Expr<'core> {
-        let value = self.elim_env().update_metas(value);
         match value {
-            Value::Lit(lit) => Expr::Lit(lit),
+            Value::Lit(lit) => Expr::Lit(*lit),
             Value::Stuck(head, spine) => {
-                (spine.iter()).fold(self.quote_head(head), |head, elim| match elim {
+                (spine.iter()).fold(self.quote_head(*head), |head, elim| match elim {
                     Elim::FunApp(plicity, arg) => {
                         Expr::fun_app(self.bump, *plicity, head, self.quote(arg))
                     }
                     Elim::FieldProj(label) => Expr::field_proj(self.bump, head, *label),
                     Elim::Match(cases) => {
                         let mut cases = cases.clone();
-                        let mut pattern_cases = Vec::new();
+                        let mut pattern_cases = SliceVec::new(self.bump, cases.len());
                         let default = loop {
                             match self.elim_env().split_cases(cases) {
                                 SplitCases::Case((lit, expr), next_cases) => {
@@ -313,27 +311,24 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                                     cases = next_cases;
                                 }
                                 SplitCases::Default(name, expr) => {
-                                    break Some((name, self.quote_closure(name, &expr)))
+                                    break Some((name, self.quote_closure(name, expr)))
                                 }
                                 SplitCases::None => break None,
                             }
                         };
-                        Expr::Match(
-                            self.bump.alloc((head, default)),
-                            self.bump.alloc_slice_fill_iter(pattern_cases),
-                        )
+                        Expr::r#match(self.bump, head, pattern_cases.into(), default)
                     }
                 })
             }
             Value::FunType(plicity, name, domain, codomain) => {
                 let domain = self.quote(domain);
-                let codomain = self.quote_closure(name, &codomain);
-                Expr::fun_type(self.bump, plicity, name, domain, codomain)
+                let codomain = self.quote_closure(*name, codomain.clone());
+                Expr::fun_type(self.bump, *plicity, *name, domain, codomain)
             }
             Value::FunLit(plicity, name, domain, body) => {
                 let domain = self.quote(domain);
-                let body = self.quote_closure(name, &body);
-                Expr::fun_lit(self.bump, plicity, name, domain, body)
+                let body = self.quote_closure(*name, body.clone());
+                Expr::fun_lit(self.bump, *plicity, *name, domain, body)
             }
             Value::ArrayLit(values) => Expr::ArrayLit(
                 self.bump
@@ -374,9 +369,9 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
     }
 
     /// Quote a [closure][Closure] back into an [expr][Expr].
-    fn quote_closure(&mut self, name: Option<Symbol>, closure: &Closure<'core>) -> Expr<'core> {
+    fn quote_closure(&mut self, name: Option<Symbol>, closure: Closure<'core>) -> Expr<'core> {
         let arg = Value::local(self.local_names.len().to_level());
-        let value = self.elim_env().apply_closure(closure.clone(), arg);
+        let value = self.elim_env().apply_closure(closure, arg);
 
         self.push_local(name);
         let expr = self.quote(&value);
@@ -386,9 +381,9 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
     }
 
     /// Quote a [telescope][Telescope] back into a slice of [exprs][Expr].
-    fn quote_telescope(&mut self, telescope: Telescope<'core>) -> &'core [(Symbol, Expr<'core>)] {
+    fn quote_telescope(&mut self, telescope: &Telescope<'core>) -> &'core [(Symbol, Expr<'core>)] {
         let initial_local_len = self.local_names.len();
-        let mut telescope = telescope;
+        let mut telescope = telescope.clone();
         let mut expr_fields = SliceVec::new(self.bump, telescope.len());
 
         while let Some((name, value, cont)) = self.elim_env().split_telescope(telescope) {

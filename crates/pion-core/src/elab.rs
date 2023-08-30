@@ -462,7 +462,7 @@ pub fn elab_def<'surface, 'hir, 'core>(
             (expr, r#type)
         }
         Some(r#type) => {
-            let Check(r#type) = ctx.check_expr(r#type, &Type::TYPE);
+            let Check(r#type) = ctx.check_expr_is_type(r#type);
             let type_value = ctx.eval_env().eval(&r#type);
             let Check(expr) = ctx.check_expr(def.expr, &type_value);
 

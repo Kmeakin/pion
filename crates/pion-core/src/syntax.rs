@@ -58,6 +58,7 @@ impl<'core> Expr<'core> {
 
     pub const TYPE: Self = Self::Prim(Prim::Type);
     pub const INT: Self = Self::Prim(Prim::Int);
+    pub const BOOL: Self = Self::Prim(Prim::Bool);
 
     pub fn is_error(&self) -> bool { matches!(self, Self::Error) }
 
@@ -366,6 +367,10 @@ impl<'arena, P> Cases<'arena, P> {
             default_case,
         }
     }
+
+    pub fn len(&self) -> usize { self.pattern_cases.len() }
+
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 pub type PatternCase<'arena, P> = (P, Value<'arena>);
