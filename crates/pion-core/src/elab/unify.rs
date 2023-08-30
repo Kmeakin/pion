@@ -465,20 +465,19 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         meta_var: Level,
         value: &Value<'core>,
     ) -> Result<Expr<'core>, RenameError> {
-        let value = self.elim_env().update_metas(value.clone());
         match value {
-            Value::Lit(lit) => Ok(Expr::Lit(lit)),
+            Value::Lit(lit) => Ok(Expr::Lit(*lit)),
             Value::Stuck(head, spine) => {
                 let head = match head {
                     Head::Error => Expr::Error,
-                    Head::Prim(prim) => Expr::Prim(prim),
-                    Head::Local(source_var) => match self.renaming.get_as_index(source_var) {
-                        None => return Err(RenameError::EscapingLocalVar(source_var)),
+                    Head::Prim(prim) => Expr::Prim(*prim),
+                    Head::Local(source_var) => match self.renaming.get_as_index(*source_var) {
+                        None => return Err(RenameError::EscapingLocalVar(*source_var)),
                         Some(target_var) => Expr::Local(Symbol::intern("FIXME"), target_var),
                     },
-                    Head::Meta(var) => match meta_var == var {
+                    Head::Meta(var) => match meta_var == *var {
                         true => return Err(RenameError::InfiniteSolution),
-                        false => Expr::Meta(var),
+                        false => Expr::Meta(*var),
                     },
                 };
                 (spine.iter()).try_fold(head, |head, elim| match elim {
@@ -511,18 +510,18 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             }
             Value::FunType(plicity, name, domain, codomain) => {
                 let domain = self.rename(meta_var, domain)?;
-                let codomain = self.rename_closure(meta_var, &codomain)?;
-                Ok(Expr::fun_type(self.bump, plicity, name, domain, codomain))
+                let codomain = self.rename_closure(meta_var, codomain)?;
+                Ok(Expr::fun_type(self.bump, *plicity, *name, domain, codomain))
             }
             Value::FunLit(plicity, name, domain, body) => {
                 let domain = self.rename(meta_var, domain)?;
-                let body = self.rename_closure(meta_var, &body)?;
-                Ok(Expr::fun_lit(self.bump, plicity, name, domain, body))
+                let body = self.rename_closure(meta_var, body)?;
+                Ok(Expr::fun_lit(self.bump, *plicity, *name, domain, body))
             }
             Value::ArrayLit(values) => {
                 let mut exprs = SliceVec::new(self.bump, values.len());
 
-                for value in values {
+                for value in *values {
                     exprs.push(self.rename(meta_var, value)?);
                 }
 
@@ -535,7 +534,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             Value::RecordLit(value_fields) => {
                 let mut expr_fields = SliceVec::new(self.bump, value_fields.len());
 
-                for (label, value) in value_fields {
+                for (label, value) in *value_fields {
                     expr_fields.push((*label, self.rename(meta_var, value)?));
                 }
 
@@ -564,10 +563,10 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
     fn rename_telescope(
         &mut self,
         meta_var: Level,
-        telescope: Telescope<'core>,
+        telescope: &Telescope<'core>,
     ) -> Result<&'core [(Symbol, Expr<'core>)], RenameError> {
         let initial_renaming_len = self.renaming.len();
-        let mut telescope = telescope;
+        let mut telescope = telescope.clone();
         let mut expr_fields = SliceVec::new(self.bump, telescope.len());
 
         while let Some((label, value, cont)) = self.elim_env().split_telescope(telescope) {
