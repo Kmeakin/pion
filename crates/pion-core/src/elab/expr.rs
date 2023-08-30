@@ -56,7 +56,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 SynthExpr::ERROR
             }
             hir::Expr::Ann((expr, r#type)) => {
-                let Check(type_expr) = self.check_expr(r#type, &Type::TYPE);
+                let Check(type_expr) = self.check_expr_is_type(r#type);
                 let type_value = self.eval_env().eval(&type_expr);
                 let Check(expr) = self.check_expr(expr, &type_value);
                 SynthExpr::new(expr, type_value)
@@ -134,7 +134,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                             continue;
                         }
 
-                        let Check(r#type) = this.check_expr(&field.r#type, &Type::TYPE);
+                        let Check(r#type) = this.check_expr_is_type(&field.r#type);
                         let type_value = this.eval_env().eval(&r#type);
                         type_fields.push((field.label, r#type));
                         label_spans.push(field.label_span);
@@ -219,11 +219,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 }
             }
             hir::Expr::FunArrow((domain, codomain)) => {
-                let Check(domain_expr) = self.check_expr(domain, &Type::TYPE);
+                let Check(domain_expr) = self.check_expr_is_type(domain);
                 let domain_value = self.eval_env().eval(&domain_expr);
-                let Check(codomain_expr) = self.with_param(None, domain_value, |this| {
-                    this.check_expr(codomain, &Type::TYPE)
-                });
+                let Check(codomain_expr) =
+                    self.with_param(None, domain_value, |this| this.check_expr_is_type(codomain));
                 let expr = Expr::fun_arrow(self.bump, domain_expr, codomain_expr);
                 SynthExpr::new(expr, Type::TYPE)
             }
@@ -231,7 +230,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 // empty parameter list is treated as a single unit parameter
                 if params.is_empty() {
                     let Check(codomain_expr) = self.with_param(None, Type::UNIT_TYPE, |this| {
-                        this.check_expr(codomain, &Type::TYPE)
+                        this.check_expr_is_type(codomain)
                     });
                     let expr = Expr::fun_arrow(self.bump, Expr::UNIT_TYPE, codomain_expr);
                     return SynthExpr::new(expr, Type::TYPE);
@@ -455,7 +454,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
                     self.with_scope(|this| {
                         for (idx, elem) in elems.iter().enumerate() {
-                            let Check(r#type) = this.check_expr(elem, &Type::TYPE);
+                            let Check(r#type) = this.check_expr_is_type(elem);
                             let type_value = this.eval_env().eval(&r#type);
                             let label = Symbol::intern(format!("_{idx}"));
                             type_fields.push((label, r#type));
@@ -625,6 +624,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 }
 
 impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
+    pub fn check_expr_is_type(&mut self, expr: &'hir hir::Expr<'hir>) -> CheckExpr<'core> {
+        self.check_expr(expr, &Type::TYPE)
+    }
+
     // FIXME: check for duplicate params
     fn synth_fun_type(
         &mut self,
@@ -632,7 +635,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         codomain: &'hir hir::Expr<'hir>,
     ) -> SynthExpr<'core> {
         let Some((param, params)) = params.split_first() else {
-            let Check(codomain_expr) = self.check_expr(codomain, &Type::TYPE);
+            let Check(codomain_expr) = self.check_expr_is_type(codomain);
             return SynthExpr::new(codomain_expr, Type::TYPE);
         };
 
