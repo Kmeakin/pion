@@ -764,17 +764,19 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         mut expr: Expr<'core>,
         mut r#type: Type<'core>,
     ) -> (Expr<'core>, Type<'core>) {
-        while let Value::FunType(Plicity::Implicit, name, param_type, body_type) =
-            self.elim_env().update_metas(r#type.clone())
-        {
-            let source = MetaSource::ImplicitArg { span, name };
-            let arg_expr = self.push_unsolved_expr(source, param_type.clone());
-            let arg_value = self.eval_env().eval(&arg_expr);
+        loop {
+            match self.elim_env().update_metas(r#type) {
+                Value::FunType(Plicity::Implicit, name, param_type, body_type) => {
+                    let source = MetaSource::ImplicitArg { span, name };
+                    let arg_expr = self.push_unsolved_expr(source, param_type.clone());
+                    let arg_value = self.eval_env().eval(&arg_expr);
 
-            expr = Expr::fun_app(self.bump, Plicity::Implicit, expr, arg_expr);
-            r#type = self.elim_env().apply_closure(body_type, arg_value);
+                    expr = Expr::fun_app(self.bump, Plicity::Implicit, expr, arg_expr);
+                    r#type = self.elim_env().apply_closure(body_type, arg_value);
+                }
+                r#type => return (expr, r#type),
+            }
         }
-        (expr, r#type)
     }
 
     /// Synthesize the type of `expr`, wrapping it in fresh implicit
