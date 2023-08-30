@@ -116,6 +116,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 SynthExpr::new(expr, r#type)
             }
             hir::Expr::RecordType(fields) => {
+                self.local_env.reserve(fields.len());
                 let mut type_fields = SliceVec::new(self.bump, fields.len());
                 let mut label_spans = SliceVec::new(self.bump, fields.len());
 
@@ -262,6 +263,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     return SynthExpr::new(expr, r#type);
                 }
 
+                self.local_env.reserve(params.len());
                 self.synth_fun_lit(params, body)
             }
             hir::Expr::FunCall(fun, args) => {
@@ -460,6 +462,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     CheckExpr::new(expr)
                 }
                 _ if expected.is_type() => {
+                    self.local_env.reserve(elems.len());
                     let mut type_fields = SliceVec::new(self.bump, elems.len());
 
                     self.with_scope(|this| {
@@ -560,6 +563,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     }
                 }
 
+                self.local_env.reserve(params.len());
                 self.check_fun_lit(params, body, expected.clone())
             }
             hir::Expr::Match(..) => todo!(),
