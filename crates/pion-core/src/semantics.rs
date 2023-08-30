@@ -293,11 +293,10 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
 
     /// Quote a [value][Value] back into a [expr][Expr].
     pub fn quote(&mut self, value: &Value<'core>) -> Expr<'core> {
-        let value = self.elim_env().update_metas(value.clone());
         match value {
-            Value::Lit(lit) => Expr::Lit(lit),
+            Value::Lit(lit) => Expr::Lit(*lit),
             Value::Stuck(head, spine) => {
-                (spine.iter()).fold(self.quote_head(head), |head, elim| match elim {
+                (spine.iter()).fold(self.quote_head(*head), |head, elim| match elim {
                     Elim::FunApp(plicity, arg) => {
                         Expr::fun_app(self.bump, *plicity, head, self.quote(arg))
                     }
@@ -323,13 +322,13 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
             }
             Value::FunType(plicity, name, domain, codomain) => {
                 let domain = self.quote(domain);
-                let codomain = self.quote_closure(name, codomain);
-                Expr::fun_type(self.bump, plicity, name, domain, codomain)
+                let codomain = self.quote_closure(*name, codomain.clone());
+                Expr::fun_type(self.bump, *plicity, *name, domain, codomain)
             }
             Value::FunLit(plicity, name, domain, body) => {
                 let domain = self.quote(domain);
-                let body = self.quote_closure(name, body);
-                Expr::fun_lit(self.bump, plicity, name, domain, body)
+                let body = self.quote_closure(*name, body.clone());
+                Expr::fun_lit(self.bump, *plicity, *name, domain, body)
             }
             Value::ArrayLit(values) => Expr::ArrayLit(
                 self.bump
@@ -382,9 +381,9 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
     }
 
     /// Quote a [telescope][Telescope] back into a slice of [exprs][Expr].
-    fn quote_telescope(&mut self, telescope: Telescope<'core>) -> &'core [(Symbol, Expr<'core>)] {
+    fn quote_telescope(&mut self, telescope: &Telescope<'core>) -> &'core [(Symbol, Expr<'core>)] {
         let initial_local_len = self.local_names.len();
-        let mut telescope = telescope;
+        let mut telescope = telescope.clone();
         let mut expr_fields = SliceVec::new(self.bump, telescope.len());
 
         while let Some((name, value, cont)) = self.elim_env().split_telescope(telescope) {
