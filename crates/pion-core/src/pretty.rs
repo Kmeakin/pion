@@ -61,6 +61,7 @@ impl<'pretty> PrettyCtx<'pretty> {
             Expr::Error => self.text("#error"),
             Expr::Lit(lit) => self.lit(*lit),
             Expr::Prim(prim) => self.prim(*prim),
+            Expr::Item(symbol, ..) => self.ident(*symbol),
             Expr::Local(name, ..) => self.local_name(*name),
             Expr::Meta(var) => self
                 .text("?")
@@ -324,6 +325,7 @@ fn expr_prec(expr: &ZonkedExpr<'_>) -> Prec {
         Expr::Error => Prec::Atom,
         Expr::Lit(_) => Prec::Atom,
         Expr::Prim(_) => Prec::Atom,
+        Expr::Item(..) => Prec::Atom,
         Expr::Local(..) => Prec::Atom,
         Expr::Meta(_) => Prec::Atom,
         Expr::Let(..) => Prec::Let,

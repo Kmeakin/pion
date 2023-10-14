@@ -9,25 +9,31 @@ use crate::syntax::*;
 pub fn lower_module<'surface, 'hir>(
     bump: &'hir bumpalo::Bump,
     module: &'surface surface::Module<'surface>,
-) -> (Module<'hir>, Vec<LowerDiagnostic>) {
-    let mut ctx = Ctx::new(bump);
-    let module = ctx.module_to_hir(module);
-    let (_, errors) = ctx.finish();
-    (module, errors)
-}
+) -> Module<'surface, 'hir> {
+    let mut items = Vec::with_capacity(module.items.len());
 
-pub fn lower_item<'surface, 'hir>(
-    bump: &'hir bumpalo::Bump,
-    item: &'surface surface::Item<'surface>,
-) -> (
-    Item<'hir>,
-    LocalSyntaxMap<'surface, 'hir>,
-    Vec<LowerDiagnostic>,
-) {
-    let mut ctx = Ctx::new(bump);
-    let item = ctx.item_to_hir(item);
-    let (syntax_map, errors) = ctx.finish();
-    (item, syntax_map, errors)
+    for item in module.items {
+        match item {
+            surface::Item::Error(_) => continue,
+            surface::Item::Def(def) => {
+                let mut ctx = Ctx::new(bump);
+                let r#type = def.r#type.as_ref().map(|r#type| ctx.lower_expr(r#type));
+                let expr = ctx.lower_expr(&def.expr);
+                let (syntax_map, errors) = ctx.finish();
+                let def = Def {
+                    name: def.name.1,
+                    name_span: def.name.0,
+                    r#type,
+                    expr,
+                    syntax_map,
+                    errors,
+                };
+                items.push(Item::Def(def));
+            }
+        }
+    }
+
+    Module { items }
 }
 
 pub struct Ctx<'surface, 'hir> {
@@ -48,36 +54,6 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
 
     pub fn finish(self) -> (LocalSyntaxMap<'surface, 'hir>, Vec<LowerDiagnostic>) {
         (self.syntax_map, self.diagnostics)
-    }
-}
-
-// Modules and items
-impl<'surface, 'hir> Ctx<'surface, 'hir> {
-    fn module_to_hir(&mut self, module: &'surface surface::Module<'surface>) -> Module<'hir> {
-        let items = self.lower_items(module.items);
-        Module { items }
-    }
-
-    fn item_to_hir(&mut self, item: &'surface surface::Item<'surface>) -> Item<'hir> {
-        match item {
-            surface::Item::Error(_) => Item::Error,
-            surface::Item::Def(def) => Item::Def(self.def_to_hir(def)),
-        }
-    }
-
-    fn lower_items(&mut self, items: &'surface [surface::Item<'surface>]) -> &'hir [Item<'hir>] {
-        self.bump
-            .alloc_slice_fill_iter(items.iter().map(|item| self.item_to_hir(item)))
-    }
-
-    fn def_to_hir(&mut self, def: &'surface surface::Def<'surface>) -> Def<'hir> {
-        let r#type = def.r#type.as_ref().map(|r#type| self.lower_expr(r#type));
-        let expr = self.lower_expr(&def.expr);
-        Def {
-            name: def.name.1,
-            r#type,
-            expr,
-        }
     }
 }
 

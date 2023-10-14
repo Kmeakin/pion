@@ -4,7 +4,7 @@ use codespan_reporting::diagnostic::Label;
 use pion_utils::location::ByteSpan;
 use pion_utils::source::FileId;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LowerDiagnostic {
     ParseIntError(ByteSpan, ParseIntError),
 }

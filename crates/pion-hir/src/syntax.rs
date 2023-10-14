@@ -5,26 +5,37 @@ use pion_utils::identity::Identity;
 use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
 
+use crate::lower::LowerDiagnostic;
 use crate::syntax_map::SyntaxMap;
 
 mod iterators;
 
-#[derive(Debug, Copy, Clone)]
-pub struct Module<'hir> {
-    pub items: &'hir [Item<'hir>],
+#[derive(Debug, Clone)]
+pub struct Module<'surface, 'hir> {
+    pub items: Vec<Item<'surface, 'hir>>,
 }
 
-#[derive(Debug, Copy, Clone)]
-pub enum Item<'hir> {
-    Error,
-    Def(Def<'hir>),
+#[derive(Debug, Clone)]
+pub enum Item<'surface, 'hir> {
+    Def(Def<'surface, 'hir>),
 }
 
-#[derive(Debug, Copy, Clone)]
-pub struct Def<'hir> {
+impl<'surface, 'hir> Item<'surface, 'hir> {
+    pub fn span(&self) -> ByteSpan {
+        match self {
+            Item::Def(def) => def.name_span,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Def<'surface, 'hir> {
     pub name: Symbol,
+    pub name_span: ByteSpan,
     pub r#type: Option<&'hir Expr<'hir>>,
     pub expr: &'hir Expr<'hir>,
+    pub syntax_map: LocalSyntaxMap<'surface, 'hir>,
+    pub errors: Vec<LowerDiagnostic>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

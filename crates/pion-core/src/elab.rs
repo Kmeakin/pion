@@ -1,11 +1,13 @@
 use std::fmt;
 use std::hash::BuildHasherDefault;
+use std::sync::Arc;
 
 use nohash::IntMap;
 use pion_utils::identity::Identity;
 use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
 
+use self::module::ItemEnv;
 use self::unify::UnifyCtx;
 use crate::env::{EnvLen, Index, Level, SharedEnv, UniqueEnv};
 use crate::name::{BinderName, LocalName};
@@ -16,6 +18,7 @@ use crate::syntax::*;
 mod diagnostics;
 mod expr;
 mod r#match;
+pub mod module;
 mod pat;
 mod unify;
 
@@ -24,6 +27,7 @@ pub struct ElabCtx<'surface, 'hir, 'core> {
     syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
     local_env: LocalEnv<'core>,
     meta_env: MetaEnv<'core>,
+    item_env: Arc<ItemEnv<'hir, 'core>>,
     renaming: unify::PartialRenaming,
     type_map: TypeMap<'hir, 'core>,
     diagnostics: Vec<diagnostics::ElabDiagnostic>,
@@ -33,6 +37,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
     pub fn new(
         bump: &'core bumpalo::Bump,
         syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
+        item_env: Arc<ItemEnv<'hir, 'core>>,
     ) -> Self {
         Self {
             bump,
@@ -40,6 +45,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             syntax_map,
             local_env: LocalEnv::default(),
             meta_env: MetaEnv::default(),
+            item_env,
             renaming: unify::PartialRenaming::new(),
             diagnostics: Vec::default(),
         }
@@ -440,60 +446,4 @@ pub struct Check<T>(pub T);
 
 impl<T> Check<T> {
     pub const fn new(core: T) -> Self { Self(core) }
-}
-
-pub type ItemMap<'hir, 'core> = Vec<ItemData<'hir, 'core>>;
-pub type ItemData<'hir, 'core> = ElabResult<'hir, 'core, ()>;
-
-// REASON: keep all lifetimes explicit for clarity
-#[allow(clippy::needless_lifetimes)]
-pub fn elab_def<'surface, 'hir, 'core>(
-    bump: &'core bumpalo::Bump,
-    syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
-    def: &'hir pion_hir::syntax::Def<'hir>,
-) -> ElabResult<'hir, 'core, Def<'core>> {
-    let mut ctx = ElabCtx::new(bump, syntax_map);
-
-    let (expr, r#type) = match &def.r#type {
-        None => {
-            let Synth(expr, r#type) = ctx.synth_expr(def.expr);
-            let r#type = ctx.quote_env().quote(&r#type);
-
-            (expr, r#type)
-        }
-        Some(r#type) => {
-            let Check(r#type) = ctx.check_expr(r#type, &Type::TYPE);
-            let type_value = ctx.eval_env().eval(&r#type);
-            let Check(expr) = ctx.check_expr(def.expr, &type_value);
-
-            (expr, r#type)
-        }
-    };
-    let expr = ctx.zonk_env(bump).zonk(&expr);
-    let r#type = ctx.zonk_env(bump).zonk(&r#type);
-
-    let def = Def {
-        name: def.name,
-        r#type,
-        expr,
-    };
-
-    ctx.finish_with(def)
-}
-
-// REASON: keep all lifetimes explicit for clarity
-#[allow(clippy::needless_lifetimes)]
-pub fn elab_expr<'surface, 'hir, 'core>(
-    bump: &'core bumpalo::Bump,
-    syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
-    expr: &'hir pion_hir::syntax::Expr<'hir>,
-) -> ElabResult<'hir, 'core, (ZonkedExpr<'core>, ZonkedExpr<'core>)> {
-    let mut ctx = ElabCtx::new(bump, syntax_map);
-
-    let Synth(expr, r#type) = ctx.synth_expr(expr);
-    let r#type = ctx.quote_env().quote(&r#type);
-
-    let expr = ctx.zonk_env(bump).zonk(&expr);
-    let r#type = ctx.zonk_env(bump).zonk(&r#type);
-    ctx.finish_with((expr, r#type))
 }

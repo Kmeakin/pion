@@ -1,0 +1,19 @@
+exit status: 0
+
+stdout = """
+def foo: Int = 5;
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+10..11 | 5                                        | Int
+
+def bar: Int = foo;
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+23..26 | foo                                      | Int
+"""
+
+stderr = """
+
+"""

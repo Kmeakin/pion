@@ -672,6 +672,17 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             return SynthExpr::new(Expr::Local((), index), entry.r#type.clone());
         };
 
+        if let dashmap::mapref::entry::Entry::Occupied(entry) = self.item_env.entry(symbol) {
+            match entry.get() {
+                None => todo!(),
+                Some((def, ..)) => {
+                    let mut eval_env =
+                        EvalEnv::new(self.bump, &self.meta_env.values, &mut self.local_env.values);
+                    return SynthExpr::new(Expr::Item(symbol), eval_env.eval(&def.r#type.unzonk()));
+                }
+            }
+        }
+
         if let Some(prim) = Prim::from_symbol(symbol) {
             return SynthExpr::new(Expr::Prim(prim), prim.r#type());
         }

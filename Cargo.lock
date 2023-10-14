@@ -766,6 +766,7 @@ version = "0.1.0"
 dependencies = [
  "bumpalo",
  "codespan-reporting",
+ "dashmap",
  "ecow",
  "either",
  "expect-test",

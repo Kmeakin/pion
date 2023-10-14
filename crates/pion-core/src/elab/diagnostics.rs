@@ -11,6 +11,11 @@ type String = Box<str>;
 
 #[derive(Debug, Clone)]
 pub enum ElabDiagnostic {
+    DuplicateItem {
+        name: Symbol,
+        first_span: ByteSpan,
+        duplicate_span: ByteSpan,
+    },
     UnboundName {
         span: ByteSpan,
         name: LocalName,
@@ -84,9 +89,16 @@ impl ElabDiagnostic {
         let secondary = |span: ByteSpan| Label::secondary(file_id, span);
 
         match self {
-            Self::UnboundName { span, name } => CodeSpanDiagnostic::error()
-                .with_message(format!("unbound name `{name}`"))
-                .with_labels(vec![primary(*span)]),
+            Self::DuplicateItem {
+                name,
+                first_span,
+                duplicate_span,
+            } => CodeSpanDiagnostic::error()
+                .with_message(format!("duplicate definition of global name `{name}`"))
+                .with_labels(vec![
+                    secondary(*first_span).with_message("first definition"),
+                    primary(*duplicate_span).with_message("duplicate definition"),
+                ]),
             Self::DuplicateLocalName {
                 name,
                 first_span,
@@ -97,6 +109,9 @@ impl ElabDiagnostic {
                     secondary(*first_span).with_message("first definition"),
                     primary(*duplicate_span).with_message("duplicate definition"),
                 ]),
+            Self::UnboundName { span, name } => CodeSpanDiagnostic::error()
+                .with_message(format!("unbound name `{name}`"))
+                .with_labels(vec![primary(*span)]),
             Self::FunAppPlicity {
                 call_span,
                 fun_type,

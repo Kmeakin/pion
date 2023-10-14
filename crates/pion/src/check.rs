@@ -69,24 +69,31 @@ pub fn run(args: CheckArgs, dump_flags: DumpFlags) -> anyhow::Result<()> {
         let (surface_module, errors) = pion_surface::syntax::parse_module(src32, &bump);
         diagnostics.extend(errors.iter().map(|error| error.to_diagnostic(file_id)));
 
-        for surface_item in surface_module.items {
-            let (hir_item, syntax_map, errors) = pion_hir::lower::lower_item(&bump, surface_item);
+        let hir_module = pion_hir::lower::lower_module(&bump, &surface_module);
+
+        let (core_module, errors) = pion_core::elab::module::elab_module(&bump, &hir_module);
+        diagnostics.extend(errors.iter().map(|diag| diag.to_diagnostic(file_id)));
+
+        for ((core_item, mut core_result), hir_item) in
+            core_module.into_iter().zip(hir_module.items.iter())
+        {
+            let errors = std::mem::take(&mut core_result.diagnostics);
             diagnostics.extend(errors.iter().map(|diag| diag.to_diagnostic(file_id)));
 
-            if let pion_hir::syntax::Item::Def(def) = hir_item {
-                let result = pion_core::elab::elab_def(&bump, &syntax_map, &def);
-
-                if dump_flags.core {
-                    pion_core::dump::dump_def(&mut stdout, src32.as_str(), &syntax_map, &result)?;
-                    writeln!(&mut stdout)?;
+            if dump_flags.core {
+                #[allow(irrefutable_let_patterns)]
+                if let pion_hir::syntax::Item::Def(hir_def) = hir_item {
+                    if let pion_core::syntax::Item::Def(core_def) = core_item {
+                        pion_core::dump::dump_def(
+                            &mut stdout,
+                            src32.as_str(),
+                            &hir_def.syntax_map,
+                            &core_def,
+                            &core_result,
+                        )?;
+                        writeln!(&mut stdout)?;
+                    }
                 }
-
-                diagnostics.extend(
-                    result
-                        .diagnostics
-                        .iter()
-                        .map(|diag| diag.to_diagnostic(file_id)),
-                );
             }
         }
     }

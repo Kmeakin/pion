@@ -190,6 +190,7 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
             Expr::Error => Value::Error,
             Expr::Lit(lit) => Value::Lit(*lit),
             Expr::Prim(prim) => Value::prim(*prim),
+            Expr::Item(_) => todo!(),
             Expr::Local(.., var) => match self.local_values.get_index(*var) {
                 Some(value) => value.clone(),
                 None => panic!("Unbound local variable: {var:?}"),
@@ -439,6 +440,7 @@ impl<'core, 'env, 'out> ZonkEnv<'core, 'env, 'out> {
             Expr::Error => Expr::Error,
             Expr::Lit(lit) => Expr::Lit(*lit),
             Expr::Prim(prim) => Expr::Prim(*prim),
+            Expr::Item(symbol) => Expr::Item(*symbol),
             Expr::Local((), var) => match self.local_names.get_index(*var) {
                 Some(BinderName::User(symbol)) => Expr::Local(LocalName::User(*symbol), *var),
                 Some(BinderName::Underscore) => Expr::Local(

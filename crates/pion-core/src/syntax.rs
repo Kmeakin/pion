@@ -29,11 +29,16 @@ pub struct Def<'core> {
 }
 
 pub type ZonkedExpr<'core> = Expr<'core, LocalName>;
+impl<'core> ZonkedExpr<'core> {
+    pub fn unzonk(&self) -> Expr<'core, ()> { unsafe { std::mem::transmute(*self) } }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Expr<'core, Name = ()> {
     Error,
     Lit(Lit),
     Prim(Prim),
+    Item(Symbol),
     Local(Name, Index),
     Meta(Level),
 
@@ -154,7 +159,7 @@ impl<'core, Name> Expr<'core, Name> {
     pub fn binds_local(&self, var: Index) -> bool {
         match self {
             Expr::Local(.., v) => *v == var,
-            Expr::Error | Expr::Lit(..) | Expr::Prim(..) | Expr::Meta(..) => false,
+            Expr::Error | Expr::Lit(..) | Expr::Prim(..) | Expr::Item(..) | Expr::Meta(..) => false,
             Expr::Let(_, (r#type, init, body)) => {
                 r#type.binds_local(var) || init.binds_local(var) || body.binds_local(var.next())
             }
@@ -198,9 +203,12 @@ impl<'core, Name> Expr<'core, Name> {
         match self {
             Expr::Local(name, var) if *var >= min => Expr::Local(*name, *var + amount),
 
-            Expr::Error | Expr::Lit(..) | Expr::Prim(..) | Expr::Local(..) | Expr::Meta(..) => {
-                *self
-            }
+            Expr::Error
+            | Expr::Lit(..)
+            | Expr::Prim(..)
+            | Expr::Item(..)
+            | Expr::Local(..)
+            | Expr::Meta(..) => *self,
 
             Expr::Let(name, (r#type, init, body)) => Expr::r#let(
                 bump,
