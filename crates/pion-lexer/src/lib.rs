@@ -1,13 +1,17 @@
+#![feature(vec_push_within_capacity)]
+
 use pion_utils::location::{ByteSpan, Span, TokenPos, TokenSpan};
 use token::Token;
 
 mod lex;
+mod lex_threaded;
 pub mod token;
 
 #[cfg(test)]
 mod tests;
 
-pub use self::lex::lex;
+// pub use self::lex::lex;
+pub use self::lex_threaded::lex;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum LexError {
