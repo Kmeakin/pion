@@ -551,6 +551,7 @@ dependencies = [
  "pion-hir",
  "pion-language-server",
  "pion-lexer",
+ "pion-parser",
  "pion-surface",
  "pion-utils",
  "snapbox",
@@ -583,6 +584,7 @@ dependencies = [
  "internal-iterator",
  "nohash",
  "pion-lexer",
+ "pion-parser",
  "pion-surface",
  "pion-utils",
 ]
@@ -609,6 +611,17 @@ version = "0.1.0"
 dependencies = [
  "expect-test",
  "memchr",
+ "pion-utils",
+]
+
+[[package]]
+name = "pion-parser"
+version = "0.1.0"
+dependencies = [
+ "bumpalo",
+ "codespan-reporting",
+ "expect-test",
+ "pion-lexer",
  "pion-utils",
 ]
 
