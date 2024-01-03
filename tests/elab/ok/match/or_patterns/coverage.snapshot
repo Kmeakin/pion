@@ -48,14 +48,14 @@ span   | source                                   | type
 323..327 | true                                     | Bool
 347..351 | true                                     | Bool
 362..367 | false                                    | Bool
-404..510 | fun(x: {b : Bool})...n    _ => false,\n} | {b: Bool} -> Bool
+404..579 | fun(x: {b : Bool})...n    _ => false,\n} | {b: Bool} -> Bool
 411..421 | {b : Bool}                               | Type
 416..420 | Bool                                     | Type
-426..510 | match x {\n    {b ...n    _ => false,\n} | Bool
+426..579 | match x {\n    {b ...n    _ => false,\n} | Bool
 432..433 | x                                        | {b: Bool}
 462..466 | true                                     | Bool
-487..491 | true                                     | Bool
-502..507 | false                                    | Bool
+556..560 | true                                     | Bool
+571..576 | false                                    | Bool
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -83,12 +83,12 @@ span   | source                                   | type
 357..358 | _                                        | {b: Bool}
 408..409 | x                                        | {b: Bool}
 440..458 | {b = true | false}                       | {b: Bool}
+444..457 |  true | false                            | Bool
 445..449 | true                                     | Bool
-445..457 | true | false                             | Bool
 452..457 | false                                    | Bool
-472..483 | {b = false}                              | {b: Bool}
-477..482 | false                                    | Bool
-497..498 | _                                        | {b: Bool}
+541..552 | {b = false}                              | {b: Bool}
+546..551 | false                                    | Bool
+566..567 | _                                        | {b: Bool}
 metavars:
 ?0 = Int -> Bool
 ?1 = fun(_: #error) => Bool

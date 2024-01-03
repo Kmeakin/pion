@@ -1,4 +1,3 @@
-pub mod event;
 pub mod reporting;
 pub mod syntax;
 
@@ -27,18 +26,11 @@ pub fn parse(src: &str, entrypoint: impl Fn(&mut Parser)) -> (Root, Vec<SyntaxEr
 
     pion_lexer::lex(src, &mut tokens, &mut token_errors);
 
-    let (events, errors) = {
-        let tokens = tokens
-            .iter()
-            .filter(|token| !token.kind().is_trivia())
-            .copied()
-            .collect::<Vec<_>>();
-        let mut p = crate::parser::Parser::new(&tokens);
+    let (node, errors) = {
+        let mut p = crate::parser::Parser::new(src, &tokens);
         entrypoint(&mut p);
         p.finish()
     };
-
-    let (node, errors) = crate::event::process_events(src, &tokens, &events, &errors);
 
     (AstNode::cast(node).unwrap(), errors)
 }

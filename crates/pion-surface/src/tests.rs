@@ -30,7 +30,7 @@ mod expr {
                 Node(Root)@0..0
                   Node(Error)@0..0
 
-                errors = [SyntaxError { span: 0..0, kind: Custom { msg: "expected expression" } }]
+                errors = [Custom { span: 0..0, msg: "expected expression" }]
             "#]],
         );
     }
@@ -1166,11 +1166,9 @@ mod pat {
                   Node(Error)@0..0
 
                 errors = [
-                    SyntaxError {
+                    Custom {
                         span: 0..0,
-                        kind: Custom {
-                            msg: "expected pattern",
-                        },
+                        msg: "expected pattern",
                     },
                 ]
             "#]],

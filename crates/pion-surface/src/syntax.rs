@@ -2,6 +2,7 @@ use std::marker::PhantomData;
 
 use pion_lexer::token::TokenKind;
 use pion_lexer::T;
+use rowan::Language as _;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PionLanguage {}
@@ -95,6 +96,13 @@ impl rowan::Language for PionLanguage {
     fn kind_to_raw(kind: Self::Kind) -> rowan::SyntaxKind {
         unsafe { std::mem::transmute::<Self::Kind, rowan::SyntaxKind>(kind) }
     }
+}
+
+impl From<SyntaxKind> for rowan::SyntaxKind {
+    fn from(kind: SyntaxKind) -> Self { PionLanguage::kind_to_raw(kind) }
+}
+impl From<NodeKind> for rowan::SyntaxKind {
+    fn from(kind: NodeKind) -> Self { SyntaxKind::Node(kind).into() }
 }
 
 /// The main trait to go from untyped `SyntaxNode`  to a typed ast. The

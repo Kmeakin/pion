@@ -18,7 +18,7 @@ def is_true_or_false_record = fun(x: {b : Bool}) => match x {
 };
 
 def is_true_or_false_record2 = fun(x: {b : Bool}) => match x {
-    {b = true | false} => true,
+    {b = true | false} => true, // FIXME: span of or-pattern incorrectly includes leading whitespace
     {b = false} => true,
     _ => false,
 };

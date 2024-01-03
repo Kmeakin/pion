@@ -1,12 +1,13 @@
 use pion_lexer::token::TokenKind;
 use pion_lexer::T;
+use rowan::Checkpoint;
 
-use super::{MarkClosed, Parser};
+use super::Parser;
 use crate::syntax::NodeKind;
 
 // Module = Def*
 pub fn module(p: &mut Parser) {
-    let m = p.start();
+    p.start(NodeKind::Module);
 
     while !p.at_eof() {
         if p.at(T![def]) {
@@ -16,12 +17,12 @@ pub fn module(p: &mut Parser) {
         }
     }
 
-    p.close(m, NodeKind::Module);
+    p.close();
 }
 
 // Def = "def" "name" TypeAnn? = Expr ";"
 fn def(p: &mut Parser) {
-    let m = p.start();
+    p.start(NodeKind::DefItem);
     p.assert_advance(T![def]);
 
     p.expect(T![ident]);
@@ -30,7 +31,7 @@ fn def(p: &mut Parser) {
     expr(p);
     p.expect(T![;]);
 
-    p.close(m, NodeKind::DefItem);
+    p.close();
 }
 
 // TypeAnnOpt = TypeAnn?
@@ -42,10 +43,10 @@ fn type_ann_opt(p: &mut Parser) {
 
 // TypeAnn = ":" Expr
 fn type_ann(p: &mut Parser) {
-    let m = p.start();
+    p.start(NodeKind::TypeAnn);
     p.assert_advance(T![:]);
     expr(p);
-    p.close(m, NodeKind::TypeAnn);
+    p.close();
 }
 
 pub fn expr(p: &mut Parser) {
@@ -56,20 +57,20 @@ pub fn expr(p: &mut Parser) {
         _ => {}
     }
 
-    let mut lhs = atom_expr(p);
+    let lhs = p.checkpoint();
+    atom_expr(p);
 
     loop {
         match p.peek() {
             // FunCallExpr = Expr ArgList
             Some(T!['(']) => {
-                let m = p.start_before(lhs);
+                p.start_before(lhs, NodeKind::FunCallExpr);
                 fun_arg_list(p);
-                lhs = p.close(m, NodeKind::FunCallExpr);
+                p.close();
             }
             // FieldProjExpr = Expr "." "Ident"
             // MethodCallExpr = Expr "." "Ident" ArgList
             Some(T![.]) => {
-                let m = p.start_before(lhs);
                 p.assert_advance(T![.]);
                 p.expect(T![ident]);
 
@@ -79,7 +80,8 @@ pub fn expr(p: &mut Parser) {
                 } else {
                     NodeKind::FieldProjExpr
                 };
-                lhs = p.close(m, kind);
+                p.start_before(lhs, kind);
+                p.close();
             }
             _ => break,
         }
@@ -88,19 +90,19 @@ pub fn expr(p: &mut Parser) {
     loop {
         match p.peek() {
             Some(T![->]) => {
-                let m = p.start_before(lhs);
+                p.start_before(lhs, NodeKind::FunArrowExpr);
                 {
-                    let m = p.start();
+                    p.start(NodeKind::RetType);
                     p.assert_advance(T![->]);
                     expr(p);
-                    p.close(m, NodeKind::RetType);
+                    p.close();
                 }
-                p.close(m, NodeKind::FunArrowExpr);
+                p.close();
             }
             Some(T![:]) => {
-                let m = p.start_before(lhs);
+                p.start_before(lhs, NodeKind::AnnExpr);
                 type_ann(p);
-                p.close(m, NodeKind::AnnExpr);
+                p.close();
             }
             _ => break,
         }
@@ -109,63 +111,65 @@ pub fn expr(p: &mut Parser) {
 
 // FunArgList = "(" FunArg* ")"
 fn fun_arg_list(p: &mut Parser) {
-    let m = p.start();
+    p.start(NodeKind::FunArgList);
     p.assert_advance(T!['(']);
     list(p, T![')'], T![,], fun_arg);
-    p.close(m, NodeKind::FunArgList);
+    p.close();
 }
 
 // FunArg = "@"? Expr
 fn fun_arg(p: &mut Parser) {
-    let m = p.start();
-
+    p.start(NodeKind::FunArg);
     p.advance_if_at(T![@]);
     expr(p);
-
-    p.close(m, NodeKind::FunArg);
+    p.close();
 }
 
-fn atom_expr(p: &mut Parser) -> MarkClosed {
-    let m = p.start();
+fn atom_expr(p: &mut Parser) {
     match p.peek() {
         Some(T![true] | T![false]) => {
+            p.start(NodeKind::LitExpr);
             {
-                let m = p.start();
+                p.start(NodeKind::BoolLit);
                 p.advance();
-                p.close(m, NodeKind::BoolLit);
+                p.close();
             }
-            p.close(m, NodeKind::LitExpr)
+            p.close();
         }
         Some(T![dec_int] | T![bin_int] | T![hex_int]) => {
+            p.start(NodeKind::LitExpr);
             {
-                let m = p.start();
+                p.start(NodeKind::IntLit);
                 p.advance();
-                p.close(m, NodeKind::IntLit);
+                p.close();
             }
-            p.close(m, NodeKind::LitExpr)
+            p.close();
         }
         Some(T![_]) => {
+            p.start(NodeKind::UnderscoreExpr);
             p.advance();
-            p.close(m, NodeKind::UnderscoreExpr)
+            p.close();
         }
         Some(T![ident]) => {
+            p.start(NodeKind::IdentExpr);
             p.advance();
-            p.close(m, NodeKind::IdentExpr)
+            p.close();
         }
         Some(T![match]) => match_expr(p),
         Some(T!['[']) => array_expr(p),
         Some(T!['(']) => paren_or_tuple_expr(p),
         Some(T!['{']) => record_expr(p),
         _ => {
+            p.start(NodeKind::Error);
             p.advance_with_error("expected expression");
-            p.close(m, NodeKind::Error)
+            p.close();
         }
     }
 }
 
 // LetExpr = "let" Pat TypeAnn? "=" Expr ";" Expr
 fn let_expr(p: &mut Parser) {
-    let m = p.start();
+    p.start(NodeKind::LetExpr);
 
     {
         p.assert_advance(T![let]);
@@ -177,10 +181,10 @@ fn let_expr(p: &mut Parser) {
     }
 
     {
-        let m = p.start();
+        p.start(NodeKind::LetInit);
         p.expect(T![=]);
         expr(p);
-        p.close(m, NodeKind::LetInit);
+        p.close();
     }
 
     {
@@ -188,12 +192,12 @@ fn let_expr(p: &mut Parser) {
         expr(p);
     }
 
-    p.close(m, NodeKind::LetExpr);
+    p.close();
 }
 
 // IfExpr = "if" Expr "then" Expr "else" Expr
 fn if_expr(p: &mut Parser) {
-    let m = p.start();
+    p.start(NodeKind::IfExpr);
 
     {
         p.assert_advance(T![if]);
@@ -201,25 +205,25 @@ fn if_expr(p: &mut Parser) {
     }
 
     {
-        let m = p.start();
+        p.start(NodeKind::ThenExpr);
         p.expect(T![then]);
         expr(p);
-        p.close(m, NodeKind::ThenExpr);
+        p.close();
     }
     {
-        let m = p.start();
+        p.start(NodeKind::ElseExpr);
         p.expect(T![else]);
         expr(p);
-        p.close(m, NodeKind::ElseExpr);
+        p.close();
     }
 
-    p.close(m, NodeKind::IfExpr);
+    p.close();
 }
 
 // FunLitExpr = "fun" FunParamList "=>" Expr
 // FunTypeExpr = "fun" FunParamList "->" Expr
 fn fun_expr(p: &mut Parser) {
-    let m = p.start();
+    let c = p.checkpoint();
 
     {
         p.assert_advance(T![fun]);
@@ -242,30 +246,31 @@ fn fun_expr(p: &mut Parser) {
             }
         };
         expr(p);
-        p.close(m, kind);
+        p.start_before(c, kind);
+        p.close();
     }
 }
 
 // FunParamList = "(" FunParam ")"
 fn fun_param_list(p: &mut Parser) {
-    let m = p.start();
+    p.start(NodeKind::FunParamList);
     p.expect(T!['(']);
     list(p, T![')'], T![,], fun_param);
-    p.close(m, NodeKind::FunParamList);
+    p.close();
 }
 
 // FunParam = "@"? Pat TypeAnn?
 fn fun_param(p: &mut Parser) {
-    let m = p.start();
+    p.start(NodeKind::FunParam);
     p.advance_if_at(T![@]);
     pat(p);
     type_ann_opt(p);
-    p.close(m, NodeKind::FunParam);
+    p.close();
 }
 
 // MatchExpr = "match" Expr "{" MatchCase "}"
-fn match_expr(p: &mut Parser) -> MarkClosed {
-    let m = p.start();
+fn match_expr(p: &mut Parser) {
+    p.start(NodeKind::MatchExpr);
 
     {
         p.assert_advance(T![match]);
@@ -277,20 +282,20 @@ fn match_expr(p: &mut Parser) -> MarkClosed {
         list(p, T!['}'], T![,], match_case);
     }
 
-    p.close(m, NodeKind::MatchExpr)
+    p.close();
 }
 
 // MatchCase = Pat ("if" Expr) "=>" Expr
 fn match_case(p: &mut Parser) {
-    let m = p.start();
+    p.start(NodeKind::MatchCase);
 
     pat(p);
 
     if p.at(T![if]) {
-        let m = p.start();
+        p.start(NodeKind::MatchGuard);
         p.assert_advance(T![if]);
         expr(p);
-        p.close(m, NodeKind::MatchGuard);
+        p.close();
     }
 
     {
@@ -298,22 +303,22 @@ fn match_case(p: &mut Parser) {
         expr(p);
     }
 
-    p.close(m, NodeKind::MatchCase);
+    p.close();
 }
 
 // ArrayExpr = "[" Expr* "]"
-fn array_expr(p: &mut Parser) -> MarkClosed {
-    let m = p.start();
+fn array_expr(p: &mut Parser) {
+    p.start(NodeKind::ArrayLitExpr);
     p.assert_advance(T!['[']);
     list(p, T![']'], T![,], expr);
-    p.close(m, NodeKind::ArrayLitExpr)
+    p.close();
 }
 
 // ParenExpr = "(" Expr ")"
 // TupleExpr = "(" ")"
 //          | "(" Expr ("," Expr)+ ","? ")"
-fn paren_or_tuple_expr(p: &mut Parser) -> MarkClosed {
-    let m = p.start();
+fn paren_or_tuple_expr(p: &mut Parser) {
+    let c = p.checkpoint();
     p.assert_advance(T!['(']);
 
     let mut seen_comma = false;
@@ -338,29 +343,30 @@ fn paren_or_tuple_expr(p: &mut Parser) -> MarkClosed {
     }
     p.expect(T![')']);
 
-    p.close(
-        m,
+    p.start_before(
+        c,
         if seen_expr && !seen_comma {
             NodeKind::ParenExpr
         } else {
             NodeKind::TupleLitExpr
         },
-    )
+    );
+    p.close();
 }
 
 // RecordExpr = "{" ExprField* "}"
-fn record_expr(p: &mut Parser) -> MarkClosed {
-    let m = p.start();
+fn record_expr(p: &mut Parser) {
+    p.start(NodeKind::RecordExpr);
     p.assert_advance(T!['{']);
     list(p, T!['}'], T![,], record_expr_field);
-    p.close(m, NodeKind::RecordExpr)
+    p.close();
 }
 
 // RecordExprField = "Ident"
 //           | "Ident" "=" Expr
 //           | "Ident" ":" Expr
 fn record_expr_field(p: &mut Parser) {
-    let m = p.start();
+    p.start(NodeKind::RecordExprField);
     p.expect(T![ident]);
 
     match p.peek() {
@@ -375,22 +381,24 @@ fn record_expr_field(p: &mut Parser) {
         _ => {}
     };
 
-    p.close(m, NodeKind::RecordExprField);
+    p.close();
 }
 
 // OrPat = AtomPat ("|" AtomPat)+
 pub fn pat(p: &mut Parser) {
-    let lhs = atom_pat(p);
+    let c = p.checkpoint();
+    atom_pat(p);
 
     if !p.at(T![|]) {
         return;
     }
-    let m = p.start_before(lhs);
+
+    p.start_before(c, NodeKind::OrPat);
     while p.at(T![|]) {
         p.assert_advance(T![|]);
         atom_pat(p);
     }
-    p.close(m, NodeKind::OrPat);
+    p.close();
 }
 
 // AtomPat = LitPat
@@ -399,47 +407,53 @@ pub fn pat(p: &mut Parser) {
 //         | ParenPat
 //         | TuplePat
 //         | RecordPat
-fn atom_pat(p: &mut Parser) -> MarkClosed {
-    let m = p.start();
+fn atom_pat(p: &mut Parser) -> Checkpoint {
+    let c = p.checkpoint();
     match p.peek() {
         Some(T![true] | T![false]) => {
+            p.start(NodeKind::LitPat);
             {
-                let m = p.start();
+                p.start(NodeKind::BoolLit);
                 p.advance();
-                p.close(m, NodeKind::BoolLit);
+                p.close();
             }
-            p.close(m, NodeKind::LitPat)
+            p.close();
         }
         Some(T![dec_int] | T![bin_int] | T![hex_int]) => {
+            p.start(NodeKind::LitPat);
             {
-                let m = p.start();
+                p.start(NodeKind::IntLit);
                 p.advance();
-                p.close(m, NodeKind::IntLit);
+                p.close();
             }
-            p.close(m, NodeKind::LitPat)
+            p.close();
         }
         Some(T![_]) => {
+            p.start(NodeKind::UnderscorePat);
             p.advance();
-            p.close(m, NodeKind::UnderscorePat)
+            p.close();
         }
         Some(T![ident]) => {
+            p.start(NodeKind::IdentPat);
             p.advance();
-            p.close(m, NodeKind::IdentPat)
+            p.close();
         }
         Some(T!['(']) => paren_or_tuple_pat(p),
         Some(T!['{']) => record_pat(p),
         _ => {
+            p.start(NodeKind::Error);
             p.advance_with_error("expected pattern");
-            p.close(m, NodeKind::Error)
+            p.close();
         }
     }
+    c
 }
 
 // ParenPat = "(" Pat ")"
 // TuplePat = "(" ")"
 //          | "(" Pat ("," Pat)+ ","? ")"
-fn paren_or_tuple_pat(p: &mut Parser) -> MarkClosed {
-    let m = p.start();
+fn paren_or_tuple_pat(p: &mut Parser) {
+    let c = p.checkpoint();
     p.assert_advance(T!['(']);
 
     let mut seen_comma = false;
@@ -464,33 +478,34 @@ fn paren_or_tuple_pat(p: &mut Parser) -> MarkClosed {
     }
     p.expect(T![')']);
 
-    p.close(
-        m,
+    p.start_before(
+        c,
         if seen_pat && !seen_comma {
             NodeKind::ParenPat
         } else {
             NodeKind::TupleLitPat
         },
-    )
+    );
+    p.close();
 }
 
 // RecordPat = "{" "}"
 //           | "{" PatField ("," PatField)* ","? "}"
-fn record_pat(p: &mut Parser) -> MarkClosed {
-    let m = p.start();
+fn record_pat(p: &mut Parser) {
+    p.start(NodeKind::RecordLitPat);
     p.assert_advance(T!['{']);
     list(p, T!['}'], T![,], pat_field);
-    p.close(m, NodeKind::RecordLitPat)
+    p.close();
 }
 
 // PatField = "ident" ("=" Pat)?
 fn pat_field(p: &mut Parser) {
-    let m = p.start();
+    p.start(NodeKind::RecordPatField);
     p.expect(T![ident]);
     if p.advance_if_at(T![=]) {
         pat(p);
     }
-    p.close(m, NodeKind::RecordPatField);
+    p.close();
 }
 
 fn list(p: &mut Parser, end: TokenKind, sep: TokenKind, elem: impl Fn(&mut Parser)) {
