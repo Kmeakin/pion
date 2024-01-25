@@ -1,0 +1,116 @@
+exit status: 0
+
+stdout = """
+def not: Bool -> Bool =
+    fun(b: Bool) => match b {
+        true => false,
+        false => true,
+    };
+def not_self_inverse: fun(b: Bool) ->
+    Eq(@Bool, match match b {
+        true => false,
+        false => true,
+    } {
+        true => false,
+        false => true,
+    }, b) =
+    fun(a: Bool) => match a {
+        true => refl(@Bool, true),
+        false => refl(@Bool, false),
+    };
+def manual_bool_rec: fun(b: Bool, p: Bool -> Type) -> p(true) ->
+    p(false) -> p(b) =
+    fun(a: Bool, p: Bool ->
+        Type, p_true: p(true), p_false: p(false)) => match a {
+        true => p_true,
+        false => p_false,
+    };
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+10..51 | fun(b: Bool) => if...hen false else true | Bool -> Bool
+17..21 | Bool                                     | Type
+26..51 | if b then false else true                | Bool
+29..30 | b                                        | Bool
+36..41 | false                                    | Bool
+47..51 | true                                     | Bool
+76..110 | fun(b: Bool) -> Eq(not(not(b)), b)       | Type
+83..87 | Bool                                     | Type
+92..94 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+92..110 | Eq(not(not(b)), b)                       | Type
+95..98 | not                                      | Bool -> Bool
+95..106 | not(not(b))                              | Bool
+99..102 | not                                      | Bool -> Bool
+99..105 | not(b)                                   | Bool
+103..104 | b                                        | Bool
+108..109 | b                                        | Bool
+117..163 | fun(a: Bool) => if...efl(_) else refl(_) | fun(b: Bool) ->
+    Eq(@Bool, match match b {
+        true => false,
+        false => true,
+    } {
+        true => false,
+        false => true,
+    }, b)
+124..128 | Bool                                     | Type
+133..163 | if a then refl(_) else refl(_)           | Eq(@Bool, match match a {
+    true => false,
+    false => true,
+} {
+    true => false,
+    false => true,
+}, a)
+136..137 | a                                        | Bool
+143..147 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
+143..150 | refl(_)                                  | Eq(@Bool, true, true)
+148..149 | _                                        | ?3(a)
+156..160 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
+156..163 | refl(_)                                  | Eq(@Bool, false, false)
+161..162 | _                                        | ?5(a)
+187..247 | fun(b: Bool, p: Bo...-> p(false) -> p(b) | Type
+194..198 | Bool                                     | Type
+203..207 | Bool                                     | Type
+203..215 | Bool -> Type                             | Type
+211..215 | Type                                     | Type
+220..221 | p                                        | Bool -> Type
+220..227 | p(true)                                  | Type
+220..247 | p(true) -> p(false) -> p(b)              | Type
+222..226 | true                                     | Bool
+231..232 | p                                        | Bool -> Type
+231..239 | p(false)                                 | Type
+231..247 | p(false) -> p(b)                         | Type
+233..238 | false                                    | Bool
+243..244 | p                                        | Bool -> Type
+243..247 | p(b)                                     | Type
+245..246 | b                                        | Bool
+254..319 | fun(a: Bool, p, p_...p_true else p_false | fun(b: Bool, p: Bool -> Type) -> p(true) -> p(false) -> p(b)
+261..265 | Bool                                     | Type
+290..319 | if a then p_true else p_false            | p(a)
+293..294 | a                                        | Bool
+300..306 | p_true                                   | p(true)
+312..319 | p_false                                  | p(false)
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+14..15 | b                                        | Bool
+80..81 | b                                        | Bool
+121..122 | a                                        | Bool
+191..192 | b                                        | Bool
+200..201 | p                                        | Bool -> Type
+258..259 | a                                        | Bool
+267..268 | p                                        | Bool -> Type
+270..276 | p_true                                   | p(true)
+278..285 | p_false                                  | p(false)
+metavars:
+?0 = Bool -> Bool
+?1 = fun(_: #error) => Bool
+?2 = fun(_: #error) => Bool
+?3 = fun(_: #error) => Bool
+?4 = fun(_: #error) => true
+?5 = fun(_: #error) => Bool
+?6 = fun(_: #error) => false
+"""
+
+stderr = """
+
+"""

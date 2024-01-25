@@ -558,6 +558,29 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             hir::Expr::Match(_, scrut, cases) => self.check_match(scrut, cases, expected),
             hir::Expr::If(_, (scrut, then, r#else)) => {
                 let Check(scrut_expr) = self.check_expr_is_bool(scrut);
+
+                // dependent pattern matching
+                // if the scrutinee is a variable, substitute occurences of the variable for
+                // true (resp false) into the exepcted type when checking the true (resp false)
+                // branches
+                if let Expr::Local(.., var) = scrut_expr {
+                    // TODO: do the substitution more efficiently
+                    let expected_expr = self.quote_env().quote(expected);
+                    let mut env = self.local_env.values.clone();
+
+                    env.set_index(var, Value::Lit(Lit::Bool(true)));
+                    let then_expected = self.elim_env().eval_env(&mut env).eval(&expected_expr);
+
+                    env.set_index(var, Value::Lit(Lit::Bool(false)));
+                    let else_expected = self.elim_env().eval_env(&mut env).eval(&expected_expr);
+
+                    let Check(then_expr) = self.check_expr(then, &then_expected);
+                    let Check(else_expr) = self.check_expr(r#else, &else_expected);
+
+                    let expr = Expr::match_bool(self.bump, scrut_expr, then_expr, else_expr);
+                    return CheckExpr::new(expr);
+                }
+
                 let Check(then_expr) = self.check_expr(then, expected);
                 let Check(else_expr) = self.check_expr(r#else, expected);
                 let expr = Expr::match_bool(self.bump, scrut_expr, then_expr, else_expr);
