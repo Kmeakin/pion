@@ -603,7 +603,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
     }
 }
 
-pub fn add_equality_constraints<'core>(
+// TODO: better name?
+pub fn unify_pat<'core>(
     bump: &'core bumpalo::Bump,
     env: &mut SharedEnv<Value<'core>>,
     scrut: &Expr,
@@ -619,7 +620,7 @@ pub fn add_equality_constraints<'core>(
             if slice_eq_by_keys(expr_fields, pat_fields, |(n, _)| *n, |(n, _)| *n) =>
         {
             for ((_, scrut), (_, pat)) in expr_fields.iter().zip(pat_fields.iter()) {
-                add_equality_constraints(bump, env, scrut, pat);
+                unify_pat(bump, env, scrut, pat);
             }
         }
         _ => {}

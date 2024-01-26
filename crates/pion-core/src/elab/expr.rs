@@ -1062,9 +1062,9 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             let expected = {
                 let expected_expr = self.quote_env().quote(expected);
                 let mut env = self.local_env.values.clone();
-                super::pat::add_equality_constraints(self.bump, &mut env, &scrut_expr, &pat);
+                super::pat::unify_pat(self.bump, &mut env, &scrut_expr, &pat);
                 if let Some(guard) = guard {
-                    super::pat::add_equality_constraints(
+                    super::pat::unify_pat(
                         self.bump,
                         &mut env,
                         &guard,
