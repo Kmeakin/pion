@@ -6,54 +6,81 @@ def not_if: Bool -> Bool =
         true => false,
         false => true,
     };
+
 def not_if_self_inverse: fun(b: Bool) ->
-    Eq(@Bool, match match b {
-        true => false,
-        false => true,
-    } {
-        true => false,
-        false => true,
-    }, b) =
+    Eq(
+        @Bool,
+        match match b {
+            true => false,
+            false => true,
+        } {
+            true => false,
+            false => true,
+        },
+        b
+    ) =
     fun(a: Bool) => match a {
         true => refl(@Bool, true),
         false => refl(@Bool, false),
     };
+
 def bool_rec_if: fun(b: Bool, p: Bool -> Type) -> p(true) -> p(false) -> p(b) =
-    fun(a: Bool, p: Bool ->
-        Type, p_true: p(true), p_false: p(false)) => match a {
+    fun(
+        a: Bool,
+        p: Bool -> Type,
+        p_true: p(true),
+        p_false: p(false)
+    ) => match a {
         true => p_true,
         false => p_false,
     };
+
 def not_match: Bool -> Bool =
     fun(b: Bool) => match b {
         true => false,
         false => true,
     };
+
 def not_match_self_inverse: fun(b: Bool) ->
-    Eq(@Bool, match match b {
-        true => false,
-        false => true,
-    } {
-        true => false,
-        false => true,
-    }, b) =
+    Eq(
+        @Bool,
+        match match b {
+            true => false,
+            false => true,
+        } {
+            true => false,
+            false => true,
+        },
+        b
+    ) =
     fun(a: Bool) => match a {
         true => refl(@Bool, true),
         false => refl(@Bool, false),
     };
+
 def bool_rec_match: fun(b: Bool, p: Bool -> Type) -> p(true) ->
     p(false) -> p(b) =
-    fun(a: Bool, p: Bool ->
-        Type, p_true: p(true), p_false: p(false)) => match a {
+    fun(
+        a: Bool,
+        p: Bool -> Type,
+        p_true: p(true),
+        p_false: p(false)
+    ) => match a {
         true => p_true,
         false => p_false,
     };
+
 def bool_pair_rec: fun(b: (Bool, Bool), p: Bool -> Bool -> Type) ->
     p(true, true) ->
     p(true, false) -> p(false, true) -> p(false, false) -> p(b._0, b._1) =
-    fun(a: (Bool, Bool), p: Bool ->
-        Bool ->
-            Type, p_tt: p(true, true), p_tf: p(true, false), p_ft: p(false, true), p_ff: p(false, false)) => match a._0 {
+    fun(
+        a: (Bool, Bool),
+        p: Bool -> Bool -> Type,
+        p_tt: p(true, true),
+        p_tf: p(true, false),
+        p_ft: p(false, true),
+        p_ff: p(false, false)
+    ) => match a._0 {
         true => match a._1 {
             true => p_tt,
             false => p_tf,
@@ -63,12 +90,19 @@ def bool_pair_rec: fun(b: (Bool, Bool), p: Bool -> Bool -> Type) ->
             false => p_ff,
         },
     };
+
 def two_bools_rec: fun(b1: Bool, b2: Bool, p: Bool -> Bool -> Type) ->
     p(true, true) ->
     p(true, false) -> p(false, true) -> p(false, false) -> p(b1, b2) =
-    fun(a1: Bool, a2: Bool, p: Bool ->
-        Bool ->
-            Type, p_tt: p(true, true), p_tf: p(true, false), p_ft: p(false, true), p_ff: p(false, false)) => match (a1, a2)._0 {
+    fun(
+        a1: Bool,
+        a2: Bool,
+        p: Bool -> Bool -> Type,
+        p_tt: p(true, true),
+        p_tf: p(true, false),
+        p_ft: p(false, true),
+        p_ff: p(false, false)
+    ) => match (a1, a2)._0 {
         true => match (a1, a2)._1 {
             true => p_tt,
             false => p_tf,
@@ -98,21 +132,29 @@ span   | source                                   | type
 115..116 | b                                        | Bool
 120..121 | b                                        | Bool
 129..175 | fun(a: Bool) => if...efl(_) else refl(_) | fun(b: Bool) ->
-    Eq(@Bool, match match b {
+    Eq(
+        @Bool,
+        match match b {
+            true => false,
+            false => true,
+        } {
+            true => false,
+            false => true,
+        },
+        b
+    )
+136..140 | Bool                                     | Type
+145..175 | if a then refl(_) else refl(_)           | Eq(
+    @Bool,
+    match match a {
         true => false,
         false => true,
     } {
         true => false,
         false => true,
-    }, b)
-136..140 | Bool                                     | Type
-145..175 | if a then refl(_) else refl(_)           | Eq(@Bool, match match a {
-    true => false,
-    false => true,
-} {
-    true => false,
-    false => true,
-}, a)
+    },
+    a
+)
 148..149 | a                                        | Bool
 155..159 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
 155..162 | refl(_)                                  | Eq(@Bool, true, true)
@@ -159,21 +201,29 @@ span   | source                                   | type
 497..498 | b                                        | Bool
 502..503 | b                                        | Bool
 511..593 | fun(a: Bool) => ma... => refl(_),\n    } | fun(b: Bool) ->
-    Eq(@Bool, match match b {
+    Eq(
+        @Bool,
+        match match b {
+            true => false,
+            false => true,
+        } {
+            true => false,
+            false => true,
+        },
+        b
+    )
+518..522 | Bool                                     | Type
+527..593 | match a {\n       ... => refl(_),\n    } | Eq(
+    @Bool,
+    match match a {
         true => false,
         false => true,
     } {
         true => false,
         false => true,
-    }, b)
-518..522 | Bool                                     | Type
-527..593 | match a {\n       ... => refl(_),\n    } | Eq(@Bool, match match a {
-    true => false,
-    false => true,
-} {
-    true => false,
-    false => true,
-}, a)
+    },
+    a
+)
 533..534 | a                                        | Bool
 553..557 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
 553..560 | refl(_)                                  | Eq(@Bool, true, true)
