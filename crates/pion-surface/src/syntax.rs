@@ -8,6 +8,7 @@ pub enum NodeKind {
     Error,
 
     SourceFile,
+    NamespaceItem,
     DefItem,
 
     BoolLit,
@@ -160,12 +161,29 @@ impl<'tree> SourceFile<'tree> {
 
 cst_enum!(
     enum Item {
+        NamespaceItem,
         DefItem,
     }
 );
 
+impl<'tree> NamespaceItem<'tree> {
+    pub fn namespace_token(self) -> Option<SyntaxToken<'tree>> {
+        support::token(self.syntax, T![namespace])
+    }
+    pub fn ident_token(self) -> Option<SyntaxToken<'tree>> {
+        support::token(self.syntax, T![ident])
+    }
+    pub fn l_curly_token(self) -> Option<SyntaxToken<'tree>> {
+        support::token(self.syntax, T!['{'])
+    }
+    pub fn items(self) -> impl Iterator<Item = Item<'tree>> { support::children(self.syntax) }
+    pub fn r_curly_token(self) -> Option<SyntaxToken<'tree>> {
+        support::token(self.syntax, T!['}'])
+    }
+}
+
 impl<'tree> DefItem<'tree> {
-    pub fn def_token(self) -> Option<SyntaxToken<'tree>> { support::token(self.syntax, T![_]) }
+    pub fn def_token(self) -> Option<SyntaxToken<'tree>> { support::token(self.syntax, T![def]) }
     pub fn ident_token(self) -> Option<SyntaxToken<'tree>> {
         support::token(self.syntax, T![ident])
     }

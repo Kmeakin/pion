@@ -1,67 +1,17 @@
-use lsp_server::{Message, Notification, Request, Response};
+use lsp_server::{Notification, Request, Response};
 use lsp_types::notification::{DidChangeTextDocument, DidOpenTextDocument, Notification as _};
-use lsp_types::{
-    DidChangeTextDocumentParams, DidOpenTextDocumentParams, DocumentSymbol, SymbolKind,
-};
-use pion_surface::syntax::CstNode;
+use lsp_types::{DidChangeTextDocumentParams, DidOpenTextDocumentParams};
 use pion_utils::source::SourceFile;
 
 use crate::{convert, diagnostics, Server};
+
+mod document_symbols;
 
 pub fn handle_request(server: &Server, request: Request) -> anyhow::Result<()> {
     use lsp_types::request::{DocumentSymbolRequest, Request};
 
     match request.method.as_str() {
-        DocumentSymbolRequest::METHOD => {
-            use lsp_types::{DocumentSymbolParams, DocumentSymbolResponse};
-
-            let params = serde_json::from_value::<DocumentSymbolParams>(request.params)?;
-            let url = params.text_document.uri;
-            let path = convert::url_to_path(&url)?;
-            let file = SourceFile::read(path)?;
-
-            let mut symbols = Vec::new();
-            let (tree, _) = pion_surface::parse_source_file(&file.contents);
-            let root: pion_surface::syntax::Root = CstNode::cast(tree.root()).unwrap();
-            let source_file = root.source_file().unwrap();
-
-            for item in source_file.items() {
-                let symbol = match item {
-                    pion_surface::syntax::Item::DefItem(def) => {
-                        let Some(ident_token) = def.ident_token() else {
-                            continue;
-                        };
-
-                        let name = ident_token.text();
-                        let range = convert::bytespan_to_lsp(ident_token.span(), &file)?;
-                        let selection_range = range;
-
-                        #[allow(deprecated)]
-                        // REASON: `deprecated` field is deprecated, but there is no other way to
-                        // construct a `DocumentSymbol`
-                        DocumentSymbol {
-                            name: name.to_owned(),
-                            detail: None,
-                            kind: SymbolKind::CONSTANT,
-                            tags: None,
-                            deprecated: None,
-                            range,
-                            selection_range,
-                            children: None,
-                        }
-                    }
-                };
-                symbols.push(symbol);
-            }
-
-            let response = DocumentSymbolResponse::Nested(symbols);
-
-            server.send_message(Message::Response(Response {
-                id: request.id,
-                result: Some(serde_json::to_value(response)?),
-                error: None,
-            }))?;
-        }
+        DocumentSymbolRequest::METHOD => document_symbols::handle(server, request)?,
         _ => eprintln!("TODO: handle request {request:?}"),
     }
 

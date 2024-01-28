@@ -69,6 +69,7 @@ impl<'tree, 'hir> Ctx<'hir> {
 
     fn item_to_hir(&mut self, item: surface::Item<'tree>) -> Option<Item<'hir>> {
         match item {
+            surface::Item::NamespaceItem(_) => todo!(),
             surface::Item::DefItem(def) => Some(Item::Def(self.def_to_hir(def)?)),
         }
     }

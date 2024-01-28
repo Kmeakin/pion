@@ -1409,4 +1409,48 @@ mod toplevel {
             "#]],
         );
     }
+
+    #[test]
+    fn namespace() {
+        check_source_file(
+            "namespace foo {
+      def bar = 5;
+      namespace foobar {}
+    }",
+            expect![[r#"
+                Root
+                  SourceFile
+                    NamespaceItem
+                      0..9 KwNamespace "namespace"
+                      9..10 Whitespace " "
+                      10..13 Ident "foo"
+                      13..14 Whitespace " "
+                      14..15 LCurly "{"
+                      15..22 Whitespace "\n      "
+                      DefItem
+                        22..25 KwDef "def"
+                        25..26 Whitespace " "
+                        26..29 Ident "bar"
+                        29..30 Whitespace " "
+                        30..31 Eq "="
+                        31..32 Whitespace " "
+                        LitExpr
+                          IntLit
+                            32..33 DecInt "5"
+                        33..34 Semicolon ";"
+                      34..41 Whitespace "\n      "
+                      NamespaceItem
+                        41..50 KwNamespace "namespace"
+                        50..51 Whitespace " "
+                        51..57 Ident "foobar"
+                        57..58 Whitespace " "
+                        58..59 LCurly "{"
+                        59..60 RCurly "}"
+                      60..65 Whitespace "\n    "
+                      65..66 RCurly "}"
+
+                errors = []
+            "#]],
+        );
+    }
 }

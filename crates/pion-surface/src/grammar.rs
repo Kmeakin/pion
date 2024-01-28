@@ -8,15 +8,35 @@ use crate::syntax::NodeKind;
 pub fn source_file(p: &mut Parser) {
     let start = p.start_node();
 
-    while !p.at_eof() {
-        if p.at(T![def]) {
-            def(p);
-        } else {
-            p.advance_with_error("expected a definition");
+    while let Some(token) = p.peek() {
+        match token {
+            T![namespace] => namespace(p),
+            T![def] => def(p),
+            _ => p.advance_with_error("expected an item"),
         }
     }
 
     p.end_node(NodeKind::SourceFile, start);
+}
+
+// Def = "namespace" "name" "{" Item* "}"
+fn namespace(p: &mut Parser) {
+    let start = p.start_node();
+
+    p.assert_advance(T![namespace]);
+    p.expect(T![ident]);
+    p.expect(T!['{']);
+
+    while !p.at_eof() && !p.at(T!['}']) {
+        match p.peek() {
+            Some(T![namespace]) => namespace(p),
+            Some(T![def]) => def(p),
+            _ => p.advance_with_error("expected an item"),
+        }
+    }
+    p.expect(T!['}']);
+
+    p.end_node(NodeKind::NamespaceItem, start);
 }
 
 // Def = "def" "name" TypeAnn? = Expr ";"
