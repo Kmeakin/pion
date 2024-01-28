@@ -13,7 +13,9 @@ pub mod tree;
 #[cfg(test)]
 mod tests;
 
-pub fn parse_module(src: &str) -> (SyntaxTree, Vec<SyntaxError>) { parse(src, grammar::module) }
+pub fn parse_source_file(src: &str) -> (SyntaxTree, Vec<SyntaxError>) {
+    parse(src, grammar::source_file)
+}
 
 pub fn parse_expr(src: &str) -> (SyntaxTree, Vec<SyntaxError>) { parse(src, grammar::expr) }
 

@@ -4,7 +4,7 @@ use pion_utils::symbol::Symbol;
 mod walk;
 
 #[derive(Debug, Copy, Clone)]
-pub struct Module<'hir> {
+pub struct SourceFile<'hir> {
     pub items: &'hir [Item<'hir>],
 }
 

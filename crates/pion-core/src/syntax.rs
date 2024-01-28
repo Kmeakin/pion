@@ -10,7 +10,7 @@ use crate::name::{BinderName, FieldName, LocalName};
 use crate::prim::Prim;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Module<'core> {
+pub struct SourceFile<'core> {
     pub items: &'core [Item<'core>],
 }
 

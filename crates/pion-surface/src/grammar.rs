@@ -4,8 +4,8 @@ use pion_lexer::T;
 use crate::parser::Parser;
 use crate::syntax::NodeKind;
 
-// Module = Def*
-pub fn module(p: &mut Parser) {
+// SourceFile = Item*
+pub fn source_file(p: &mut Parser) {
     let start = p.start_node();
 
     while !p.at_eof() {
@@ -16,7 +16,7 @@ pub fn module(p: &mut Parser) {
         }
     }
 
-    p.end_node(NodeKind::Module, start);
+    p.end_node(NodeKind::SourceFile, start);
 }
 
 // Def = "def" "name" TypeAnn? = Expr ";"

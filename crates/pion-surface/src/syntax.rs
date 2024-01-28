@@ -7,7 +7,7 @@ pub enum NodeKind {
     Root,
     Error,
 
-    Module,
+    SourceFile,
     DefItem,
 
     BoolLit,
@@ -150,11 +150,11 @@ macro_rules! cst_enum {
 
 cst_node!(Root);
 impl<'tree> Root<'tree> {
-    pub fn module(self) -> Option<Module<'tree>> { support::child(self.syntax) }
+    pub fn source_file(self) -> Option<SourceFile<'tree>> { support::child(self.syntax) }
 }
 
-cst_node!(Module);
-impl<'tree> Module<'tree> {
+cst_node!(SourceFile);
+impl<'tree> SourceFile<'tree> {
     pub fn items(self) -> impl Iterator<Item = Item<'tree>> { support::children(self.syntax) }
 }
 

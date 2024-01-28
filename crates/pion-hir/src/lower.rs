@@ -11,14 +11,14 @@ use pion_utils::symbol::{Symbol, SymbolMap};
 use self::diagnostics::LowerDiagnostic;
 use crate::syntax::*;
 
-pub fn lower_module<'hir>(
+pub fn lower_source_file<'hir>(
     bump: &'hir bumpalo::Bump,
-    module: surface::Module,
-) -> (Module<'hir>, Vec<LowerDiagnostic>) {
+    source_file: surface::SourceFile,
+) -> (SourceFile<'hir>, Vec<LowerDiagnostic>) {
     let mut ctx = Ctx::new(bump);
-    let module = ctx.module_to_hir(module);
+    let source_file = ctx.source_file_to_hir(source_file);
     let errors = ctx.finish();
-    (module, errors)
+    (source_file, errors)
 }
 
 pub fn lower_item<'hir>(
@@ -50,19 +50,19 @@ impl<'hir> Ctx<'hir> {
     pub fn finish(self) -> Vec<LowerDiagnostic> { self.diagnostics }
 }
 
-// Modules and items
+// Items
 impl<'tree, 'hir> Ctx<'hir> {
-    fn module_to_hir(&mut self, module: surface::Module<'tree>) -> Module<'hir> {
-        self.item_names.reserve(module.items().count());
-        let mut items = SliceVec::new(self.bump, module.items().count());
+    fn source_file_to_hir(&mut self, source_file: surface::SourceFile<'tree>) -> SourceFile<'hir> {
+        self.item_names.reserve(source_file.items().count());
+        let mut items = SliceVec::new(self.bump, source_file.items().count());
 
-        for item in module.items() {
+        for item in source_file.items() {
             if let Some(item) = self.item_to_hir(item) {
                 items.push(item);
             }
         }
 
-        Module {
+        SourceFile {
             items: items.into(),
         }
     }

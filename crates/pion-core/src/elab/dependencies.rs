@@ -8,20 +8,24 @@ type DependencyGraph<'hir> = PtrMap<&'hir hir::Item<'hir>, ItemSet<'hir>>;
 type ItemEnv<'hir> = SymbolMap<&'hir hir::Item<'hir>>;
 type LocalEnv = Vec<Symbol>;
 
-pub fn module_sccs<'hir>(module: &hir::Module<'hir>) -> Vec<Vec<&'hir hir::Item<'hir>>> {
-    let graph = module_dependency_graph(module);
+pub fn source_file_sccs<'hir>(
+    source_file: &hir::SourceFile<'hir>,
+) -> Vec<Vec<&'hir hir::Item<'hir>>> {
+    let graph = source_file_dependency_graph(source_file);
     find_sccs(&graph)
 }
 
-fn module_dependency_graph<'hir>(module: &hir::Module<'hir>) -> DependencyGraph<'hir> {
-    let item_env: ItemEnv = module
+fn source_file_dependency_graph<'hir>(
+    source_file: &hir::SourceFile<'hir>,
+) -> DependencyGraph<'hir> {
+    let item_env: ItemEnv = source_file
         .items
         .iter()
         .filter_map(|item| Some((item.name()?.symbol, item)))
         .collect();
     let mut graph = DependencyGraph::default();
 
-    for item in module.items {
+    for item in source_file.items {
         let mut local_env = LocalEnv::default();
         let mut required_items = ItemSet::default();
 

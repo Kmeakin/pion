@@ -21,11 +21,11 @@ pub fn handle_request(server: &Server, request: Request) -> anyhow::Result<()> {
             let file = SourceFile::read(path)?;
 
             let mut symbols = Vec::new();
-            let (tree, _) = pion_surface::parse_module(&file.contents);
+            let (tree, _) = pion_surface::parse_source_file(&file.contents);
             let root: pion_surface::syntax::Root = CstNode::cast(tree.root()).unwrap();
-            let module = root.module().unwrap();
+            let source_file = root.source_file().unwrap();
 
-            for item in module.items() {
+            for item in source_file.items() {
                 let symbol = match item {
                     pion_surface::syntax::Item::DefItem(def) => {
                         let Some(ident_token) = def.ident_token() else {

@@ -1326,8 +1326,8 @@ mod toplevel {
     use super::*;
 
     #[track_caller]
-    fn check_module(src: &str, expected: Expect) {
-        let (tree, errors) = parse_module(src);
+    fn check_source_file(src: &str, expected: Expect) {
+        let (tree, errors) = parse_source_file(src);
         let mut output = String::new();
         writeln!(output, "{tree:?}").unwrap();
         writeln!(output, "errors = {errors:?}").unwrap();
@@ -1336,12 +1336,12 @@ mod toplevel {
     }
 
     #[test]
-    fn empty_module() {
-        check_module(
+    fn empty_source_file() {
+        check_source_file(
             "",
             expect![[r#"
                 Root
-                  Module
+                  SourceFile
 
                 errors = []
             "#]],
@@ -1350,11 +1350,11 @@ mod toplevel {
 
     #[test]
     fn def() {
-        check_module(
+        check_source_file(
             "def x = let y = 5; x;",
             expect![[r#"
                 Root
-                  Module
+                  SourceFile
                     DefItem
                       0..3 KwDef "def"
                       3..4 Whitespace " "
@@ -1383,11 +1383,11 @@ mod toplevel {
                 errors = []
             "#]],
         );
-        check_module(
+        check_source_file(
             "def x: Int = 5;",
             expect![[r#"
                 Root
-                  Module
+                  SourceFile
                     DefItem
                       0..3 KwDef "def"
                       3..4 Whitespace " "

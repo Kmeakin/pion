@@ -10,7 +10,7 @@ pub fn report_diagnostics(server: &Server) -> anyhow::Result<()> {
     for (file_id, file) in server.files() {
         let uri = convert::path_to_url(file.path.as_ref())?;
 
-        let (_, errors) = pion_surface::parse_module(&file.contents);
+        let (_, errors) = pion_surface::parse_source_file(&file.contents);
         let mut diagnostics = Vec::with_capacity(errors.len());
         for error in errors {
             let diagnostic = error.to_diagnostic(file_id);

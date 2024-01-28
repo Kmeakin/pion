@@ -67,7 +67,7 @@ pub fn run(args: CheckArgs, dump_flags: DumpFlags) -> anyhow::Result<()> {
 
     for (file_id, file) in source_map.iter() {
         let src32 = &file.contents;
-        let (tree, errors) = pion_surface::parse_module(src32);
+        let (tree, errors) = pion_surface::parse_source_file(src32);
         diagnostics.extend(errors.iter().map(|error| error.to_diagnostic(file_id)));
 
         if dump_flags.surface {
@@ -76,12 +76,12 @@ pub fn run(args: CheckArgs, dump_flags: DumpFlags) -> anyhow::Result<()> {
 
         let root = tree.root();
         let root: Root = CstNode::cast(root).unwrap();
-        let module = root.module().unwrap();
+        let source_file = root.source_file().unwrap();
 
-        let (module, errors) = pion_hir::lower::lower_module(&bump, module);
+        let (source_file, errors) = pion_hir::lower::lower_source_file(&bump, source_file);
         diagnostics.extend(errors.iter().map(|diag| diag.to_diagnostic(file_id)));
 
-        let result = pion_core::elab::elab_module(&bump, &module);
+        let result = pion_core::elab::elab_source_file(&bump, &source_file);
         diagnostics.extend(
             result
                 .diagnostics
@@ -89,7 +89,7 @@ pub fn run(args: CheckArgs, dump_flags: DumpFlags) -> anyhow::Result<()> {
                 .map(|diag| diag.to_diagnostic(file_id)),
         );
         if dump_flags.core {
-            pion_core::dump::dump_module(&mut stdout, src32.as_str(), &result)?;
+            pion_core::dump::dump_source_file(&mut stdout, src32.as_str(), &result)?;
         }
     }
 

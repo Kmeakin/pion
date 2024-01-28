@@ -503,13 +503,13 @@ impl<T> Check<T> {
     pub const fn new(core: T) -> Self { Self(core) }
 }
 
-pub fn elab_module<'hir, 'core>(
+pub fn elab_source_file<'hir, 'core>(
     bump: &'core bumpalo::Bump,
-    module: &pion_hir::syntax::Module<'hir>,
-) -> ElabResult<'hir, 'core, Module<'core>> {
-    let sccs = dependencies::module_sccs(module);
+    source_file: &pion_hir::syntax::SourceFile<'hir>,
+) -> ElabResult<'hir, 'core, SourceFile<'core>> {
+    let sccs = dependencies::source_file_sccs(source_file);
     let mut ctx = ElabCtx::new(bump);
-    let mut module_items = SliceVec::new(bump, module.items.len());
+    let mut source_file_items = SliceVec::new(bump, source_file.items.len());
 
     for scc in sccs {
         // check item type annotations
@@ -564,7 +564,7 @@ pub fn elab_module<'hir, 'core>(
         for ((item, r#type), expr) in scc.iter().zip(item_types).zip(item_exprs) {
             match item {
                 pion_hir::syntax::Item::Def(def) => {
-                    module_items.push(Item::Def(Def {
+                    source_file_items.push(Item::Def(Def {
                         name: def.name,
                         r#type: ctx.zonk_env(bump).zonk_value(r#type),
                         expr: ctx.zonk_env(bump).zonk(expr),
@@ -574,10 +574,10 @@ pub fn elab_module<'hir, 'core>(
         }
     }
 
-    let module = Module {
-        items: module_items.into(),
+    let source_file = SourceFile {
+        items: source_file_items.into(),
     };
-    ctx.finish_with(module)
+    ctx.finish_with(source_file)
 }
 
 // REASON: keep all lifetimes explicit for clarity

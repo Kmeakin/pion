@@ -30,9 +30,9 @@ pub struct PrettyCtx<'pretty> {
 impl<'pretty> PrettyCtx<'pretty> {
     pub fn new(bump: &'pretty bumpalo::Bump) -> Self { Self { bump } }
 
-    pub fn module(&'pretty self, module: &Module<'_>) -> DocBuilder<'pretty> {
+    pub fn source_file(&'pretty self, source_file: &SourceFile<'_>) -> DocBuilder<'pretty> {
         self.intersperse(
-            module.items.iter().map(|item| self.item(item)),
+            source_file.items.iter().map(|item| self.item(item)),
             self.hardline().append(self.hardline()),
         )
     }
