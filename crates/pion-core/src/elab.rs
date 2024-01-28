@@ -514,6 +514,7 @@ pub fn elab_source_file<'hir, 'core>(
     for scc in sccs {
         // check item type annotations
         let item_types: &[_] = bump.alloc_slice_fill_iter(scc.iter().map(|item| match item {
+            pion_hir::syntax::Item::Namespace(_) => todo!(),
             pion_hir::syntax::Item::Def(def) => match def.r#type {
                 Some(r#type) => {
                     let Check(r#type) = ctx.check_expr_is_type(r#type);
@@ -528,6 +529,7 @@ pub fn elab_source_file<'hir, 'core>(
         // initialize items
         for (item, r#type) in scc.iter().zip(item_types) {
             match item {
+                pion_hir::syntax::Item::Namespace(_) => todo!(),
                 pion_hir::syntax::Item::Def(def) => {
                     let name = def.name.symbol;
                     let value = Value::item(ctx.item_env.len().to_level());
@@ -539,6 +541,7 @@ pub fn elab_source_file<'hir, 'core>(
         // check items
         let item_exprs = bump.alloc_slice_fill_iter(scc.iter().zip(item_types).map(
             |(item, expected)| match item {
+                pion_hir::syntax::Item::Namespace(_) => todo!(),
                 pion_hir::syntax::Item::Def(def) => {
                     let Check(expr) = ctx.check_ann_expr(def.expr, def.r#type, expected);
                     expr
@@ -553,6 +556,7 @@ pub fn elab_source_file<'hir, 'core>(
         // update item env
         for ((item, r#type), value) in scc.iter().zip(item_types).zip(item_values) {
             match item {
+                pion_hir::syntax::Item::Namespace(_) => todo!(),
                 pion_hir::syntax::Item::Def(def) => {
                     ctx.item_env
                         .set(def.name.symbol, r#type.clone(), value.clone());
@@ -563,6 +567,7 @@ pub fn elab_source_file<'hir, 'core>(
         // write back
         for ((item, r#type), expr) in scc.iter().zip(item_types).zip(item_exprs) {
             match item {
+                pion_hir::syntax::Item::Namespace(_) => todo!(),
                 pion_hir::syntax::Item::Def(def) => {
                     source_file_items.push(Item::Def(Def {
                         name: def.name,

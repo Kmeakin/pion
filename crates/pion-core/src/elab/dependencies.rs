@@ -30,6 +30,7 @@ fn source_file_dependency_graph<'hir>(
         let mut required_items = ItemSet::default();
 
         match item {
+            hir::Item::Namespace(_) => todo!(),
             hir::Item::Def(def) => {
                 def_dependencies(def, &mut local_env, &item_env, &mut required_items);
                 graph.insert(Identity(item), required_items);

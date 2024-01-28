@@ -69,8 +69,10 @@ impl<'tree, 'hir> Ctx<'hir> {
 
     fn item_to_hir(&mut self, item: surface::Item<'tree>) -> Option<Item<'hir>> {
         match item {
-            surface::Item::NamespaceItem(_) => todo!(),
-            surface::Item::DefItem(def) => Some(Item::Def(self.def_to_hir(def)?)),
+            surface::Item::NamespaceItem(namespace) => {
+                self.namespace_to_hir(namespace).map(Item::Namespace)
+            }
+            surface::Item::DefItem(def) => self.def_to_hir(def).map(Item::Def),
         }
     }
 
@@ -97,6 +99,39 @@ impl<'tree, 'hir> Ctx<'hir> {
             .map(|r#type| self.lower_expr_opt(r#type.expr()));
         let expr = self.lower_expr_opt(def.body());
         Some(Def { name, r#type, expr })
+    }
+
+    fn namespace_to_hir(
+        &mut self,
+        namespace: surface::NamespaceItem<'tree>,
+    ) -> Option<Namespace<'hir>> {
+        let name = self.ident(namespace.ident_token());
+
+        match self.item_names.entry(name.symbol) {
+            Entry::Occupied(entry) => {
+                self.diagnostics.push(LowerDiagnostic::DuplicateItem {
+                    name: name.symbol,
+                    first_span: *entry.get(),
+                    duplicate_span: name.span,
+                });
+                return None;
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(name.span);
+            }
+        }
+
+        let mut items = SliceVec::new(self.bump, namespace.items().count());
+        for item in namespace.items() {
+            if let Some(item) = self.item_to_hir(item) {
+                items.push(item);
+            }
+        }
+
+        Some(Namespace {
+            name,
+            items: items.into(),
+        })
     }
 }
 

@@ -10,15 +10,23 @@ pub struct SourceFile<'hir> {
 
 #[derive(Debug, Copy, Clone)]
 pub enum Item<'hir> {
+    Namespace(Namespace<'hir>),
     Def(Def<'hir>),
 }
 
 impl<'hir> Item<'hir> {
     pub fn name(&self) -> Option<Ident> {
         match self {
+            Item::Namespace(ns) => Some(ns.name),
             Item::Def(def) => Some(def.name),
         }
     }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct Namespace<'hir> {
+    pub name: Ident,
+    pub items: &'hir [Item<'hir>],
 }
 
 #[derive(Debug, Copy, Clone)]
