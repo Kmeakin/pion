@@ -5,8 +5,9 @@ def r#fun = 4;
 def r#if = 5;
 def r#let = 6;
 def r#match = 7;
-def r#then = 8;
-def r#true = 9;
+def r#namespace = 8;
+def r#then = 9;
+def r#true = 10;
 
 def foo = r#true;
 def bar = r#foo;

@@ -64,6 +64,7 @@ impl<'source, 'vec> Ctx<'source, 'vec> {
             "if" => TokenKind::KwIf,
             "let" => TokenKind::KwLet,
             "match" => TokenKind::KwMatch,
+            "namespace" => TokenKind::KwNamespace,
             "then" => TokenKind::KwThen,
             "true" => TokenKind::KwTrue,
             "_" => TokenKind::Underscore,
@@ -180,7 +181,14 @@ impl<'source, 'vec> Ctx<'source, 'vec> {
             b'}' => self.emit_token(start, 1, TokenKind::RCurly),
             b',' => self.emit_token(start, 1, TokenKind::Comma),
             b';' => self.emit_token(start, 1, TokenKind::Semicolon),
-            b':' => self.emit_token(start, 1, TokenKind::Colon),
+            b':' => match self.next_byte() {
+                Some((_, b':')) => self.emit_token(start, 2, TokenKind::ColonColon),
+                Some((pos, c)) => {
+                    self.emit_token(start, 1, TokenKind::Colon);
+                    return self.inner_loop(pos, c);
+                }
+                None => return self.emit_token(start, 1, TokenKind::Colon),
+            },
             b'.' => self.emit_token(start, 1, TokenKind::Dot),
             b'@' => self.emit_token(start, 1, TokenKind::At),
             b'|' => self.emit_token(start, 1, TokenKind::Pipe),

@@ -264,12 +264,22 @@ mod punctuation {
             "#]],
         );
     }
+
+    #[test]
+    fn double_colon() {
+        check(
+            "::",
+            expect![[r#"
+                0..2: ColonColon("::")
+            "#]],
+        );
+    }
 }
 
 #[test]
 fn keywords() {
     check(
-        "def else false fun if let match then true _",
+        "def else false fun if let match namespace then true _",
         expect![[r#"
             0..3: KwDef("def")
             3..4: Whitespace(" ")
@@ -285,11 +295,13 @@ fn keywords() {
             25..26: Whitespace(" ")
             26..31: KwMatch("match")
             31..32: Whitespace(" ")
-            32..36: KwThen("then")
-            36..37: Whitespace(" ")
-            37..41: KwTrue("true")
+            32..41: KwNamespace("namespace")
             41..42: Whitespace(" ")
-            42..43: Underscore("_")
+            42..46: KwThen("then")
+            46..47: Whitespace(" ")
+            47..51: KwTrue("true")
+            51..52: Whitespace(" ")
+            52..53: Underscore("_")
         "#]],
     );
 }

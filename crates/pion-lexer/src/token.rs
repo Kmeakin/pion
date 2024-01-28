@@ -20,6 +20,7 @@ pub enum TokenKind {
     Comma,
     Semicolon,
     Colon,
+    ColonColon,
     Dot,
     At,
     Eq,
@@ -35,6 +36,7 @@ pub enum TokenKind {
     KwIf,
     KwLet,
     KwMatch,
+    KwNamespace,
     KwThen,
     KwTrue,
 
@@ -56,6 +58,7 @@ macro_rules! T {
     [if] => {$crate::token::TokenKind::KwIf};
     [let] => {$crate::token::TokenKind::KwLet};
     [match] => {$crate::token::TokenKind::KwMatch};
+    [namespace] => {$crate::token::TokenKind::KwNamespace};
     [then] => {$crate::token::TokenKind::KwThen};
     [true] => {$crate::token::TokenKind::KwTrue};
 
@@ -70,6 +73,7 @@ macro_rules! T {
     [,] => {$crate::token::TokenKind::Comma};
     [;] => {$crate::token::TokenKind::Semicolon};
     [:] => {$crate::token::TokenKind::Colon};
+    [::] => {$crate::token::TokenKind::ColonColon};
     [.] => {$crate::token::TokenKind::Dot};
     [@] => {$crate::token::TokenKind::At};
     [=] => {$crate::token::TokenKind::Eq};
@@ -104,6 +108,7 @@ impl TokenKind {
             Self::KwIf => "`if`",
             Self::KwLet => "`let`",
             Self::KwMatch => "`match`",
+            Self::KwNamespace => "`namespace`",
             Self::KwThen => "`then`",
             Self::KwTrue => "`true`",
             Self::LParen => "`(`",
@@ -116,6 +121,7 @@ impl TokenKind {
             Self::Comma => "`,`",
             Self::Semicolon => "`;`",
             Self::Colon => "`:`",
+            Self::ColonColon => "`::`",
             Self::Dot => "`.`",
             Self::At => "`@`",
             Self::Eq => "`=`",

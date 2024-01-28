@@ -3,12 +3,24 @@
 	"name": "Pion",
 	"scopeName": "source.pion",
 	"patterns": [
-		{ "include": "#line-comments" },
-		{ "include": "#block-comments" },
-		{ "include": "#keywords" },
-		{ "include": "#punctuation" },
-		{ "include": "#literals" },
-		{ "include": "#variables" }
+		{
+			"include": "#line-comments"
+		},
+		{
+			"include": "#block-comments"
+		},
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#punctuation"
+		},
+		{
+			"include": "#literals"
+		},
+		{
+			"include": "#variables"
+		}
 	],
 	"repository": {
 		"line-comments": {
@@ -32,7 +44,11 @@
 					"name": "comment.block.pion",
 					"begin": "/\\*(?!\\*)",
 					"end": "\\*/",
-					"patterns": [{ "include": "#block-comments" }]
+					"patterns": [
+						{
+							"include": "#block-comments"
+						}
+					]
 				}
 			]
 		},
@@ -59,6 +75,11 @@
 					"match": "\\b(let)\\b"
 				},
 				{
+					"comment": "`namespace`",
+					"name": "keyword.other.namespace.pion",
+					"match": "\\b(namespace)\\b"
+				},
+				{
 					"comment": "thin arrow",
 					"name": "keyword.operator.arrow.skinny.pion",
 					"match": "->"
@@ -77,6 +98,11 @@
 					"comment": "field projection",
 					"name": "keyword.operator.access.dot.pion",
 					"match": "\\.(?!\\.)"
+				},
+				{
+					"comment": "namespace projection",
+					"name": "keyword.operator.access.namespace.pion",
+					"match": "::"
 				},
 				{
 					"comment": "colon",
