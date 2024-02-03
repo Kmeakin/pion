@@ -146,6 +146,22 @@ fn expr_dependencies<'hir>(
             expr_dependencies(body, local_env, item_env, required_items);
             local_env.truncate(len);
         }
+        hir::Expr::LetRec(.., bindings, body) => {
+            let len = local_env.len();
+            for binding in *bindings {
+                let LetBinding { pat, .. } = binding;
+                push_pat_names(pat, local_env);
+            }
+            for binding in *bindings {
+                let LetBinding { r#type, init, .. } = binding;
+                if let Some(r#type) = r#type {
+                    expr_dependencies(r#type, local_env, item_env, required_items);
+                }
+                expr_dependencies(init, local_env, item_env, required_items);
+            }
+            expr_dependencies(body, local_env, item_env, required_items);
+            local_env.truncate(len);
+        }
         hir::Expr::RecordType(.., fields) => {
             let len = local_env.len();
             for field in *fields {
