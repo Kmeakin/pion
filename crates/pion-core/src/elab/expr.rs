@@ -1,6 +1,6 @@
 //! Bidirectional elaboration for expressions.
 
-use pion_hir::syntax::{self as hir, Ident, LetBinding};
+use pion_hir::syntax::{self as hir, Ident};
 use pion_utils::location::ByteSpan;
 use pion_utils::numeric_conversions::TruncateFrom;
 use pion_utils::slice_vec::SliceVec;
@@ -61,12 +61,10 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 SynthExpr::new(expr, type_value)
             }
             hir::Expr::Let(_, binding, body) => {
-                let LetBinding { pat, r#type, init } = binding;
-                let (expr, r#type) =
-                    self.elab_let(pat, r#type.as_ref(), init, body, |this, body| {
-                        let Synth(body_expr, body_type) = this.synth_expr(body);
-                        (body_expr, body_type)
-                    });
+                let (expr, r#type) = self.elab_let(&binding, body, |this, body| {
+                    let Synth(body_expr, body_type) = this.synth_expr(body);
+                    (body_expr, body_type)
+                });
                 SynthExpr::new(expr, r#type)
             }
             hir::Expr::LetRec(_, binding, body) => todo!(),
@@ -400,8 +398,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             }
 
             hir::Expr::Let(_, binding, body) => {
-                let LetBinding { pat, r#type, init } = binding;
-                let (expr, ()) = self.elab_let(pat, r#type.as_ref(), init, body, |this, body| {
+                let (expr, ()) = self.elab_let(binding, body, |this, body| {
                     let Check(body_expr) = this.check_expr(body, expected);
                     (body_expr, ())
                 });
@@ -683,14 +680,15 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
     fn elab_let<T>(
         &mut self,
-        pat: &'hir hir::Pat,
-        r#type: Option<&'hir hir::Expr>,
-        init: &'hir hir::Expr,
+        binding: &'hir hir::LetBinding<'hir>,
         body: &'hir hir::Expr,
         mut elab_body: impl FnMut(&mut Self, &'hir hir::Expr) -> (Expr<'core>, T),
     ) -> (Expr<'core>, T) {
+        let hir::LetBinding { pat, r#type, init } = binding;
+
         let scrut_span = init.span();
-        let Synth(pat, pat_type) = self.synth_ann_pat(pat, r#type, &mut Vec::new_in(self.bump));
+        let Synth(pat, pat_type) =
+            self.synth_ann_pat(pat, r#type.as_ref(), &mut Vec::new_in(self.bump));
         let Check(init_expr) = self.check_expr(init, &pat_type);
         let init_value = self.eval_env().eval(&init_expr);
 
