@@ -34,7 +34,8 @@ pub enum NodeKind {
     ElseExpr,
 
     LetExpr,
-    LetInit,
+    LetRecExpr,
+    LetBinding,
     TypeAnn,
 
     FunLitExpr,
@@ -214,6 +215,7 @@ cst_enum!(
         RecordExpr,
         IfExpr,
         LetExpr,
+        LetRecExpr,
         FunLitExpr,
         FunTypeExpr,
         FunArrowExpr,
@@ -316,13 +318,26 @@ impl<'tree> ElseExpr<'tree> {
 
 impl<'tree> LetExpr<'tree> {
     pub fn let_token(self) -> Option<SyntaxToken<'tree>> { support::token(self.syntax, T![let]) }
+    pub fn binding(self) -> Option<LetBinding<'tree>> { support::child(self.syntax) }
+    pub fn body(self) -> Option<Expr<'tree>> { support::child(self.syntax) }
+}
+impl<'tree> LetRecExpr<'tree> {
+    pub fn let_token(self) -> Option<SyntaxToken<'tree>> { support::token(self.syntax, T![let]) }
+    pub fn bindings(self) -> impl Iterator<Item = LetBinding<'tree>> {
+        support::children(self.syntax)
+    }
+    pub fn body(self) -> Option<Expr<'tree>> { support::child(self.syntax) }
+}
+cst_node!(LetBinding);
+impl<'tree> LetBinding<'tree> {
+    pub fn rec_token(self) -> Option<SyntaxToken<'tree>> { support::token(self.syntax, T![rec]) }
     pub fn pat(self) -> Option<Pat<'tree>> { support::child(self.syntax) }
     pub fn type_ann(self) -> Option<TypeAnn<'tree>> { support::child(self.syntax) }
-    pub fn init(self) -> Option<LetInit<'tree>> { support::child(self.syntax) }
+    pub fn eq_token(self) -> Option<SyntaxToken<'tree>> { support::token(self.syntax, T![=]) }
+    pub fn init(self) -> Option<Expr<'tree>> { support::child(self.syntax) }
     pub fn semicolon_token(self) -> Option<SyntaxToken<'tree>> {
         support::token(self.syntax, T![;])
     }
-    pub fn body(self) -> Option<Expr<'tree>> { support::child(self.syntax) }
 }
 impl<'tree> FunLitExpr<'tree> {
     pub fn fun_token(self) -> Option<SyntaxToken<'tree>> { support::token(self.syntax, T![fun]) }
@@ -411,12 +426,6 @@ impl<'tree> FunParam<'tree> {
 cst_node!(TypeAnn);
 impl<'tree> TypeAnn<'tree> {
     pub fn colon_token(self) -> Option<SyntaxToken<'tree>> { support::token(self.syntax, T![:]) }
-    pub fn expr(self) -> Option<Expr<'tree>> { support::child(self.syntax) }
-}
-
-cst_node!(LetInit);
-impl<'tree> LetInit<'tree> {
-    pub fn eq_token(self) -> Option<SyntaxToken<'tree>> { support::token(self.syntax, T![=]) }
     pub fn expr(self) -> Option<Expr<'tree>> { support::child(self.syntax) }
 }
 

@@ -236,12 +236,30 @@ impl<'tree, 'hir> Ctx<'hir> {
                 Expr::If(span, self.bump.alloc((hir_scrut, hir_then, hir_else)))
             }
             surface::Expr::LetExpr(e) => {
-                let pat = self.pat_to_hir_opt(e.pat());
-                let r#type = e.type_ann().map(|ty| self.expr_to_hir_opt(ty.expr()));
-                let init = self.expr_to_hir_opt(e.init().and_then(surface::LetInit::expr));
+                let binding = e.binding();
+                let binding = LetBinding {
+                    pat: self.pat_to_hir_opt(binding.and_then(surface::LetBinding::pat)),
+                    r#type: binding
+                        .and_then(surface::LetBinding::type_ann)
+                        .map(|type_ann| self.expr_to_hir_opt(type_ann.expr())),
+                    init: self.expr_to_hir_opt(binding.and_then(surface::LetBinding::init)),
+                };
                 let body = self.expr_to_hir_opt(e.body());
-
-                Expr::Let(span, self.bump.alloc((pat, r#type, init, body)))
+                Expr::Let(span, self.bump.alloc(binding), self.bump.alloc(body))
+            }
+            surface::Expr::LetRecExpr(e) => {
+                let mut bindings = SliceVec::new(self.bump, e.bindings().count());
+                for binding in e.bindings() {
+                    bindings.push(LetBinding {
+                        pat: self.pat_to_hir_opt(binding.pat()),
+                        r#type: binding
+                            .type_ann()
+                            .map(|type_ann| self.expr_to_hir_opt(type_ann.expr())),
+                        init: self.expr_to_hir_opt(binding.init()),
+                    });
+                }
+                let body = self.expr_to_hir_opt(e.body());
+                Expr::LetRec(span, bindings.into(), self.bump.alloc(body))
             }
             surface::Expr::FunLitExpr(e) => {
                 let params = match e.param_list() {

@@ -35,6 +35,7 @@ pub enum TokenKind {
     KwIf,
     KwLet,
     KwMatch,
+    KwRec,
     KwThen,
     KwTrue,
 
@@ -56,6 +57,7 @@ macro_rules! T {
     [if] => {$crate::token::TokenKind::KwIf};
     [let] => {$crate::token::TokenKind::KwLet};
     [match] => {$crate::token::TokenKind::KwMatch};
+    [rec] => {$crate::token::TokenKind::KwRec};
     [then] => {$crate::token::TokenKind::KwThen};
     [true] => {$crate::token::TokenKind::KwTrue};
 
@@ -104,6 +106,7 @@ impl TokenKind {
             Self::KwIf => "`if`",
             Self::KwLet => "`let`",
             Self::KwMatch => "`match`",
+            Self::KwRec => "`rec`",
             Self::KwThen => "`then`",
             Self::KwTrue => "`true`",
             Self::LParen => "`(`",

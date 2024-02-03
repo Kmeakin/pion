@@ -36,7 +36,8 @@ pub enum Expr<'hir> {
     Ident(ByteSpan, Ident),
     Ann(ByteSpan, &'hir (Self, Self)),
 
-    Let(ByteSpan, &'hir (Pat<'hir>, Option<Self>, Self, Self)),
+    Let(ByteSpan, &'hir LetBinding<'hir>, &'hir Self),
+    LetRec(ByteSpan, &'hir [LetBinding<'hir>], &'hir Self),
 
     ArrayLit(ByteSpan, &'hir [Self]),
     TupleLit(ByteSpan, &'hir [Self]),
@@ -54,6 +55,13 @@ pub enum Expr<'hir> {
     If(ByteSpan, &'hir (Self, Self, Self)),
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct LetBinding<'hir> {
+    pub pat: Pat<'hir>,
+    pub r#type: Option<Expr<'hir>>,
+    pub init: Expr<'hir>,
+}
+
 impl<'hir> Expr<'hir> {
     pub fn span(&self) -> ByteSpan {
         match self {
@@ -63,6 +71,7 @@ impl<'hir> Expr<'hir> {
             | Expr::Ident(span, ..)
             | Expr::Ann(span, ..)
             | Expr::Let(span, ..)
+            | Expr::LetRec(span, ..)
             | Expr::ArrayLit(span, ..)
             | Expr::TupleLit(span, ..)
             | Expr::RecordType(span, ..)

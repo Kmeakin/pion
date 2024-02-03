@@ -560,16 +560,16 @@ mod expr {
                   LetExpr
                     0..3 KwLet "let"
                     3..4 Whitespace " "
-                    IdentPat
-                      4..5 Ident "x"
-                    5..6 Whitespace " "
-                    LetInit
+                    LetBinding
+                      IdentPat
+                        4..5 Ident "x"
+                      5..6 Whitespace " "
                       6..7 Eq "="
                       7..8 Whitespace " "
                       LitExpr
                         IntLit
                           8..9 DecInt "5"
-                    9..10 Semicolon ";"
+                      9..10 Semicolon ";"
                     10..11 Whitespace " "
                     IdentExpr
                       11..12 Ident "x"
@@ -584,24 +584,99 @@ mod expr {
                   LetExpr
                     0..3 KwLet "let"
                     3..4 Whitespace " "
-                    IdentPat
-                      4..5 Ident "x"
-                    TypeAnn
-                      5..6 Colon ":"
-                      6..7 Whitespace " "
-                      IdentExpr
-                        7..10 Ident "Int"
-                    10..11 Whitespace " "
-                    LetInit
+                    LetBinding
+                      IdentPat
+                        4..5 Ident "x"
+                      TypeAnn
+                        5..6 Colon ":"
+                        6..7 Whitespace " "
+                        IdentExpr
+                          7..10 Ident "Int"
+                      10..11 Whitespace " "
                       11..12 Eq "="
                       12..13 Whitespace " "
                       LitExpr
                         IntLit
                           13..14 DecInt "5"
-                    14..15 Semicolon ";"
+                      14..15 Semicolon ";"
                     15..16 Whitespace " "
                     IdentExpr
                       16..17 Ident "x"
+
+                errors = []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn letrec_expr() {
+        check_expr(
+            "let rec x = 5; x",
+            expect![[r#"
+                Root
+                  LetRecExpr
+                    0..3 KwLet "let"
+                    3..4 Whitespace " "
+                    LetBinding
+                      4..7 KwRec "rec"
+                      7..8 Whitespace " "
+                      IdentPat
+                        8..9 Ident "x"
+                      9..10 Whitespace " "
+                      10..11 Eq "="
+                      11..12 Whitespace " "
+                      LitExpr
+                        IntLit
+                          12..13 DecInt "5"
+                      13..14 Semicolon ";"
+                    14..15 Whitespace " "
+                    IdentExpr
+                      15..16 Ident "x"
+
+                errors = []
+            "#]],
+        );
+        check_expr(
+            "let rec x: Int = 5;
+                      rec y = x;
+                  x",
+            expect![[r#"
+                Root
+                  LetRecExpr
+                    0..3 KwLet "let"
+                    3..4 Whitespace " "
+                    LetBinding
+                      4..7 KwRec "rec"
+                      7..8 Whitespace " "
+                      IdentPat
+                        8..9 Ident "x"
+                      TypeAnn
+                        9..10 Colon ":"
+                        10..11 Whitespace " "
+                        IdentExpr
+                          11..14 Ident "Int"
+                      14..15 Whitespace " "
+                      15..16 Eq "="
+                      16..17 Whitespace " "
+                      LitExpr
+                        IntLit
+                          17..18 DecInt "5"
+                      18..19 Semicolon ";"
+                    19..42 Whitespace "\n                      "
+                    LetBinding
+                      42..45 KwRec "rec"
+                      45..46 Whitespace " "
+                      IdentPat
+                        46..47 Ident "y"
+                      47..48 Whitespace " "
+                      48..49 Eq "="
+                      49..50 Whitespace " "
+                      IdentExpr
+                        50..51 Ident "x"
+                      51..52 Semicolon ";"
+                    52..71 Whitespace "\n                  "
+                    IdentExpr
+                      71..72 Ident "x"
 
                 errors = []
             "#]],
@@ -1365,16 +1440,16 @@ mod toplevel {
                       LetExpr
                         8..11 KwLet "let"
                         11..12 Whitespace " "
-                        IdentPat
-                          12..13 Ident "y"
-                        13..14 Whitespace " "
-                        LetInit
+                        LetBinding
+                          IdentPat
+                            12..13 Ident "y"
+                          13..14 Whitespace " "
                           14..15 Eq "="
                           15..16 Whitespace " "
                           LitExpr
                             IntLit
                               16..17 DecInt "5"
-                        17..18 Semicolon ";"
+                          17..18 Semicolon ";"
                         18..19 Whitespace " "
                         IdentExpr
                           19..20 Ident "x"

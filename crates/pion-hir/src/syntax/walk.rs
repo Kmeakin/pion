@@ -16,12 +16,24 @@ impl<'hir> Expr<'hir> {
                 on_expr(expr)?;
                 on_expr(r#type)?;
             }
-            Expr::Let(.., (pat, r#type, init, body)) => {
+            Expr::Let(.., binding, body) => {
+                let LetBinding { pat, r#type, init } = binding;
                 on_pat(pat)?;
                 if let Some(r#type) = r#type {
                     on_expr(r#type)?;
                 }
                 on_expr(init)?;
+                on_expr(body)?;
+            }
+            Expr::LetRec(.., bindings, body) => {
+                for binding in *bindings {
+                    let LetBinding { pat, r#type, init } = binding;
+                    on_pat(pat)?;
+                    if let Some(r#type) = r#type {
+                        on_expr(r#type)?;
+                    }
+                    on_expr(init)?;
+                }
                 on_expr(body)?;
             }
             Expr::ArrayLit(.., exprs) | Expr::TupleLit(.., exprs) => {

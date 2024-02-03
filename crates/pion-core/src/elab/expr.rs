@@ -1,6 +1,6 @@
 //! Bidirectional elaboration for expressions.
 
-use pion_hir::syntax::{self as hir, Ident};
+use pion_hir::syntax::{self as hir, Ident, LetBinding};
 use pion_utils::location::ByteSpan;
 use pion_utils::numeric_conversions::TruncateFrom;
 use pion_utils::slice_vec::SliceVec;
@@ -60,7 +60,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let Check(expr) = self.check_expr(expr, &type_value);
                 SynthExpr::new(expr, type_value)
             }
-            hir::Expr::Let(_, (pat, r#type, init, body)) => {
+            hir::Expr::Let(_, binding, body) => {
+                let LetBinding { pat, r#type, init } = binding;
                 let (expr, r#type) =
                     self.elab_let(pat, r#type.as_ref(), init, body, |this, body| {
                         let Synth(body_expr, body_type) = this.synth_expr(body);
@@ -68,6 +69,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     });
                 SynthExpr::new(expr, r#type)
             }
+            hir::Expr::LetRec(_, binding, body) => todo!(),
             hir::Expr::ArrayLit(_, elems) => {
                 let Some((first, rest)) = elems.split_first() else {
                     let span = expr.span();
@@ -397,13 +399,15 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 CheckExpr::new(expr)
             }
 
-            hir::Expr::Let(_, (pat, r#type, init, body)) => {
+            hir::Expr::Let(_, binding, body) => {
+                let LetBinding { pat, r#type, init } = binding;
                 let (expr, ()) = self.elab_let(pat, r#type.as_ref(), init, body, |this, body| {
                     let Check(body_expr) = this.check_expr(body, expected);
                     (body_expr, ())
                 });
                 CheckExpr::new(expr)
             }
+            hir::Expr::LetRec(_, binding, body) => todo!(),
             hir::Expr::ArrayLit(_, elems) => {
                 let Type::Stuck(Head::Prim(Prim::Array), ref args) = expected else {
                     return self.synth_and_convert_expr(expr, expected);

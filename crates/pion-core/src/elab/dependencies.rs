@@ -1,4 +1,4 @@
-use pion_hir::syntax::{self as hir, Ident};
+use pion_hir::syntax::{self as hir, Ident, LetBinding};
 use pion_utils::identity::{Identity, PtrMap, PtrSet};
 use pion_utils::symbol::{Symbol, SymbolMap};
 
@@ -135,7 +135,8 @@ fn expr_dependencies<'hir>(
         hir::Expr::Ident(.., ident) => {
             ident_expr_dependencies(*ident, local_env, item_env, required_items);
         }
-        hir::Expr::Let(.., (pat, r#type, init, body)) => {
+        hir::Expr::Let(.., binding, body) => {
+            let LetBinding { pat, r#type, init } = binding;
             if let Some(r#type) = r#type {
                 expr_dependencies(r#type, local_env, item_env, required_items);
             }

@@ -171,22 +171,35 @@ fn atom_expr(p: &mut Parser) {
 // LetExpr = "let" Pat TypeAnn? "=" Expr ";" Expr
 fn let_expr(p: &mut Parser) {
     let start = p.start_node();
-
     p.assert_advance(T![let]);
+    if p.at(T![rec]) {
+        while !p.at_eof() && p.at(T![rec]) {
+            let_binding::<true>(p);
+        }
+        expr(p);
+        p.end_node(NodeKind::LetRecExpr, start);
+    } else {
+        let_binding::<false>(p);
+        expr(p);
+        p.end_node(NodeKind::LetExpr, start);
+    }
+}
+
+// LetBinding = Pat TypeAnn? "=" Expr ";"
+// LetRecBinding = "rec" Pat TypeAnn? "=" Expr ";"
+fn let_binding<const REC: bool>(p: &mut Parser) {
+    let start = p.start_node();
+    if REC {
+        p.expect(T![rec]);
+    }
     pat(p);
     type_ann_opt(p);
-
-    {
-        let start = p.start_node();
-        p.expect(T![=]);
-        expr(p);
-        p.end_node(NodeKind::LetInit, start);
-    }
-
-    p.expect(T![;]);
+    p.expect(T![=]);
     expr(p);
-
-    p.end_node(NodeKind::LetExpr, start);
+    p.expect(T![;]);
+    {
+        p.end_node(NodeKind::LetBinding, start);
+    }
 }
 
 // IfExpr = "if" Expr "then" Expr "else" Expr

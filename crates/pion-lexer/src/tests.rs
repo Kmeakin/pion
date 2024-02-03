@@ -269,7 +269,7 @@ mod punctuation {
 #[test]
 fn keywords() {
     check(
-        "def else false fun if let match then true _",
+        "def else false fun if let match then true rec _",
         expect![[r#"
             0..3: KwDef("def")
             3..4: Whitespace(" ")
@@ -289,7 +289,9 @@ fn keywords() {
             36..37: Whitespace(" ")
             37..41: KwTrue("true")
             41..42: Whitespace(" ")
-            42..43: Underscore("_")
+            42..45: KwRec("rec")
+            45..46: Whitespace(" ")
+            46..47: Underscore("_")
         "#]],
     );
 }

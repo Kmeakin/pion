@@ -53,7 +53,8 @@ impl<'source, 'vec> Ctx<'source, 'vec> {
             .push(Token::new(kind, ByteSpan::new(start, start + len)));
     }
 
-    fn emit_ident_or_keyword(&mut self, start: BytePos, len: u32) {
+    fn emit_ident_or_keyword(&mut self, start: BytePos, len: usize) {
+        let len = u32::truncate_from(len);
         let span = ByteSpan::new(start, start + len);
         let ident = unsafe { self.source.get_unchecked(std::ops::Range::from(span)) };
         let kind = match ident {
@@ -64,6 +65,7 @@ impl<'source, 'vec> Ctx<'source, 'vec> {
             "if" => TokenKind::KwIf,
             "let" => TokenKind::KwLet,
             "match" => TokenKind::KwMatch,
+            "rec" => TokenKind::KwRec,
             "then" => TokenKind::KwThen,
             "true" => TokenKind::KwTrue,
             "_" => TokenKind::Underscore,
@@ -236,15 +238,12 @@ impl<'source, 'vec> Ctx<'source, 'vec> {
             // identifiers
             b'r' => {
                 let mut len = 1_usize;
-                let kind = TokenKind::Ident;
                 match self.next_byte() {
-                    None => return self.emit_token(start, len, kind),
-                    Some((_, b'#')) => {
-                        len += 1;
-                    }
+                    None => return self.emit_ident_or_keyword(start, len),
+                    Some((_, b'#')) => len += 1,
                     Some((_, c)) if is_ident_continue(c) => len += 1,
                     Some((pos, c)) => {
-                        self.emit_token(start, len, kind);
+                        self.emit_ident_or_keyword(start, len);
                         return self.inner_loop(pos, c);
                     }
                 }
@@ -252,15 +251,15 @@ impl<'source, 'vec> Ctx<'source, 'vec> {
                     match self.next_byte() {
                         Some((_, c)) if is_ident_continue(c) => len += 1,
                         Some((pos, c)) => {
-                            self.emit_token(start, len, kind);
+                            self.emit_ident_or_keyword(start, len);
                             return self.inner_loop(pos, c);
                         }
-                        None => return self.emit_token(start, len, kind),
+                        None => return self.emit_ident_or_keyword(start, len),
                     }
                 }
             }
             c if is_ident_start(c) => {
-                let mut len = 1_u32;
+                let mut len = 1_usize;
                 loop {
                     match self.next_byte() {
                         Some((_, c)) if is_ident_continue(c) => len += 1,

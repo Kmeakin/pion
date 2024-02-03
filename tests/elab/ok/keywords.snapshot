@@ -15,9 +15,11 @@ def r#let: Int = 6;
 
 def r#match: Int = 7;
 
-def r#then: Int = 8;
+def rec: Int = 8;
 
-def r#true: Int = 9;
+def r#then: Int = 9;
+
+def r#true: Int = 10;
 
 def foo: Int = true;
 
@@ -32,10 +34,11 @@ span   | source                                   | type
 74..75 | 5                                        | Int
 89..90 | 6                                        | Int
 106..107 | 7                                        | Int
-122..123 | 8                                        | Int
-138..139 | 9                                        | Int
-152..158 | r#true                                   | Int
-170..175 | r#foo                                    | Int
+121..122 | 8                                        | Int
+137..138 | 9                                        | Int
+153..155 | 10                                       | Int
+168..174 | r#true                                   | Int
+186..191 | r#foo                                    | Int
 metavars:
 ?0 = Int
 ?1 = Int
@@ -48,6 +51,7 @@ metavars:
 ?8 = Int
 ?9 = Int
 ?10 = Int
+?11 = Int
 """
 
 stderr = """
