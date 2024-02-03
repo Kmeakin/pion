@@ -726,6 +726,23 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         (expr, body_type)
     }
 
+    fn elab_letrec<T>(
+        &mut self,
+        bindings: &'hir [hir::LetBinding<'hir>],
+        body: &'hir hir::Expr,
+        mut elab_body: impl FnMut(&mut Self, &'hir hir::Expr) -> (Expr<'core>, T),
+    ) -> (Expr<'core>, T) {
+        let mut idents = Vec::new_in(self.bump);
+        let mut pats = SliceVec::new(self.bump, bindings.len());
+
+        for binding in bindings {
+            let pat = self.synth_pat(&binding.pat, &mut idents);
+            pats.push(pat);
+        }
+
+        todo!()
+    }
+
     fn synth_fun_call(
         &mut self,
         fun_expr: Expr<'core>,
