@@ -5,10 +5,9 @@ use super::*;
 enum Never {}
 
 impl<'hir> Expr<'hir> {
-    pub fn try_for_each_shallow<R>(
+    pub fn try_walk<R>(
         &self,
         mut on_expr: impl FnMut(&'hir Expr<'hir>) -> ControlFlow<R>,
-        mut on_pat: impl FnMut(&'hir Pat<'hir>) -> ControlFlow<R>,
     ) -> ControlFlow<R> {
         match self {
             Expr::Error(_) | Expr::Lit(..) | Expr::Underscore(_) | Expr::Ident(..) => {}
@@ -16,8 +15,7 @@ impl<'hir> Expr<'hir> {
                 on_expr(expr)?;
                 on_expr(r#type)?;
             }
-            Expr::Let(.., (pat, r#type, init, body)) => {
-                on_pat(pat)?;
+            Expr::Let(.., (_, r#type, init, body)) => {
                 if let Some(r#type) = r#type {
                     on_expr(r#type)?;
                 }
@@ -41,7 +39,6 @@ impl<'hir> Expr<'hir> {
             }
             Expr::FunType(.., params, body) | Expr::FunLit(.., params, body) => {
                 for param in *params {
-                    on_pat(&param.pat)?;
                     if let Some(r#type) = param.r#type.as_ref() {
                         on_expr(r#type)?;
                     }
@@ -55,7 +52,6 @@ impl<'hir> Expr<'hir> {
             Expr::Match(.., scrut, cases) => {
                 on_expr(scrut)?;
                 for case in *cases {
-                    on_pat(&case.pat)?;
                     if let Some(guard) = case.guard.as_ref() {
                         on_expr(guard)?;
                     }
@@ -71,26 +67,16 @@ impl<'hir> Expr<'hir> {
         ControlFlow::Continue(())
     }
 
-    pub fn for_each_shallow(
-        &self,
-        mut on_expr: impl FnMut(&'hir Expr<'hir>),
-        mut on_pat: impl FnMut(&'hir Pat<'hir>),
-    ) {
-        self.try_for_each_shallow(
-            |expr| {
-                on_expr(expr);
-                ControlFlow::<Never>::Continue(())
-            },
-            |pat| {
-                on_pat(pat);
-                ControlFlow::<Never>::Continue(())
-            },
-        );
+    pub fn walk(&self, mut on_expr: impl FnMut(&'hir Expr<'hir>)) {
+        self.try_walk(|expr| {
+            on_expr(expr);
+            ControlFlow::<Never>::Continue(())
+        });
     }
 }
 
 impl<'hir> Pat<'hir> {
-    pub fn try_for_each_shallow<R>(
+    pub fn try_walk<R>(
         &self,
         on_pat: impl FnMut(&'hir Pat<'hir>) -> ControlFlow<R>,
     ) -> ControlFlow<R> {
@@ -106,8 +92,8 @@ impl<'hir> Pat<'hir> {
         ControlFlow::Continue(())
     }
 
-    pub fn for_each_shallow(&self, mut on_pat: impl FnMut(&'hir Pat<'hir>)) {
-        self.try_for_each_shallow(|pat| {
+    pub fn walk(&self, mut on_pat: impl FnMut(&'hir Pat<'hir>)) {
+        self.try_walk(|pat| {
             on_pat(pat);
             ControlFlow::<Never>::Continue(())
         });

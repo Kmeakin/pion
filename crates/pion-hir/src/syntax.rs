@@ -159,7 +159,7 @@ pub enum Lit {
     Int(Result<u32, ()>),
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Ident {
     pub symbol: Symbol,
     pub span: ByteSpan,

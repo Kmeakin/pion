@@ -9,3 +9,5 @@ mod semantics;
 pub mod syntax;
 
 pub mod dump;
+
+pub mod nameres;

@@ -193,10 +193,7 @@ fn expr_dependencies<'hir>(
                 local_env.truncate(len);
             }
         }
-        _ => expr.for_each_shallow(
-            |expr| expr_dependencies(expr, local_env, item_env, required_items),
-            |_| (),
-        ),
+        _ => expr.walk(|expr| expr_dependencies(expr, local_env, item_env, required_items)),
     }
 }
 
