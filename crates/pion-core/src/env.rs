@@ -69,6 +69,11 @@ impl Add<EnvLen> for Index {
     fn add(self, rhs: EnvLen) -> Self::Output { Self(self.0 + rhs.0) }
 }
 
+impl Add<usize> for Index {
+    type Output = Self;
+    fn add(self, rhs: usize) -> Self::Output { Self(self.0 + rhs) }
+}
+
 impl Index {
     pub const fn new() -> Self { Self(0) }
 
@@ -132,6 +137,10 @@ impl<T> Default for UniqueEnv<T> {
     fn default() -> Self { Self::new() }
 }
 
+impl<T> Extend<T> for UniqueEnv<T> {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) { self.elems.extend(iter) }
+}
+
 impl<T: fmt::Debug> fmt::Debug for UniqueEnv<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_map()
@@ -176,6 +185,10 @@ impl<T: Clone> SharedEnv<T> {
 
 impl<T> Default for SharedEnv<T> {
     fn default() -> Self { Self::new() }
+}
+
+impl<T: Clone> Extend<T> for SharedEnv<T> {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) { self.elems.extend(iter) }
 }
 
 impl<T: fmt::Debug> fmt::Debug for SharedEnv<T> {

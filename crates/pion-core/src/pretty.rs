@@ -93,6 +93,26 @@ impl<'pretty> PrettyCtx<'pretty> {
                     .append(";")
                     .append(self.hardline().append(body).group())
             }
+            Expr::LetRec(bindings, body) => {
+                let bindings = bindings.iter().map(|(name, r#type, init)| {
+                    let name = self.binder_name(*name);
+                    let r#type = self.expr(r#type, Prec::MAX);
+                    let init = self.blocklike_expr(init, Prec::MAX);
+                    self.text("rec ")
+                        .append(name)
+                        .append(": ")
+                        .append(r#type)
+                        .append(" =")
+                        .append(init)
+                        .append(";")
+                });
+                let bindings = self.intersperse(bindings, self.hardline());
+                let body = self.expr(body, Prec::MAX);
+
+                self.text("let ")
+                    .append(bindings)
+                    .append(self.hardline().append(body).group())
+            }
             Expr::FunLit(..) => {
                 let mut params = Vec::new();
                 let mut body = expr;
@@ -391,7 +411,7 @@ fn expr_prec(expr: &ZonkedExpr<'_>) -> Prec {
         Expr::Local(..) => Prec::Atom,
         Expr::Item(..) => Prec::Atom,
         Expr::Meta(_) => Prec::Atom,
-        Expr::Let(..) => Prec::Let,
+        Expr::Let(..) | Expr::LetRec(..) => Prec::Let,
         Expr::FunLit(..) => Prec::Fun,
         Expr::FunType(..) => Prec::Fun,
         Expr::FunApp(..) => Prec::App,

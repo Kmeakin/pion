@@ -37,6 +37,7 @@ pub enum Expr<'core, LocalName = (), ItemName = ()> {
     Meta(Level),
 
     Let(BinderName, &'core (Self, Self, Self)),
+    LetRec(&'core [(BinderName, Self, Self)], &'core Self),
 
     FunLit(Plicity, BinderName, &'core (Self, Self)),
     FunType(Plicity, BinderName, &'core (Self, Self)),
@@ -165,6 +166,13 @@ impl<'core, LocalName, ItemName> Expr<'core, LocalName, ItemName> {
             Expr::Let(_, (r#type, init, body)) => {
                 r#type.binds_local(var) || init.binds_local(var) || body.binds_local(var.next())
             }
+            Expr::LetRec(bindings, body) => {
+                let var = var + bindings.len();
+                bindings
+                    .iter()
+                    .any(|(_, r#type, init)| r#type.binds_local(var) || init.binds_local(var))
+                    || body.binds_local(var)
+            }
             Expr::FunLit(.., (r#type, body)) | Expr::FunType(.., (r#type, body)) => {
                 r#type.binds_local(var) || body.binds_local(var.next())
             }
@@ -222,6 +230,17 @@ impl<'core, LocalName, ItemName> Expr<'core, LocalName, ItemName> {
                 init.shift_inner(bump, min, amount),
                 body.shift_inner(bump, min.next(), amount),
             ),
+            Expr::LetRec(bindings, body) => {
+                let min = min + bindings.len();
+                let bindings =
+                    bump.alloc_slice_fill_iter(bindings.iter().map(|(name, r#type, init)| {
+                        let r#type = r#type.shift_inner(bump, min, amount);
+                        let init = init.shift_inner(bump, min, amount);
+                        (*name, r#type, init)
+                    }));
+                let body = body.shift_inner(bump, min, amount);
+                Expr::LetRec(bindings, bump.alloc(body))
+            }
 
             Expr::FunLit(plicity, name, (domain, body)) => Expr::fun_lit(
                 bump,

@@ -1,0 +1,63 @@
+exit status: 0
+
+stdout = """
+def foo: Int =
+    let rec x: Int = 0;
+    rec y: Int = x;
+    y;
+
+def bar: Int -> Int =
+    let rec fact: Int -> Int =
+        fun(x: Int) => match x {
+            0 => 1,
+            1 => 1,
+            _ => mul(x, fact(sub(x, 1))),
+        };
+    fact;
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+14..57 | let rec x = 0;\n  ...c y = x;\n        y | Int
+26..27 | 0                                        | Int
+45..46 | x                                        | Int
+56..57 | y                                        | Int
+74..211 | let rec fact: Int ...,\n    };\n    fact | Int -> Int
+88..91 | Int                                      | Type
+88..98 | Int -> Int                               | Type
+95..98 | Int                                      | Type
+101..201 | fun(x: Int) => mat...sub(x, 1))),\n    } | Int -> Int
+108..111 | Int                                      | Type
+116..201 | match x {\n       ...sub(x, 1))),\n    } | Int
+122..123 | x                                        | Int
+139..140 | 1                                        | Int
+155..156 | 1                                        | Int
+171..174 | mul                                      | Int -> Int -> Int
+171..194 | mul(x, fact(sub(x, 1)))                  | Int
+175..176 | x                                        | Int
+178..182 | fact                                     | Int -> Int
+178..193 | fact(sub(x, 1))                          | Int
+183..186 | sub                                      | Int -> Int -> Int
+183..192 | sub(x, 1)                                | Int
+187..188 | x                                        | Int
+190..191 | 1                                        | Int
+207..211 | fact                                     | Int -> Int
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+22..23 | x                                        | ?1
+41..42 | y                                        | ?2
+82..86 | fact                                     | Int -> Int
+105..106 | x                                        | Int
+134..135 | 0                                        | Int
+150..151 | 1                                        | Int
+166..167 | _                                        | Int
+metavars:
+?0 = Int
+?1 = Int
+?2 = Int
+?3 = Int -> Int
+"""
+
+stderr = """
+
+"""

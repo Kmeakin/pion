@@ -1,0 +1,23 @@
+def foo =
+    let rec x = 0;
+        rec y = x;
+        y;
+
+def bar =
+    let rec fact: Int -> Int = fun(x: Int) => match x {
+        0 => 1,
+        1 => 1,
+        _ => mul(x, fact(sub(x, 1))),
+    };
+    fact;
+
+// TODO: `fact` doesnt reduce in the body of the letrec
+/*
+def fact5is120: Eq(@Int, 120, 120) =
+    let rec fact: Int -> Int = fun(x: Int) => match x {
+        0 => 1,
+        1 => 1,
+        _ => mul(x, fact(sub(x, 1))),
+    };
+    refl(fact(5));
+*/

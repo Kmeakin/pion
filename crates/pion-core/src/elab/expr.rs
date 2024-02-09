@@ -61,13 +61,19 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 SynthExpr::new(expr, type_value)
             }
             hir::Expr::Let(_, binding, body) => {
-                let (expr, r#type) = self.elab_let(&binding, body, |this, body| {
+                let (expr, r#type) = self.elab_let(binding, body, |this, body| {
                     let Synth(body_expr, body_type) = this.synth_expr(body);
                     (body_expr, body_type)
                 });
                 SynthExpr::new(expr, r#type)
             }
-            hir::Expr::LetRec(_, binding, body) => todo!(),
+            hir::Expr::LetRec(_, bindings, body) => {
+                let (expr, r#type) = self.elab_letrec(bindings, body, |this, body| {
+                    let Synth(body_expr, body_type) = this.synth_expr(body);
+                    (body_expr, body_type)
+                });
+                SynthExpr::new(expr, r#type)
+            }
             hir::Expr::ArrayLit(_, elems) => {
                 let Some((first, rest)) = elems.split_first() else {
                     let span = expr.span();
@@ -404,7 +410,13 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 });
                 CheckExpr::new(expr)
             }
-            hir::Expr::LetRec(_, binding, body) => todo!(),
+            hir::Expr::LetRec(_, bindings, body) => {
+                let (expr, ()) = self.elab_letrec(bindings, body, |this, body| {
+                    let Check(body_expr) = this.check_expr(body, expected);
+                    (body_expr, ())
+                });
+                CheckExpr::new(expr)
+            }
             hir::Expr::ArrayLit(_, elems) => {
                 let Type::Stuck(Head::Prim(Prim::Array), ref args) = expected else {
                     return self.synth_and_convert_expr(expr, expected);
@@ -728,19 +740,43 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
     fn elab_letrec<T>(
         &mut self,
-        bindings: &'hir [hir::LetBinding<'hir>],
+        hir_bindings: &'hir [hir::LetBinding<'hir>],
         body: &'hir hir::Expr,
         mut elab_body: impl FnMut(&mut Self, &'hir hir::Expr) -> (Expr<'core>, T),
     ) -> (Expr<'core>, T) {
         let mut idents = Vec::new_in(self.bump);
-        let mut pats = SliceVec::new(self.bump, bindings.len());
+        let mut pats = Vec::with_capacity_in(hir_bindings.len(), self.bump);
+        let mut core_bindings = Vec::with_capacity_in(hir_bindings.len(), self.bump);
+        let mut let_vars = Vec::with_capacity_in(hir_bindings.len(), self.bump);
 
-        for binding in bindings {
-            let pat = self.synth_pat(&binding.pat, &mut idents);
+        for binding in hir_bindings {
+            let pat = self.synth_ann_pat(&binding.pat, binding.r#type.as_ref(), &mut idents);
             pats.push(pat);
         }
 
-        todo!()
+        let initial_len = self.local_env.len();
+
+        for Synth(pat, pat_type) in &pats {
+            let scrut_value = self.local_env.next_var();
+            let scrut_expr = Expr::Local((), Index::new());
+            let scrut = Scrut::new(scrut_expr, pat_type.clone());
+            let vars = self.push_def_pat(pat, &scrut, &scrut_value);
+            let_vars.extend(vars.iter().map(|(name, (r#type, ..))| (*name, *r#type)));
+        }
+
+        for (((name, r#type), hir_binding), Synth(_, pat_type)) in
+            let_vars.iter().zip(hir_bindings).zip(pats)
+        {
+            let Check(init_expr) = self.check_expr(&hir_binding.init, &pat_type);
+            core_bindings.push((*name, *r#type, init_expr));
+        }
+
+        let (body_expr, body_type) = elab_body(self, body);
+        self.local_env.truncate(initial_len);
+
+        let expr = Expr::LetRec(core_bindings.leak(), self.bump.alloc(body_expr));
+
+        (expr, body_type)
     }
 
     fn synth_fun_call(

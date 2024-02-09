@@ -299,6 +299,23 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
                 self.local_values.pop();
                 body_value
             }
+            Expr::LetRec(bindings, body) => {
+                let len = self.local_values.len();
+                for _ in *bindings {
+                    let var = Value::local(self.local_values.len().to_level());
+                    self.local_values.push(var);
+                }
+                let mut init_values = Vec::with_capacity_in(bindings.len(), self.bump);
+                for (.., init) in *bindings {
+                    let init_value = self.eval(init);
+                    init_values.push(init_value);
+                }
+                self.local_values.truncate(len);
+                self.local_values.extend(init_values);
+                let body_value = self.eval(body);
+                self.local_values.truncate(len);
+                body_value
+            }
             Expr::FunType(plicity, name, (domain, codomain)) => {
                 let domain_value = self.eval(domain);
                 let codomain = Closure::new(self.local_values.clone(), codomain);
@@ -599,6 +616,21 @@ impl<'core, 'env, 'out> ZonkEnv<'core, 'env, 'out> {
                 let init = self.zonk(init);
                 let body = self.zonk_with_binder(*name, body);
                 Expr::r#let(self.out_bump, *name, r#type, init, body)
+            }
+            Expr::LetRec(bindings, body) => {
+                let mut new_bindings = SliceVec::new(self.out_bump, bindings.len());
+                let len = self.local_len();
+                for (name, ..) in *bindings {
+                    self.push_local(*name);
+                }
+                for (name, r#type, init) in *bindings {
+                    let r#type = self.zonk(r#type);
+                    let init = self.zonk(init);
+                    new_bindings.push((*name, r#type, init));
+                }
+                let body = self.zonk(body);
+                self.truncate_local(len);
+                Expr::LetRec(new_bindings.into(), self.out_bump.alloc(body))
             }
             Expr::FunLit(plicity, name, (domain, body)) => {
                 let domain = self.zonk(domain);
