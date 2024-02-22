@@ -1,0 +1,431 @@
+exit status: 0
+
+stdout = """
+def not_if: Bool -> Bool =
+    fun(b: Bool) => match b {
+        true => false,
+        false => true,
+    };
+
+def not_if_self_inverse: fun(b: Bool) ->
+    Eq(
+        @Bool,
+        match match b {
+            true => false,
+            false => true,
+        } {
+            true => false,
+            false => true,
+        },
+        b
+    ) =
+    fun(a: Bool) => match a {
+        true => refl(@Bool, true),
+        false => refl(@Bool, false),
+    };
+
+def bool_rec_if: fun(b: Bool, p: Bool -> Type) -> p(true) -> p(false) -> p(b) =
+    fun(
+        a: Bool,
+        p: Bool -> Type,
+        p_true: p(true),
+        p_false: p(false)
+    ) => match a {
+        true => p_true,
+        false => p_false,
+    };
+
+def not_match: Bool -> Bool =
+    fun(b: Bool) => match b {
+        true => false,
+        false => true,
+    };
+
+def not_match_self_inverse: fun(b: Bool) ->
+    Eq(
+        @Bool,
+        match match b {
+            true => false,
+            false => true,
+        } {
+            true => false,
+            false => true,
+        },
+        b
+    ) =
+    fun(a: Bool) => match a {
+        true => refl(@Bool, true),
+        false => refl(@Bool, false),
+    };
+
+def bool_rec_match: fun(b: Bool, p: Bool -> Type) -> p(true) ->
+    p(false) -> p(b) =
+    fun(
+        a: Bool,
+        p: Bool -> Type,
+        p_true: p(true),
+        p_false: p(false)
+    ) => match a {
+        true => p_true,
+        false => p_false,
+    };
+
+def bool_pair_rec: fun(b: (Bool, Bool), p: Bool -> Bool -> Type) ->
+    p(true, true) ->
+    p(true, false) -> p(false, true) -> p(false, false) -> p(b._0, b._1) =
+    fun(
+        a: (Bool, Bool),
+        p: Bool -> Bool -> Type,
+        p_tt: p(true, true),
+        p_tf: p(true, false),
+        p_ft: p(false, true),
+        p_ff: p(false, false)
+    ) => match a._0 {
+        true => match a._1 {
+            true => p_tt,
+            false => p_tf,
+        },
+        false => match a._1 {
+            true => p_ft,
+            false => p_ff,
+        },
+    };
+
+def two_bools_rec: fun(b1: Bool, b2: Bool, p: Bool -> Bool -> Type) ->
+    p(true, true) ->
+    p(true, false) -> p(false, true) -> p(false, false) -> p(b1, b2) =
+    fun(
+        a1: Bool,
+        a2: Bool,
+        p: Bool -> Bool -> Type,
+        p_tt: p(true, true),
+        p_tf: p(true, false),
+        p_ft: p(false, true),
+        p_ff: p(false, false)
+    ) => match (a1, a2)._0 {
+        true => match (a1, a2)._1 {
+            true => p_tt,
+            false => p_tf,
+        },
+        false => match (a1, a2)._1 {
+            true => p_ft,
+            false => p_ff,
+        },
+    };
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+13..54 | fun(b: Bool) => if...hen false else true | Bool -> Bool
+20..24 | Bool                                     | Type
+29..54 | if b then false else true                | Bool
+32..33 | b                                        | Bool
+39..44 | false                                    | Bool
+50..54 | true                                     | Bool
+82..122 | fun(b: Bool) -> Eq(not_if(not_if(b)), b) | Type
+89..93 | Bool                                     | Type
+98..100 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+98..122 | Eq(not_if(not_if(b)), b)                 | Type
+101..107 | not_if                                   | Bool -> Bool
+101..118 | not_if(not_if(b))                        | Bool
+108..114 | not_if                                   | Bool -> Bool
+108..117 | not_if(b)                                | Bool
+115..116 | b                                        | Bool
+120..121 | b                                        | Bool
+129..175 | fun(a: Bool) => if...efl(_) else refl(_) | fun(b: Bool) ->
+    Eq(
+        @Bool,
+        match match b {
+            true => false,
+            false => true,
+        } {
+            true => false,
+            false => true,
+        },
+        b
+    )
+136..140 | Bool                                     | Type
+145..175 | if a then refl(_) else refl(_)           | Eq(
+    @Bool,
+    match match a {
+        true => false,
+        false => true,
+    } {
+        true => false,
+        false => true,
+    },
+    a
+)
+148..149 | a                                        | Bool
+155..159 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
+155..162 | refl(_)                                  | Eq(@Bool, true, true)
+160..161 | _                                        | ?3(a)
+168..172 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
+168..175 | refl(_)                                  | Eq(@Bool, false, false)
+173..174 | _                                        | ?5(a)
+195..255 | fun(b: Bool, p: Bo...-> p(false) -> p(b) | Type
+202..206 | Bool                                     | Type
+211..215 | Bool                                     | Type
+211..223 | Bool -> Type                             | Type
+219..223 | Type                                     | Type
+228..229 | p                                        | Bool -> Type
+228..235 | p(true)                                  | Type
+228..255 | p(true) -> p(false) -> p(b)              | Type
+230..234 | true                                     | Bool
+239..240 | p                                        | Bool -> Type
+239..247 | p(false)                                 | Type
+239..255 | p(false) -> p(b)                         | Type
+241..246 | false                                    | Bool
+251..252 | p                                        | Bool -> Type
+251..255 | p(b)                                     | Type
+253..254 | b                                        | Bool
+262..327 | fun(a: Bool, p, p_...p_true else p_false | fun(b: Bool, p: Bool -> Type) -> p(true) -> p(false) -> p(b)
+269..273 | Bool                                     | Type
+298..327 | if a then p_true else p_false            | p(a)
+301..302 | a                                        | Bool
+308..314 | p_true                                   | p(true)
+320..327 | p_false                                  | p(false)
+350..427 | fun(b: Bool) => ma...lse => true,\n    } | Bool -> Bool
+357..361 | Bool                                     | Type
+366..427 | match b {\n       ...lse => true,\n    } | Bool
+372..373 | b                                        | Bool
+392..397 | false                                    | Bool
+416..420 | true                                     | Bool
+458..504 | fun(b: Bool) -> Eq...h(not_match(b)), b) | Type
+465..469 | Bool                                     | Type
+474..476 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+474..504 | Eq(not_match(not_match(b)), b)           | Type
+477..486 | not_match                                | Bool -> Bool
+477..500 | not_match(not_match(b))                  | Bool
+487..496 | not_match                                | Bool -> Bool
+487..499 | not_match(b)                             | Bool
+497..498 | b                                        | Bool
+502..503 | b                                        | Bool
+511..593 | fun(a: Bool) => ma... => refl(_),\n    } | fun(b: Bool) ->
+    Eq(
+        @Bool,
+        match match b {
+            true => false,
+            false => true,
+        } {
+            true => false,
+            false => true,
+        },
+        b
+    )
+518..522 | Bool                                     | Type
+527..593 | match a {\n       ... => refl(_),\n    } | Eq(
+    @Bool,
+    match match a {
+        true => false,
+        false => true,
+    } {
+        true => false,
+        false => true,
+    },
+    a
+)
+533..534 | a                                        | Bool
+553..557 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
+553..560 | refl(_)                                  | Eq(@Bool, true, true)
+558..559 | _                                        | ?11(a)
+579..583 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
+579..586 | refl(_)                                  | Eq(@Bool, false, false)
+584..585 | _                                        | ?13(a)
+616..676 | fun(b: Bool, p: Bo...-> p(false) -> p(b) | Type
+623..627 | Bool                                     | Type
+632..636 | Bool                                     | Type
+632..644 | Bool -> Type                             | Type
+640..644 | Type                                     | Type
+649..650 | p                                        | Bool -> Type
+649..656 | p(true)                                  | Type
+649..676 | p(true) -> p(false) -> p(b)              | Type
+651..655 | true                                     | Bool
+660..661 | p                                        | Bool -> Type
+660..668 | p(false)                                 | Type
+660..676 | p(false) -> p(b)                         | Type
+662..667 | false                                    | Bool
+672..673 | p                                        | Bool -> Type
+672..676 | p(b)                                     | Type
+674..675 | b                                        | Bool
+683..784 | fun(a: Bool, p, p_... => p_false,\n    } | fun(b: Bool, p: Bool -> Type) -> p(true) -> p(false) -> p(b)
+690..694 | Bool                                     | Type
+719..784 | match a {\n       ... => p_false,\n    } | p(a)
+725..726 | a                                        | Bool
+745..751 | p_true                                   | p(true)
+770..777 | p_false                                  | p(false)
+806..940 | fun(b: (Bool, Bool...e) -> p(b._0, b._1) | Type
+813..825 | (Bool, Bool)                             | Type
+814..818 | Bool                                     | Type
+820..824 | Bool                                     | Type
+830..834 | Bool                                     | Type
+830..850 | Bool -> Bool -> Type                     | Type
+838..842 | Bool                                     | Type
+838..850 | Bool -> Type                             | Type
+846..850 | Type                                     | Type
+855..856 | p                                        | Bool -> Bool -> Type
+855..868 | p(true, true)                            | Type
+855..940 | p(true, true) -> p...e) -> p(b._0, b._1) | Type
+857..861 | true                                     | Bool
+863..867 | true                                     | Bool
+872..873 | p                                        | Bool -> Bool -> Type
+872..886 | p(true, false)                           | Type
+872..940 | p(true, false) -> ...e) -> p(b._0, b._1) | Type
+874..878 | true                                     | Bool
+880..885 | false                                    | Bool
+890..891 | p                                        | Bool -> Bool -> Type
+890..904 | p(false, true)                           | Type
+890..940 | p(false, true) -> ...e) -> p(b._0, b._1) | Type
+892..897 | false                                    | Bool
+899..903 | true                                     | Bool
+908..909 | p                                        | Bool -> Bool -> Type
+908..923 | p(false, false)                          | Type
+908..940 | p(false, false) -> p(b._0, b._1)         | Type
+910..915 | false                                    | Bool
+917..922 | false                                    | Bool
+927..928 | p                                        | Bool -> Bool -> Type
+927..940 | p(b._0, b._1)                            | Type
+929..930 | b                                        | (Bool, Bool)
+929..933 | b._0                                     | Bool
+935..936 | b                                        | (Bool, Bool)
+935..939 | b._1                                     | Bool
+947..1137 | fun(a: (Bool, Bool...se) => p_ff,\n    } | fun(b: (Bool, Bool), p: Bool -> Bool -> Type) -> p(true, true) -> p(true, false) -> p(false, true) -> p(false, false) -> p(b._0, b._1)
+954..966 | (Bool, Bool)                             | Type
+955..959 | Bool                                     | Type
+961..965 | Bool                                     | Type
+998..1137 | match a {\n       ...se) => p_ff,\n    } | p(a._0, a._1)
+1004..1005 | a                                        | (Bool, Bool)
+1032..1036 | p_tt                                     | p(true, true)
+1063..1067 | p_tf                                     | p(true, false)
+1094..1098 | p_ft                                     | p(false, true)
+1126..1130 | p_ff                                     | p(false, false)
+1159..1292 | fun(b1: Bool, b2: ...false) -> p(b1, b2) | Type
+1167..1171 | Bool                                     | Type
+1177..1181 | Bool                                     | Type
+1186..1190 | Bool                                     | Type
+1186..1206 | Bool -> Bool -> Type                     | Type
+1194..1198 | Bool                                     | Type
+1194..1206 | Bool -> Type                             | Type
+1202..1206 | Type                                     | Type
+1211..1212 | p                                        | Bool -> Bool -> Type
+1211..1224 | p(true, true)                            | Type
+1211..1292 | p(true, true) -> p...false) -> p(b1, b2) | Type
+1213..1217 | true                                     | Bool
+1219..1223 | true                                     | Bool
+1228..1229 | p                                        | Bool -> Bool -> Type
+1228..1242 | p(true, false)                           | Type
+1228..1292 | p(true, false) -> ...false) -> p(b1, b2) | Type
+1230..1234 | true                                     | Bool
+1236..1241 | false                                    | Bool
+1246..1247 | p                                        | Bool -> Bool -> Type
+1246..1260 | p(false, true)                           | Type
+1246..1292 | p(false, true) -> ...false) -> p(b1, b2) | Type
+1248..1253 | false                                    | Bool
+1255..1259 | true                                     | Bool
+1264..1265 | p                                        | Bool -> Bool -> Type
+1264..1279 | p(false, false)                          | Type
+1264..1292 | p(false, false) -> p(b1, b2)             | Type
+1266..1271 | false                                    | Bool
+1273..1278 | false                                    | Bool
+1283..1284 | p                                        | Bool -> Bool -> Type
+1283..1292 | p(b1, b2)                                | Type
+1285..1287 | b1                                       | Bool
+1289..1291 | b2                                       | Bool
+1299..1487 | fun(a1, a2, p, p_t...se) => p_ff,\n    } | fun(b1: Bool, b2: Bool, p: Bool -> Bool -> Type) -> p(true, true) -> p(true, false) -> p(false, true) -> p(false, false) -> p(b1, b2)
+1341..1487 | match (a1, a2) {\n...se) => p_ff,\n    } | p(a1, a2)
+1347..1355 | (a1, a2)                                 | (Bool, Bool)
+1348..1350 | a1                                       | Bool
+1352..1354 | a2                                       | Bool
+1382..1386 | p_tt                                     | p(true, true)
+1413..1417 | p_tf                                     | p(true, false)
+1444..1448 | p_ft                                     | p(false, true)
+1476..1480 | p_ff                                     | p(false, false)
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+17..18 | b                                        | Bool
+86..87 | b                                        | Bool
+133..134 | a                                        | Bool
+199..200 | b                                        | Bool
+208..209 | p                                        | Bool -> Type
+266..267 | a                                        | Bool
+275..276 | p                                        | Bool -> Type
+278..284 | p_true                                   | p(true)
+286..293 | p_false                                  | p(false)
+354..355 | b                                        | Bool
+384..388 | true                                     | Bool
+407..412 | false                                    | Bool
+462..463 | b                                        | Bool
+515..516 | a                                        | Bool
+545..549 | true                                     | Bool
+570..575 | false                                    | Bool
+620..621 | b                                        | Bool
+629..630 | p                                        | Bool -> Type
+687..688 | a                                        | Bool
+696..697 | p                                        | Bool -> Type
+699..705 | p_true                                   | p(true)
+707..714 | p_false                                  | p(false)
+737..741 | true                                     | Bool
+761..766 | false                                    | Bool
+810..811 | b                                        | (Bool, Bool)
+827..828 | p                                        | Bool -> Bool -> Type
+951..952 | a                                        | (Bool, Bool)
+968..969 | p                                        | Bool -> Bool -> Type
+971..975 | p_tt                                     | p(true, true)
+977..981 | p_tf                                     | p(true, false)
+983..987 | p_ft                                     | p(false, true)
+989..993 | p_ff                                     | p(false, false)
+1016..1028 | (true, true)                             | (Bool, Bool)
+1017..1021 | true                                     | Bool
+1023..1027 | true                                     | Bool
+1046..1059 | (true, false)                            | (Bool, Bool)
+1047..1051 | true                                     | Bool
+1053..1058 | false                                    | Bool
+1077..1090 | (false, true)                            | (Bool, Bool)
+1078..1083 | false                                    | Bool
+1085..1089 | true                                     | Bool
+1108..1122 | (false, false)                           | (Bool, Bool)
+1109..1114 | false                                    | Bool
+1116..1121 | false                                    | Bool
+1163..1165 | b1                                       | Bool
+1173..1175 | b2                                       | Bool
+1183..1184 | p                                        | Bool -> Bool -> Type
+1303..1305 | a1                                       | Bool
+1307..1309 | a2                                       | Bool
+1311..1312 | p                                        | Bool -> Bool -> Type
+1314..1318 | p_tt                                     | p(true, true)
+1320..1324 | p_tf                                     | p(true, false)
+1326..1330 | p_ft                                     | p(false, true)
+1332..1336 | p_ff                                     | p(false, false)
+1366..1378 | (true, true)                             | (Bool, Bool)
+1367..1371 | true                                     | Bool
+1373..1377 | true                                     | Bool
+1396..1409 | (true, false)                            | (Bool, Bool)
+1397..1401 | true                                     | Bool
+1403..1408 | false                                    | Bool
+1427..1440 | (false, true)                            | (Bool, Bool)
+1428..1433 | false                                    | Bool
+1435..1439 | true                                     | Bool
+1458..1472 | (false, false)                           | (Bool, Bool)
+1459..1464 | false                                    | Bool
+1466..1471 | false                                    | Bool
+metavars:
+?0 = Bool -> Bool
+?1 = fun(_: #error) => Bool
+?2 = fun(_: #error) => Bool
+?3 = fun(_: #error) => Bool
+?4 = fun(_: #error) => true
+?5 = fun(_: #error) => Bool
+?6 = fun(_: #error) => false
+?7 = Bool -> Bool
+?8 = fun(_: #error) => Bool
+?9 = fun(_: #error) => Bool
+?10 = fun(_: #error) => Bool
+?11 = fun(_: #error) => Bool
+?12 = fun(_: #error) => true
+?13 = fun(_: #error) => Bool
+?14 = fun(_: #error) => false
+"""
+
+stderr = """
+
+"""

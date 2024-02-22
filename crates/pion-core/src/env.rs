@@ -191,6 +191,10 @@ impl<T> Deref for SharedEnv<T> {
     fn deref(&self) -> &Self::Target { self.elems[..].into() }
 }
 
+impl<T: Clone> DerefMut for SharedEnv<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target { self.elems.make_mut().into() }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct SliceEnv<T> {

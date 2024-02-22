@@ -555,9 +555,32 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
                 self.check_fun_lit(params, body, expected, &mut Vec::new_in(self.bump))
             }
-            hir::Expr::Match(_, scrut, cases) => self.check_match(scrut, cases, expected),
+            hir::Expr::Match(_, scrut, cases) => self.check_match_dependent(scrut, cases, expected),
             hir::Expr::If(_, (scrut, then, r#else)) => {
                 let Check(scrut_expr) = self.check_expr_is_bool(scrut);
+
+                // dependent pattern matching
+                // if the scrutinee is a variable, substitute occurences of the variable for
+                // true (resp false) into the exepcted type when checking the true (resp false)
+                // branches
+                if let Expr::Local(.., var) = scrut_expr {
+                    // TODO: do the substitution more efficiently
+                    let expected_expr = self.quote_env().quote(expected);
+                    let mut env = self.local_env.values.clone();
+
+                    env.set_index(var, Value::Lit(Lit::Bool(true)));
+                    let then_expected = self.elim_env().eval_env(&mut env).eval(&expected_expr);
+
+                    env.set_index(var, Value::Lit(Lit::Bool(false)));
+                    let else_expected = self.elim_env().eval_env(&mut env).eval(&expected_expr);
+
+                    let Check(then_expr) = self.check_expr(then, &then_expected);
+                    let Check(else_expr) = self.check_expr(r#else, &else_expected);
+
+                    let expr = Expr::match_bool(self.bump, scrut_expr, then_expr, else_expr);
+                    return CheckExpr::new(expr);
+                }
+
                 let Check(then_expr) = self.check_expr(then, expected);
                 let Check(else_expr) = self.check_expr(r#else, expected);
                 let expr = Expr::match_bool(self.bump, scrut_expr, then_expr, else_expr);
@@ -1007,6 +1030,71 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 Check::new(self.convert_expr(span, expr, r#type, &expected))
             }
         }
+    }
+
+    fn check_match_dependent(
+        &mut self,
+        scrut: &'hir hir::Expr<'hir>,
+        cases: &'hir [hir::MatchCase<'hir>],
+        expected: &Type<'core>,
+    ) -> CheckExpr<'core> {
+        let scrut_span = scrut.span();
+        let mut matrix =
+            PatMatrix::with_capacity(self.bump, cases.len(), usize::from(!cases.is_empty()));
+        let mut bodies = Vec::with_capacity_in(cases.len(), self.bump);
+
+        let (scrut_expr, scrut_type) = self.synth_and_insert_implicit_apps(scrut);
+        let scrut = Scrut::new(scrut_expr, scrut_type);
+        let scrut_value = self.eval_env().eval(&scrut.expr);
+
+        for (index, case) in cases.iter().enumerate() {
+            let initial_len = self.local_env.len();
+            let Check(pat) = self.check_pat(&case.pat, &scrut.r#type, &mut Vec::new_in(self.bump));
+            let let_vars = self.push_match_pat(&pat, &scrut, &scrut_value);
+            let guard = match case.guard.as_ref() {
+                None => None,
+                Some(guard) => {
+                    let Check(expr) = self.check_expr_is_bool(guard);
+                    Some(expr)
+                }
+            };
+
+            let expected = {
+                let expected_expr = self.quote_env().quote(expected);
+                let mut env = self.local_env.values.clone();
+                super::pat::unify_pat(self.bump, &mut env, &scrut_expr, &pat);
+                if let Some(guard) = guard {
+                    super::pat::unify_pat(
+                        self.bump,
+                        &mut env,
+                        &guard,
+                        &Pat::Lit(ByteSpan::default(), Lit::Bool(true)),
+                    );
+                }
+                self.elim_env().eval_env(&mut env).eval(&expected_expr)
+            };
+
+            let Check(expr) = self.check_expr(&case.expr, &expected);
+            self.local_env.truncate(initial_len);
+
+            let body = match guard {
+                None => Body::Success {
+                    expr: Expr::lets(let_vars, expr),
+                },
+                Some(guard) => Body::GuardIf {
+                    let_vars,
+                    guard_expr: guard,
+                    expr,
+                },
+            };
+
+            matrix.push_row(PatRow::new(&[(pat, scrut.expr)], index));
+            bodies.push(body);
+        }
+
+        let expr = self.compile_match(&mut matrix, &bodies, scrut_span, true);
+
+        CheckExpr::new(expr)
     }
 
     fn check_match(

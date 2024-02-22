@@ -1,0 +1,41 @@
+def not_if = fun(b: Bool) => if b then false else true;
+
+def not_if_self_inverse: fun(b: Bool) -> Eq(not_if(not_if(b)), b)
+    = fun(a: Bool) => if a then refl(_) else refl(_);
+
+def bool_rec_if: fun(b: Bool, p: Bool -> Type) -> p(true) -> p(false) -> p(b)
+    = fun(a: Bool, p, p_true, p_false) => if a then p_true else p_false;
+
+def not_match
+    = fun(b: Bool) => match b {
+        true => false,
+        false => true,
+    };
+
+def not_match_self_inverse: fun(b: Bool) -> Eq(not_match(not_match(b)), b)
+    = fun(a: Bool) => match a {
+        true => refl(_),
+        false => refl(_),
+    };
+
+def bool_rec_match: fun(b: Bool, p: Bool -> Type) -> p(true) -> p(false) -> p(b)
+    = fun(a: Bool, p, p_true, p_false) => match a {
+        true => p_true,
+        false => p_false,
+    };
+
+def bool_pair_rec: fun(b: (Bool, Bool), p: Bool -> Bool -> Type) -> p(true, true) -> p(true, false) -> p(false, true) -> p(false, false) -> p(b._0, b._1)
+    = fun(a: (Bool, Bool), p, p_tt, p_tf, p_ft, p_ff) => match a {
+        (true, true) => p_tt,
+        (true, false) => p_tf,
+        (false, true) => p_ft,
+        (false, false) => p_ff,
+    };
+
+def two_bools_rec: fun(b1: Bool, b2: Bool, p: Bool -> Bool -> Type) -> p(true, true) -> p(true, false) -> p(false, true) -> p(false, false) -> p(b1, b2)
+    = fun(a1, a2, p, p_tt, p_tf, p_ft, p_ff) => match (a1, a2) {
+        (true, true) => p_tt,
+        (true, false) => p_tf,
+        (false, true) => p_ft,
+        (false, false) => p_ff,
+    };

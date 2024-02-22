@@ -2,6 +2,7 @@
 
 use pion_hir::syntax::{self as hir, Ident};
 use pion_utils::numeric_conversions::TruncateFrom;
+use pion_utils::slice_eq_by_keys;
 use pion_utils::slice_vec::SliceVec;
 
 use super::diagnostics::ElabDiagnostic;
@@ -600,6 +601,44 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             let scrut = Scrut::new(expr, r#type);
 
             on_pat(self, pat, &scrut, &value);
+        }
+    }
+}
+
+// TODO: better name?
+pub fn unify_pat<'core>(
+    bump: &'core bumpalo::Bump,
+    env: &mut SharedEnv<Value<'core>>,
+    scrut: &Expr,
+    pat: &Pat,
+) {
+    match (scrut, pat) {
+        (Expr::Local(.., var), _) => {
+            if let Some(value) = pat_to_value(bump, pat) {
+                env.set_index(*var, value);
+            }
+        }
+        (Expr::RecordLit(.., expr_fields), Pat::RecordLit(.., pat_fields))
+            if slice_eq_by_keys(expr_fields, pat_fields, |(n, _)| *n, |(n, _)| *n) =>
+        {
+            for ((_, scrut), (_, pat)) in expr_fields.iter().zip(pat_fields.iter()) {
+                unify_pat(bump, env, scrut, pat);
+            }
+        }
+        _ => {}
+    }
+
+    fn pat_to_value<'bump>(bump: &'bump bumpalo::Bump, pat: &Pat) -> Option<Value<'bump>> {
+        match pat {
+            Pat::Lit(.., lit) => Some(Value::Lit(*lit)),
+            Pat::RecordLit(.., pat_fields) => {
+                let mut value_fields = Vec::with_capacity_in(pat_fields.len(), bump);
+                for (name, pat) in *pat_fields {
+                    value_fields.push((*name, pat_to_value(bump, pat)?));
+                }
+                Some(Value::RecordLit(value_fields.leak()))
+            }
+            Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) | Pat::Or(..) => None,
         }
     }
 }
