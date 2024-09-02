@@ -1,0 +1,21 @@
+[package]
+name    = "pion-fuzz"
+publish = false
+
+edition = { workspace = true }
+version = { workspace = true }
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = { workspace = true }
+pion-surface  = { workspace = true }
+
+[[bin]]
+name = "lexer"
+path = "src/lexer.rs"
+
+bench = false
+doc   = false
+test  = false
