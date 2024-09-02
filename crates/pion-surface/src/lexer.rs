@@ -40,8 +40,9 @@
 //!     | '_' XID_Continue (XID_Continue | '-')*
 //!
 //! Literal ::= Number | Char | String
-//!
 //! Number ::= ('+' | '-')? DecimalDigit XID_Continue*
+//! Char ::= SingleQuote ((not SingleQuote) | ('\' AnyChar))* SingleQuote
+//! String ::= DoubleQuote ((not DoubleQuote) | ('\' AnyChar))* DoubleQuote
 //! ```
 
 use std::str::Chars;
