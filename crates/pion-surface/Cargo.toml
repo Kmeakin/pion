@@ -8,3 +8,7 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+text-size = { workspace = true }
+
+[dev-dependencies]
+expect-test = { workspace = true }
