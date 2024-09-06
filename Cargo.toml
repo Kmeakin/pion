@@ -42,7 +42,7 @@ clippy.too_many_lines          = { level = "allow", priority = 100 }
 clippy.wildcard_imports        = { level = "allow", priority = 100 }
 
 [workspace.dependencies]
-pion-surface = { path = "crates/pion-surface" }
+pion-lexer = { path = "crates/pion-lexer" }
 
 expect-test   = { version = "1.5.0" }
 libfuzzer-sys = { version = "0.4" }

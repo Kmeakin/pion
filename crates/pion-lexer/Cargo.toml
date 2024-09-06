@@ -1,5 +1,5 @@
 [package]
-name = "pion-surface"
+name = "pion-lexer"
 
 edition.workspace = true
 version.workspace = true

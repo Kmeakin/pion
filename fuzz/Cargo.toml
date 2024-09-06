@@ -10,7 +10,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = { workspace = true }
-pion-surface  = { workspace = true }
+pion-lexer    = { workspace = true }
 
 [[bin]]
 name = "lexer"

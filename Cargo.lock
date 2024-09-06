@@ -186,11 +186,11 @@ name = "pion-fuzz"
 version = "0.1.0"
 dependencies = [
  "libfuzzer-sys",
- "pion-surface",
+ "pion-lexer",
 ]
 
 [[package]]
-name = "pion-surface"
+name = "pion-lexer"
 version = "0.1.0"
 dependencies = [
  "expect-test",
