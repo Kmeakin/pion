@@ -1,0 +1,15 @@
+[package]
+name = "pion-cli"
+
+edition.workspace = true
+version.workspace = true
+
+default-run = "pion-cli"
+
+[lints]
+workspace = true
+
+[dependencies]
+clap        = { workspace = true }
+pion-lexer  = { workspace = true }
+pion-parser = { workspace = true }
