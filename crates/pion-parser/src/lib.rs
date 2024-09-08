@@ -1,3 +1,5 @@
+#![feature(allocator_api)]
+
 //! ```text
 //! <Expr> ::=
 //!     | Ident
@@ -53,7 +55,10 @@ pub enum Expr<'text, 'surface> {
     Var(&'text str),
     Literal,
     Paren(Located<&'surface Self>),
-    FunCall,
+    FunCall {
+        callee: Located<&'surface Self>,
+        args: &'surface [FunArg<'text, 'surface>],
+    },
     FunExpr,
     FunType,
     FunArrow,
@@ -87,8 +92,7 @@ pub enum Literal {
 
 #[derive(Debug, Copy, Clone)]
 pub struct FunArg<'text, 'surface> {
-    pub expr: Expr<'text, 'surface>,
-    pub r#type: Option<Expr<'text, 'surface>>,
+    pub expr: Located<Expr<'text, 'surface>>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -227,7 +231,7 @@ where
             ..
         }) = self.peek_token()
         else {
-            return self.atom_expr();
+            return self.call_expr();
         };
 
         let start_range = self.range;
@@ -253,6 +257,51 @@ where
                 body: body.map(|expr| &*self.bump.alloc(expr)),
             },
         )
+    }
+
+    fn call_expr(&mut self) -> Located<Expr<'text, 'surface>> {
+        let mut expr = self.atom_expr();
+        while let Some(token) = self.peek_token() {
+            match token.kind {
+                TokenKind::LParen => {
+                    let start_range = expr.range;
+                    self.next_token();
+                    let args = self.fun_args();
+                    self.expect_token(TokenKind::RParen);
+                    let end_range = self.range;
+                    expr = Located::new(
+                        TextRange::new(start_range.start(), end_range.end()),
+                        Expr::FunCall {
+                            callee: expr.map(|expr| &*self.bump.alloc(expr)),
+                            args,
+                        },
+                    );
+                }
+                _ => break,
+            }
+        }
+        expr
+    }
+
+    fn fun_args(&mut self) -> &'surface [FunArg<'text, 'surface>] {
+        let mut args = Vec::new_in(self.bump);
+        while let Some(token) = self.peek_token() {
+            if token.kind == TokenKind::RParen {
+                break;
+            }
+
+            let expr = self.expr();
+            args.push(FunArg { expr });
+
+            if let Some(token) = self.peek_token() {
+                if token.kind == TokenKind::Punct(',') {
+                    self.next_token();
+                    continue;
+                }
+            }
+        }
+
+        args.leak()
     }
 
     fn atom_expr(&mut self) -> Located<Expr<'text, 'surface>> {
@@ -282,7 +331,7 @@ where
                 self.diagnostic(
                     token.range,
                     Diagnostic::error().with_message(format!(
-                        "Syntax error: unexpected {got} while parsing pattern"
+                        "Syntax error: unexpected {got} while parsing expression"
                     )),
                 );
                 Located::new(token.range, Expr::Error)
@@ -363,8 +412,12 @@ mod tests {
 
         let mut got = String::new();
         write!(got, "{expr:?}").unwrap();
-        for diagnostic in diagnostics {
-            writeln!(got, "{diagnostic:?}").unwrap();
+
+        if !diagnostics.is_empty() {
+            writeln!(got).unwrap();
+            for diagnostic in diagnostics {
+                writeln!(got, "{diagnostic:?}").unwrap();
+            }
         }
         expected.assert_eq(&got);
     }
@@ -416,6 +469,32 @@ mod tests {
             "let x = y; let y = z; w",
             expect![[
                 r#"Located(0..23, Let { binding: LetBinding { pat: Located(4..5, Var("x")), type: None, expr: Located(8..9, Var("y")) }, body: Located(11..23, Let { binding: LetBinding { pat: Located(15..16, Var("y")), type: None, expr: Located(19..20, Var("z")) }, body: Located(22..23, Var("w")) }) })"#
+            ]],
+        );
+    }
+
+    #[test]
+    fn call_expr() {
+        check_expr(
+            "f()",
+            expect![[r#"Located(0..3, FunCall { callee: Located(0..1, Var("f")), args: [] })"#]],
+        );
+        check_expr(
+            "f(a)",
+            expect![[
+                r#"Located(0..4, FunCall { callee: Located(0..1, Var("f")), args: [FunArg { expr: Located(2..3, Var("a")) }] })"#
+            ]],
+        );
+        check_expr(
+            "f(a,)",
+            expect![[
+                r#"Located(0..5, FunCall { callee: Located(0..1, Var("f")), args: [FunArg { expr: Located(2..3, Var("a")) }] })"#
+            ]],
+        );
+        check_expr(
+            "f(a, b)",
+            expect![[
+                r#"Located(0..6, FunCall { callee: Located(0..1, Var("f")), args: [FunArg { expr: Located(2..3, Var("a")) }, FunArg { expr: Located(4..5, Var("b")) }] })"#
             ]],
         );
     }
