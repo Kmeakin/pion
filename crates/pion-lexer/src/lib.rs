@@ -167,7 +167,7 @@ impl<'text> Token<'text> {
 }
 
 mod classify {
-    pub fn whitespace(c: &char) -> bool {
+    pub fn whitespace(c: char) -> bool {
         matches!(
             c,
             '\u{0009}'
@@ -184,7 +184,7 @@ mod classify {
         )
     }
 
-    pub fn line_terminator(c: &char) -> bool {
+    pub fn line_terminator(c: char) -> bool {
         matches!(
             c,
             '\u{000A}'
@@ -198,24 +198,24 @@ mod classify {
     }
 
     #[rustfmt::skip]
-    pub fn punct(c: &char) -> bool {
+    pub fn punct(c: char) -> bool {
       matches!(c,
         | '!' | '#' | '$' | '%' | '&' | '*' | '+' | ',' | '-' | '.' | '/' | ':'
         | ';' | '<' | '=' | '>' | '?' | '@' | '\\' | '^' | '_' | '`' | '|' | '~'
       )
     }
 
-    pub fn ident_start(c: &char) -> bool { c.is_alphabetic() || *c == '_' }
+    pub fn ident_start(c: char) -> bool { c.is_alphabetic() || c == '_' }
 
-    pub fn ident_continue(c: &char) -> bool { ident_start(c) || c.is_ascii_digit() || *c == '-' }
+    pub fn ident_continue(c: char) -> bool { ident_start(c) || c.is_ascii_digit() || c == '-' }
 }
 
-fn skip_while(chars: &mut Chars, mut predicate: impl Copy + FnMut(&char) -> bool) {
+fn skip_while(chars: &mut Chars, mut predicate: impl Copy + FnMut(char) -> bool) {
     loop {
         let mut iter = chars.clone();
         match iter.next() {
             None => break,
-            Some(c) => match predicate(&c) {
+            Some(c) => match predicate(c) {
                 true => *chars = iter,
                 false => break,
             },
@@ -229,7 +229,7 @@ pub fn next_token(source: &str) -> Option<(&str, TokenKind, &str)> {
     let peek = || chars.clone().next();
 
     let kind = match c {
-        c if classify::whitespace(&c) => {
+        c if classify::whitespace(c) => {
             skip_while(&mut chars, classify::whitespace);
             TokenKind::Whitespace
         }
@@ -252,14 +252,14 @@ pub fn next_token(source: &str) -> Option<(&str, TokenKind, &str)> {
             TokenKind::Arrow
         }
         '_' if peek() == Some('-') => TokenKind::Punct(c),
-        '_' if peek().is_some_and(|c| classify::ident_continue(&c)) => {
+        '_' if peek().is_some_and(classify::ident_continue) => {
             skip_while(&mut chars, classify::ident_continue);
             TokenKind::Ident
         }
 
-        c if classify::punct(&c) => TokenKind::Punct(c),
+        c if classify::punct(c) => TokenKind::Punct(c),
 
-        c if classify::ident_start(&c) => {
+        c if classify::ident_start(c) => {
             skip_while(&mut chars, classify::ident_continue);
             let remainder = chars.as_str();
             let len = source.len() - remainder.len();
