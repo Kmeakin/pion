@@ -45,7 +45,7 @@
 //! String ::= DoubleQuote ((not DoubleQuote) | ('\' AnyChar))* DoubleQuote
 //! ```
 
-use std::str::Chars;
+use std::str::{Chars, FromStr};
 
 use text_size::{TextRange, TextSize};
 
@@ -67,8 +67,32 @@ pub enum TokenKind {
 
     // Atoms
     Ident,
+    Reserved(ReservedIdent),
     Punct(char),
     Literal(LiteralKind),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReservedIdent {
+    False,
+    Forall,
+    Fun,
+    Let,
+    True,
+}
+
+impl FromStr for ReservedIdent {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "false" => Ok(Self::False),
+            "forall" => Ok(Self::Forall),
+            "fun" => Ok(Self::Fun),
+            "let" => Ok(Self::Let),
+            "true" => Ok(Self::True),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -189,7 +213,15 @@ pub fn next_token(source: &str) -> Option<(&str, TokenKind, &str)> {
 
         c if classify::ident_start(&c) => {
             skip_while(&mut chars, classify::ident_continue);
-            TokenKind::Ident
+            let remainder = chars.as_str();
+            let len = source.len() - remainder.len();
+            let (text, remainder) = source.split_at(len);
+
+            let kind = match ReservedIdent::from_str(text) {
+                Ok(reserved) => TokenKind::Reserved(reserved),
+                Err(()) => TokenKind::Ident,
+            };
+            return Some((text, kind, remainder));
         }
 
         '(' => TokenKind::LParen,
@@ -230,8 +262,8 @@ pub fn next_token(source: &str) -> Option<(&str, TokenKind, &str)> {
     };
 
     let remainder = chars.as_str();
-    let text = source.strip_suffix(remainder).unwrap();
-
+    let len = source.len() - remainder.len();
+    let (text, remainder) = source.split_at(len);
     Some((text, kind, remainder))
 }
 
@@ -394,6 +426,20 @@ mod tests {
 
         assert_lex!("__" => expect![[r#"Ident 0..2 "__""#]]);
         assert_lex!("λ" => expect![[r#"Ident 0..2 "λ""#]]);
+    }
+
+    #[test]
+    fn reserved_ident() {
+        assert_lex!("false forall fun let true" => expect![[r#"
+            Reserved(False) 0..5 "false"
+            Whitespace 5..6 " "
+            Reserved(Forall) 6..12 "forall"
+            Whitespace 12..13 " "
+            Reserved(Fun) 13..16 "fun"
+            Whitespace 16..17 " "
+            Reserved(Let) 17..20 "let"
+            Whitespace 20..21 " "
+            Reserved(True) 21..25 "true""#]]);
     }
 
     #[test]
