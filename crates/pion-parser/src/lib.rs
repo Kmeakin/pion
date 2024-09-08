@@ -21,7 +21,7 @@
 use core::fmt;
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
-use pion_lexer::{Token, TokenKind};
+use pion_lexer::{ReservedIdent, Token, TokenKind};
 use text_size::TextRange;
 
 #[derive(Copy, Clone)]
@@ -57,7 +57,17 @@ pub enum Expr<'text, 'surface> {
     FunExpr,
     FunType,
     FunArrow,
-    Let,
+    Let {
+        binding: &'surface LetBinding<'text, 'surface>,
+        body: Located<&'surface Self>,
+    },
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct LetBinding<'text, 'surface> {
+    pub pat: Located<Pat<'text, 'surface>>,
+    pub r#type: Option<Located<Expr<'text, 'surface>>>,
+    pub expr: Located<Expr<'text, 'surface>>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -89,7 +99,7 @@ pub struct FunParam<'text, 'surface> {
 
 pub struct Parser<'text, 'surface, Tokens>
 where
-    Tokens: Iterator<Item = Token<'text>>,
+    Tokens: Clone + Iterator<Item = Token<'text>>,
 {
     tokens: Tokens,
     bump: &'surface bumpalo::Bump,
@@ -100,7 +110,7 @@ where
 
 impl<'text, 'surface, Tokens> Parser<'text, 'surface, Tokens>
 where
-    Tokens: Iterator<Item = Token<'text>>,
+    Tokens: Clone + Iterator<Item = Token<'text>>,
 {
     pub fn new(file: usize, tokens: Tokens, bump: &'surface bumpalo::Bump) -> Self {
         Self {
@@ -124,6 +134,26 @@ where
             match self.tokens.next() {
                 None => return None,
                 Some(token) if token.kind.is_trivia() => continue,
+                Some(token) => {
+                    self.range = token.range;
+                    return Some(token);
+                }
+            }
+        }
+    }
+
+    fn peek_token(&mut self) -> Option<Token<'text>> {
+        loop {
+            let mut tokens = self.tokens.clone();
+            match tokens.next() {
+                None => {
+                    self.tokens = tokens;
+                    return None;
+                }
+                Some(token) if token.kind.is_trivia() => {
+                    self.tokens = tokens;
+                    continue;
+                }
                 Some(token) => {
                     self.range = token.range;
                     return Some(token);
@@ -189,7 +219,41 @@ where
         }
     }
 
-    pub fn expr(&mut self) -> Located<Expr<'text, 'surface>> { self.atom_expr() }
+    pub fn expr(&mut self) -> Located<Expr<'text, 'surface>> { self.let_expr() }
+
+    fn let_expr(&mut self) -> Located<Expr<'text, 'surface>> {
+        let Some(Token {
+            kind: TokenKind::Reserved(ReservedIdent::Let),
+            ..
+        }) = self.peek_token()
+        else {
+            return self.atom_expr();
+        };
+
+        let start_range = self.range;
+        self.next_token();
+
+        let pat = self.pat();
+        let r#type = self.type_annotation_opt();
+
+        self.expect_token(TokenKind::Punct('='));
+        let expr = self.expr();
+
+        self.expect_token(TokenKind::Punct(';'));
+        let body = self.expr();
+        let end_range = self.range;
+
+        let binding = LetBinding { pat, r#type, expr };
+        let binding = self.bump.alloc(binding);
+
+        Located::new(
+            TextRange::new(start_range.start(), end_range.end()),
+            Expr::Let {
+                binding: self.bump.alloc(binding),
+                body: body.map(|expr| &*self.bump.alloc(expr)),
+            },
+        )
+    }
 
     fn atom_expr(&mut self) -> Located<Expr<'text, 'surface>> {
         let Some(token) = self.next_token() else {
@@ -225,11 +289,24 @@ where
             }
         }
     }
+
+    fn type_annotation_opt(&mut self) -> Option<Located<Expr<'text, 'surface>>> {
+        if let Some(Token {
+            kind: TokenKind::Punct(':'),
+            ..
+        }) = self.peek_token()
+        {
+            self.next_token();
+            Some(self.expr())
+        } else {
+            None
+        }
+    }
 }
 
 pub fn parse_expr<'text, 'surface>(
     file: usize,
-    tokens: impl Iterator<Item = Token<'text>>,
+    tokens: impl Clone + Iterator<Item = Token<'text>>,
     bump: &'surface bumpalo::Bump,
 ) -> (Located<Expr<'text, 'surface>>, Vec<Diagnostic<usize>>) {
     let mut parser = Parser::new(file, tokens, bump);
@@ -240,7 +317,7 @@ pub fn parse_expr<'text, 'surface>(
 
 pub fn parse_pat<'text, 'surface>(
     file: usize,
-    tokens: impl Iterator<Item = Token<'text>>,
+    tokens: impl Clone + Iterator<Item = Token<'text>>,
     bump: &'surface bumpalo::Bump,
 ) -> (Located<Pat<'text, 'surface>>, Vec<Diagnostic<usize>>) {
     let mut parser = Parser::new(file, tokens, bump);
@@ -260,9 +337,9 @@ mod tests {
     #[track_caller]
     #[allow(clippy::needless_pass_by_value, reason = "It's just a test")]
     fn check_pat(text: &str, expected: Expect) {
-        let mut tokens = pion_lexer::lex(text);
+        let tokens = pion_lexer::lex(text);
         let bump = bumpalo::Bump::new();
-        let (pat, diagnostics) = parse_pat(0, &mut tokens, &bump);
+        let (pat, diagnostics) = parse_pat(0, tokens, &bump);
 
         let mut got = String::new();
         write!(got, "{pat:?}").unwrap();
@@ -280,9 +357,9 @@ mod tests {
     #[track_caller]
     #[allow(clippy::needless_pass_by_value, reason = "It's just a test")]
     fn check_expr(text: &str, expected: Expect) {
-        let mut tokens = pion_lexer::lex(text);
+        let tokens = pion_lexer::lex(text);
         let bump = bumpalo::Bump::new();
-        let (expr, diagnostics) = parse_expr(0, &mut tokens, &bump);
+        let (expr, diagnostics) = parse_expr(0, tokens, &bump);
 
         let mut got = String::new();
         write!(got, "{expr:?}").unwrap();
@@ -318,6 +395,28 @@ mod tests {
         check_expr(
             "((abc))",
             expect![[r#"Located(0..7, Paren(Located(1..6, Paren(Located(2..5, Var("abc"))))))"#]],
+        );
+    }
+
+    #[test]
+    fn let_expr() {
+        check_expr(
+            "let x = y; z",
+            expect![[
+                r#"Located(0..12, Let { binding: LetBinding { pat: Located(4..5, Var("x")), type: None, expr: Located(8..9, Var("y")) }, body: Located(11..12, Var("z")) })"#
+            ]],
+        );
+        check_expr(
+            "let x: T = y; z",
+            expect![[
+                r#"Located(0..15, Let { binding: LetBinding { pat: Located(4..5, Var("x")), type: Some(Located(7..8, Var("T"))), expr: Located(11..12, Var("y")) }, body: Located(14..15, Var("z")) })"#
+            ]],
+        );
+        check_expr(
+            "let x = y; let y = z; w",
+            expect![[
+                r#"Located(0..23, Let { binding: LetBinding { pat: Located(4..5, Var("x")), type: None, expr: Located(8..9, Var("y")) }, body: Located(11..23, Let { binding: LetBinding { pat: Located(15..16, Var("y")), type: None, expr: Located(19..20, Var("z")) }, body: Located(22..23, Var("w")) }) })"#
+            ]],
         );
     }
 }

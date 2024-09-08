@@ -309,7 +309,7 @@ pub fn next_token(source: &str) -> Option<(&str, TokenKind, &str)> {
     Some((text, kind, remainder))
 }
 
-pub fn lex(mut source: &str) -> impl Iterator<Item = Token<'_>> + '_ {
+pub fn lex(mut source: &str) -> impl Clone + Iterator<Item = Token<'_>> + '_ {
     let mut pos = 0;
     std::iter::from_fn(move || {
         let (text, kind, remainder) = next_token(source)?;
