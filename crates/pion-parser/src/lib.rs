@@ -6,9 +6,9 @@
 //!     | Literal
 //!     | ( <Expr> )
 //!     | <Expr> ( <FunArg>,* )
-//!     | fun ( <FunParam>,* ) <Expr>
-//!     | forall ( <FunParam>,* ) <Expr>
 //!     | <Expr> -> <Expr>
+//!     | forall ( <FunParam>,* ) <Expr>
+//!     | fun ( <FunParam>,* ) <Expr>
 //!     | let <Pat> (: <Expr>)? = <Expr> ; <Expr>
 //!
 //! <Pat> ::=
@@ -61,7 +61,10 @@ pub enum Expr<'text, 'surface> {
     },
     FunExpr,
     FunType,
-    FunArrow,
+    FunArrow {
+        domain: Located<&'surface Self>,
+        codomain: Located<&'surface Self>,
+    },
     Let {
         binding: &'surface LetBinding<'text, 'surface>,
         body: Located<&'surface Self>,
@@ -223,19 +226,68 @@ where
         }
     }
 
-    pub fn expr(&mut self) -> Located<Expr<'text, 'surface>> { self.let_expr() }
-
-    fn let_expr(&mut self) -> Located<Expr<'text, 'surface>> {
-        let Some(Token {
-            kind: TokenKind::Reserved(ReservedIdent::Let),
-            ..
-        }) = self.peek_token()
-        else {
-            return self.call_expr();
+    pub fn expr(&mut self) -> Located<Expr<'text, 'surface>> {
+        let Some(token) = self.peek_token() else {
+            self.diagnostic(
+                self.range,
+                Diagnostic::error()
+                    .with_message("Syntax error: unexpected end of file while parsing expression"),
+            );
+            return Located::new(self.range, Expr::Error);
         };
 
+        match token.kind {
+            TokenKind::Reserved(ReservedIdent::Let) => self.let_expr(),
+            _ => {
+                let mut expr = self.atom_expr();
+
+                while let Some(token) = self.peek_token() {
+                    match token.kind {
+                        TokenKind::LParen => {
+                            let start_range = expr.range;
+                            self.next_token();
+                            let args = self.fun_args();
+                            self.expect_token(TokenKind::RParen);
+                            let end_range = self.range;
+                            expr = Located::new(
+                                TextRange::new(start_range.start(), end_range.end()),
+                                Expr::FunCall {
+                                    callee: expr.map(|expr| &*self.bump.alloc(expr)),
+                                    args,
+                                },
+                            );
+                        }
+                        _ => break,
+                    }
+                }
+
+                while let Some(token) = self.peek_token() {
+                    match token.kind {
+                        TokenKind::Arrow => {
+                            let start_range = expr.range;
+                            self.next_token();
+                            let codomain = self.expr();
+                            let end_range = self.range;
+                            expr = Located::new(
+                                TextRange::new(start_range.start(), end_range.end()),
+                                Expr::FunArrow {
+                                    domain: expr.map(|expr| &*self.bump.alloc(expr)),
+                                    codomain: codomain.map(|expr| &*self.bump.alloc(expr)),
+                                },
+                            );
+                        }
+                        _ => break,
+                    }
+                }
+
+                expr
+            }
+        }
+    }
+
+    fn let_expr(&mut self) -> Located<Expr<'text, 'surface>> {
         let start_range = self.range;
-        self.next_token();
+        self.expect_token(TokenKind::Reserved(ReservedIdent::Let));
 
         let pat = self.pat();
         let r#type = self.type_annotation_opt();
@@ -257,51 +309,6 @@ where
                 body: body.map(|expr| &*self.bump.alloc(expr)),
             },
         )
-    }
-
-    fn call_expr(&mut self) -> Located<Expr<'text, 'surface>> {
-        let mut expr = self.atom_expr();
-        while let Some(token) = self.peek_token() {
-            match token.kind {
-                TokenKind::LParen => {
-                    let start_range = expr.range;
-                    self.next_token();
-                    let args = self.fun_args();
-                    self.expect_token(TokenKind::RParen);
-                    let end_range = self.range;
-                    expr = Located::new(
-                        TextRange::new(start_range.start(), end_range.end()),
-                        Expr::FunCall {
-                            callee: expr.map(|expr| &*self.bump.alloc(expr)),
-                            args,
-                        },
-                    );
-                }
-                _ => break,
-            }
-        }
-        expr
-    }
-
-    fn fun_args(&mut self) -> &'surface [FunArg<'text, 'surface>] {
-        let mut args = Vec::new_in(self.bump);
-        while let Some(token) = self.peek_token() {
-            if token.kind == TokenKind::RParen {
-                break;
-            }
-
-            let expr = self.expr();
-            args.push(FunArg { expr });
-
-            if let Some(token) = self.peek_token() {
-                if token.kind == TokenKind::Punct(',') {
-                    self.next_token();
-                    continue;
-                }
-            }
-        }
-
-        args.leak()
     }
 
     fn atom_expr(&mut self) -> Located<Expr<'text, 'surface>> {
@@ -337,6 +344,27 @@ where
                 Located::new(token.range, Expr::Error)
             }
         }
+    }
+
+    fn fun_args(&mut self) -> &'surface [FunArg<'text, 'surface>] {
+        let mut args = Vec::new_in(self.bump);
+        while let Some(token) = self.peek_token() {
+            if token.kind == TokenKind::RParen {
+                break;
+            }
+
+            let expr = self.expr();
+            args.push(FunArg { expr });
+
+            if let Some(token) = self.peek_token() {
+                if token.kind == TokenKind::Punct(',') {
+                    self.next_token();
+                    continue;
+                }
+            }
+        }
+
+        args.leak()
     }
 
     fn type_annotation_opt(&mut self) -> Option<Located<Expr<'text, 'surface>>> {
@@ -494,7 +522,23 @@ mod tests {
         check_expr(
             "f(a, b)",
             expect![[
-                r#"Located(0..6, FunCall { callee: Located(0..1, Var("f")), args: [FunArg { expr: Located(2..3, Var("a")) }, FunArg { expr: Located(4..5, Var("b")) }] })"#
+                r#"Located(0..7, FunCall { callee: Located(0..1, Var("f")), args: [FunArg { expr: Located(2..3, Var("a")) }, FunArg { expr: Located(5..6, Var("b")) }] })"#
+            ]],
+        );
+    }
+
+    #[test]
+    fn arrow_expr() {
+        check_expr(
+            "a -> b",
+            expect![[
+                r#"Located(0..6, FunArrow { domain: Located(0..1, Var("a")), codomain: Located(5..6, Var("b")) })"#
+            ]],
+        );
+        check_expr(
+            "a -> b -> c",
+            expect![[
+                r#"Located(0..11, FunArrow { domain: Located(0..1, Var("a")), codomain: Located(5..11, FunArrow { domain: Located(5..6, Var("b")), codomain: Located(10..11, Var("c")) }) })"#
             ]],
         );
     }

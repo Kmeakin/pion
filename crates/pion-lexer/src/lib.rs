@@ -67,6 +67,7 @@ pub enum TokenKind {
     RCurly,
 
     // Atoms
+    Arrow,
     Ident,
     Reserved(ReservedIdent),
     Punct(char),
@@ -91,6 +92,7 @@ impl fmt::Display for TokenKind {
             Self::RSquare => write!(f, "`]`"),
             Self::LCurly => write!(f, "`{{`"),
             Self::RCurly => write!(f, "`}}`"),
+            Self::Arrow => write!(f, "`->`"),
             Self::Ident => write!(f, "identifier"),
             Self::Reserved(reserved) => write!(f, "{reserved}"),
             Self::Punct(c) => write!(f, "`{c}`"),
@@ -244,6 +246,10 @@ pub fn next_token(source: &str) -> Option<(&str, TokenKind, &str)> {
         '-' | '+' if peek().is_some_and(|c| char::is_ascii_digit(&c)) => {
             skip_while(&mut chars, classify::ident_continue);
             TokenKind::Literal(LiteralKind::Number)
+        }
+        '-' if peek() == Some('>') => {
+            chars.next();
+            TokenKind::Arrow
         }
         '_' if peek() == Some('-') => TokenKind::Punct(c),
         '_' if peek().is_some_and(|c| classify::ident_continue(&c)) => {
@@ -439,6 +445,7 @@ mod tests {
         assert_lex!("_-" => expect![[r#"
             Punct('_') 0..1 "_"
             Punct('-') 1..2 "-""#]]);
+        assert_lex!("->" => expect![[r#"Arrow 0..2 "->""#]]);
     }
 
     #[test]
