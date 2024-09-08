@@ -59,8 +59,14 @@ pub enum Expr<'text, 'surface> {
         callee: Located<&'surface Self>,
         args: &'surface [FunArg<'text, 'surface>],
     },
-    FunExpr,
-    FunType,
+    FunExpr {
+        params: &'surface [FunParam<'text, 'surface>],
+        body: Located<&'surface Self>,
+    },
+    FunType {
+        params: &'surface [FunParam<'text, 'surface>],
+        body: Located<&'surface Self>,
+    },
     FunArrow {
         domain: Located<&'surface Self>,
         codomain: Located<&'surface Self>,
@@ -100,8 +106,8 @@ pub struct FunArg<'text, 'surface> {
 
 #[derive(Debug, Copy, Clone)]
 pub struct FunParam<'text, 'surface> {
-    pub expr: Expr<'text, 'surface>,
-    pub r#type: Option<Expr<'text, 'surface>>,
+    pub expr: Located<Expr<'text, 'surface>>,
+    pub r#type: Option<Located<Expr<'text, 'surface>>>,
 }
 
 pub struct Parser<'text, 'surface, Tokens>
@@ -237,6 +243,36 @@ where
         };
 
         match token.kind {
+            TokenKind::Reserved(ReservedIdent::Forall) => {
+                self.next_token();
+                self.expect_token(TokenKind::LParen);
+                let params = self.fun_params();
+                self.expect_token(TokenKind::RParen);
+                let body = self.expr();
+                let end_range = self.range;
+                Located::new(
+                    TextRange::new(token.range.start(), end_range.end()),
+                    Expr::FunType {
+                        params,
+                        body: body.map(|expr| &*self.bump.alloc(expr)),
+                    },
+                )
+            }
+            TokenKind::Reserved(ReservedIdent::Fun) => {
+                self.next_token();
+                self.expect_token(TokenKind::LParen);
+                let params = self.fun_params();
+                self.expect_token(TokenKind::RParen);
+                let body = self.expr();
+                let end_range = self.range;
+                Located::new(
+                    TextRange::new(token.range.start(), end_range.end()),
+                    Expr::FunType {
+                        params,
+                        body: body.map(|expr| &*self.bump.alloc(expr)),
+                    },
+                )
+            }
             TokenKind::Reserved(ReservedIdent::Let) => self.let_expr(),
             _ => {
                 let mut expr = self.atom_expr();
@@ -365,6 +401,28 @@ where
         }
 
         args.leak()
+    }
+
+    fn fun_params(&mut self) -> &'surface [FunParam<'text, 'surface>] {
+        let mut params = Vec::new_in(self.bump);
+        while let Some(token) = self.peek_token() {
+            if token.kind == TokenKind::RParen {
+                break;
+            }
+
+            let expr = self.expr();
+            let r#type = self.type_annotation_opt();
+            params.push(FunParam { expr, r#type });
+
+            if let Some(token) = self.peek_token() {
+                if token.kind == TokenKind::Punct(',') {
+                    self.next_token();
+                    continue;
+                }
+            }
+        }
+
+        params.leak()
     }
 
     fn type_annotation_opt(&mut self) -> Option<Located<Expr<'text, 'surface>>> {
@@ -539,6 +597,58 @@ mod tests {
             "a -> b -> c",
             expect![[
                 r#"Located(0..11, FunArrow { domain: Located(0..1, Var("a")), codomain: Located(5..11, FunArrow { domain: Located(5..6, Var("b")), codomain: Located(10..11, Var("c")) }) })"#
+            ]],
+        );
+    }
+
+    #[test]
+    fn fun_expr() {
+        check_expr(
+            "fun() a",
+            expect![[r#"Located(0..7, FunType { params: [], body: Located(6..7, Var("a")) })"#]],
+        );
+        check_expr(
+            "fun(a) a",
+            expect![[
+                r#"Located(0..8, FunType { params: [FunParam { expr: Located(4..5, Var("a")), type: None }], body: Located(7..8, Var("a")) })"#
+            ]],
+        );
+        check_expr(
+            "fun(a: A) a",
+            expect![[
+                r#"Located(0..11, FunType { params: [FunParam { expr: Located(4..5, Var("a")), type: Some(Located(7..8, Var("A"))) }], body: Located(10..11, Var("a")) })"#
+            ]],
+        );
+        check_expr(
+            "fun(a, b) a",
+            expect![[
+                r#"Located(0..11, FunType { params: [FunParam { expr: Located(4..5, Var("a")), type: None }, FunParam { expr: Located(7..8, Var("b")), type: None }], body: Located(10..11, Var("a")) })"#
+            ]],
+        );
+    }
+
+    #[test]
+    fn forall_expr() {
+        check_expr(
+            "forall() a",
+            expect![[r#"Located(0..10, FunType { params: [], body: Located(9..10, Var("a")) })"#]],
+        );
+        check_expr(
+            "forall(a) a",
+            expect![[
+                r#"Located(0..11, FunType { params: [FunParam { expr: Located(7..8, Var("a")), type: None }], body: Located(10..11, Var("a")) })"#
+            ]],
+        );
+        check_expr(
+            "forall(a: A) a",
+            expect![[
+                r#"Located(0..14, FunType { params: [FunParam { expr: Located(7..8, Var("a")), type: Some(Located(10..11, Var("A"))) }], body: Located(13..14, Var("a")) })"#
+            ]],
+        );
+        check_expr(
+            "forall(a, b) a",
+            expect![[
+                r#"Located(0..14, FunType { params: [FunParam { expr: Located(7..8, Var("a")), type: None }, FunParam { expr: Located(10..11, Var("b")), type: None }], body: Located(13..14, Var("a")) })"#
             ]],
         );
     }
