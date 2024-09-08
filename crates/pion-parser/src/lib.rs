@@ -21,6 +21,7 @@
 //! ```
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
+pub use pion_lexer::lex;
 use pion_lexer::{LiteralKind, ReservedIdent, Token, TokenKind};
 use pion_surface::syntax::*;
 use text_size::TextRange;

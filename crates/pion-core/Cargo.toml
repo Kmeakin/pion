@@ -8,5 +8,6 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-bumpalo = { workspace = true }
-ecow = "0.2.2"
+bumpalo       = { workspace = true }
+ecow          = { workspace = true }
+pion-interner = { workspace = true }

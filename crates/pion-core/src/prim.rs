@@ -1,6 +1,10 @@
+use core::fmt;
+
+use crate::semantics::Type;
+
 macro_rules! define_prims {
     ($name:ident { $($variant:ident = $value:literal $(,)?),* }) => {
-        #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+        #[derive(Copy, Clone, PartialEq, Eq)]
         pub enum $name {
             $($variant),*
         }
@@ -33,3 +37,15 @@ define_prims!(PrimVar {
     Char = "Char",
     String = "String",
 });
+
+impl fmt::Debug for PrimVar {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
+}
+
+impl PrimVar {
+    pub const fn r#type(&self) -> Type<'static> {
+        match self {
+            Self::Type | Self::Bool | Self::Int | Self::Char | Self::String => Type::TYPE,
+        }
+    }
+}

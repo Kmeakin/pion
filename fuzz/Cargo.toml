@@ -11,6 +11,8 @@ cargo-fuzz = true
 [dependencies]
 bumpalo       = { workspace = true }
 libfuzzer-sys = { workspace = true }
+pion-elab     = { workspace = true }
+pion-interner = { workspace = true }
 pion-lexer    = { workspace = true }
 pion-parser   = { workspace = true }
 
@@ -25,6 +27,14 @@ test  = false
 [[bin]]
 name = "parser"
 path = "src/parser.rs"
+
+bench = false
+doc   = false
+test  = false
+
+[[bin]]
+name = "elab"
+path = "src/elab.rs"
 
 bench = false
 doc   = false

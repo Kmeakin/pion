@@ -1,0 +1,20 @@
+[package]
+name = "pion-elab"
+
+edition.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+bumpalo            = { workspace = true }
+codespan-reporting = { workspace = true }
+pion-core          = { workspace = true }
+pion-interner      = { workspace = true }
+pion-surface       = { workspace = true }
+text-size          = { workspace = true }
+
+[dev-dependencies]
+expect-test = { workspace = true }
+pion-parser = { workspace = true }
