@@ -42,11 +42,14 @@ clippy.too_many_lines          = { level = "allow", priority = 100 }
 clippy.wildcard_imports        = { level = "allow", priority = 100 }
 
 [workspace.dependencies]
-pion-lexer = { path = "crates/pion-lexer" }
+pion-lexer  = { path = "crates/pion-lexer" }
+pion-parser = { path = "crates/pion-parser" }
 
-expect-test   = { version = "1.5.0" }
-libfuzzer-sys = { version = "0.4" }
-text-size     = { version = "1.1.1" }
+bumpalo            = { version = "3.16.0", features = ["allocator_api"] }
+codespan-reporting = { version = "0.11.1" }
+expect-test        = { version = "1.5.0" }
+libfuzzer-sys      = { version = "0.4" }
+text-size          = { version = "1.1.1" }
 
 [dependencies]
 clap = { version = "4.5.17", features = ["derive"] }

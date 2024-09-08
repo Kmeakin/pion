@@ -45,6 +45,7 @@
 //! String ::= DoubleQuote ((not DoubleQuote) | ('\' AnyChar))* DoubleQuote
 //! ```
 
+use core::fmt;
 use std::str::{Chars, FromStr};
 
 use text_size::{TextRange, TextSize};
@@ -72,6 +73,32 @@ pub enum TokenKind {
     Literal(LiteralKind),
 }
 
+impl TokenKind {
+    pub fn is_trivia(&self) -> bool {
+        matches!(self, Self::Unknown | Self::Whitespace | Self::LineComment)
+    }
+}
+
+impl fmt::Display for TokenKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unknown => write!(f, "unknown character"),
+            Self::Whitespace => write!(f, "whitespace"),
+            Self::LineComment => write!(f, "line comment"),
+            Self::LParen => write!(f, "`(`"),
+            Self::RParen => write!(f, "`)`"),
+            Self::LSquare => write!(f, "`[`"),
+            Self::RSquare => write!(f, "`]`"),
+            Self::LCurly => write!(f, "`{{`"),
+            Self::RCurly => write!(f, "`}}`"),
+            Self::Ident => write!(f, "identifier"),
+            Self::Reserved(reserved) => write!(f, "{reserved}"),
+            Self::Punct(c) => write!(f, "`{c}`"),
+            Self::Literal(kind) => write!(f, "{kind}"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReservedIdent {
     False,
@@ -95,6 +122,18 @@ impl FromStr for ReservedIdent {
     }
 }
 
+impl fmt::Display for ReservedIdent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::False => write!(f, "`false`"),
+            Self::Forall => write!(f, "`forall`"),
+            Self::Fun => write!(f, "`fun`"),
+            Self::Let => write!(f, "`let`"),
+            Self::True => write!(f, "`true`"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LiteralKind {
     Number,
@@ -102,11 +141,14 @@ pub enum LiteralKind {
     String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum IntBase {
-    Dec,
-    Bin,
-    Hex,
+impl fmt::Display for LiteralKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Number => write!(f, "number"),
+            Self::Char => write!(f, "character"),
+            Self::String => write!(f, "string"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
