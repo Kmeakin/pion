@@ -1,0 +1,12 @@
+[package]
+name = "pion-core"
+
+edition.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+bumpalo = { workspace = true }
+ecow = "0.2.2"
