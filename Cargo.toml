@@ -36,6 +36,7 @@ pion-lexer  = { path = "crates/pion-lexer" }
 pion-parser = { path = "crates/pion-parser" }
 
 bumpalo            = { version = "3.16.0", features = ["allocator_api"] }
+camino             = { version = "1.1.9" }
 clap               = { version = "4.5.17", features = ["derive"] }
 codespan-reporting = { version = "0.11.1" }
 expect-test        = { version = "1.5.0" }

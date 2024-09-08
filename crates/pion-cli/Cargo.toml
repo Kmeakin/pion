@@ -10,6 +10,9 @@ default-run = "pion-cli"
 workspace = true
 
 [dependencies]
-clap        = { workspace = true }
-pion-lexer  = { workspace = true }
-pion-parser = { workspace = true }
+bumpalo            = { workspace = true }
+camino             = { workspace = true }
+clap               = { workspace = true }
+codespan-reporting = { workspace = true }
+pion-lexer         = { workspace = true }
+pion-parser        = { workspace = true }
