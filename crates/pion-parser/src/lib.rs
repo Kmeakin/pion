@@ -23,7 +23,7 @@
 use core::fmt;
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
-use pion_lexer::{ReservedIdent, Token, TokenKind};
+use pion_lexer::{LiteralKind, ReservedIdent, Token, TokenKind};
 use text_size::TextRange;
 
 #[derive(Copy, Clone)]
@@ -53,7 +53,10 @@ impl<T> Located<T> {
 pub enum Expr<'text, 'surface> {
     Error,
     Var(&'text str),
-    Literal,
+    Bool(bool),
+    Number(&'text str),
+    Char(&'text str),
+    String(&'text str),
     Paren(Located<&'surface Self>),
     FunCall {
         callee: Located<&'surface Self>,
@@ -369,6 +372,19 @@ where
                     Expr::Paren(expr),
                 )
             }
+            TokenKind::Reserved(ReservedIdent::False) => {
+                Located::new(token.range, Expr::Bool(false))
+            }
+            TokenKind::Reserved(ReservedIdent::True) => Located::new(token.range, Expr::Bool(true)),
+            TokenKind::Literal(LiteralKind::Number) => {
+                Located::new(token.range, Expr::Number(token.text))
+            }
+            TokenKind::Literal(LiteralKind::Char) => {
+                Located::new(token.range, Expr::Char(token.text))
+            }
+            TokenKind::Literal(LiteralKind::String) => {
+                Located::new(token.range, Expr::String(token.text))
+            }
             TokenKind::Ident => Located::new(token.range, Expr::Var(token.text)),
             got => {
                 self.diagnostic(
@@ -652,4 +668,23 @@ mod tests {
             ]],
         );
     }
+
+    #[test]
+    fn bool_expr() {
+        check_expr("true", expect!["Located(0..4, Bool(true))"]);
+        check_expr("false", expect!["Located(0..5, Bool(false))"]);
+    }
+
+    #[test]
+    fn int_expr() {
+        check_expr("1234", expect![[r#"Located(0..4, Number("1234"))"#]]);
+        check_expr("0x1234", expect![[r#"Located(0..6, Number("0x1234"))"#]]);
+        check_expr("0x1010", expect![[r#"Located(0..6, Number("0x1010"))"#]]);
+    }
+
+    #[test]
+    fn char_expr() { check_expr("'a'", expect![[r#"Located(0..3, Char("'a'"))"#]]); }
+
+    #[test]
+    fn string_expr() { check_expr(r#""a""#, expect![[r#"Located(0..3, String("\"a\""))"#]]); }
 }
