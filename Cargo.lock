@@ -201,8 +201,10 @@ dependencies = [
 name = "pion-fuzz"
 version = "0.1.0"
 dependencies = [
+ "bumpalo",
  "libfuzzer-sys",
  "pion-lexer",
+ "pion-parser",
 ]
 
 [[package]]

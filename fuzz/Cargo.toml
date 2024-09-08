@@ -9,12 +9,22 @@ version = { workspace = true }
 cargo-fuzz = true
 
 [dependencies]
+bumpalo       = { workspace = true }
 libfuzzer-sys = { workspace = true }
 pion-lexer    = { workspace = true }
+pion-parser   = { workspace = true }
 
 [[bin]]
 name = "lexer"
 path = "src/lexer.rs"
+
+bench = false
+doc   = false
+test  = false
+
+[[bin]]
+name = "parser"
+path = "src/parser.rs"
 
 bench = false
 doc   = false
