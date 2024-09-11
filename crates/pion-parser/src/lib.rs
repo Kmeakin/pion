@@ -599,6 +599,12 @@ mod tests {
                 r#"Located(0..7, FunCall { callee: Located(0..1, Var("f")), args: [FunArg { expr: Located(2..3, Var("a")) }, FunArg { expr: Located(5..6, Var("b")) }] })"#
             ]],
         );
+        check_expr(
+            "f(a)(b)",
+            expect![[
+                r#"Located(0..7, FunCall { callee: Located(0..4, FunCall { callee: Located(0..1, Var("f")), args: [FunArg { expr: Located(2..3, Var("a")) }] }), args: [FunArg { expr: Located(5..6, Var("b")) }] })"#
+            ]],
+        );
     }
 
     #[test]
@@ -625,15 +631,21 @@ mod tests {
         );
         check_expr(
             "fun(a) a",
-            expect![[r#"Located(0..8, FunType { params: [FunParam { pat: Located(4..5, Var("a")), type: None }], body: Located(7..8, Var("a")) })"#]],
+            expect![[
+                r#"Located(0..8, FunType { params: [FunParam { pat: Located(4..5, Var("a")), type: None }], body: Located(7..8, Var("a")) })"#
+            ]],
         );
         check_expr(
             "fun(a: A) a",
-            expect![[r#"Located(0..11, FunType { params: [FunParam { pat: Located(4..5, Var("a")), type: Some(Located(7..8, Var("A"))) }], body: Located(10..11, Var("a")) })"#]],
+            expect![[
+                r#"Located(0..11, FunType { params: [FunParam { pat: Located(4..5, Var("a")), type: Some(Located(7..8, Var("A"))) }], body: Located(10..11, Var("a")) })"#
+            ]],
         );
         check_expr(
             "fun(a, b) a",
-            expect![[r#"Located(0..11, FunType { params: [FunParam { pat: Located(4..5, Var("a")), type: None }, FunParam { pat: Located(7..8, Var("b")), type: None }], body: Located(10..11, Var("a")) })"#]],
+            expect![[
+                r#"Located(0..11, FunType { params: [FunParam { pat: Located(4..5, Var("a")), type: None }, FunParam { pat: Located(7..8, Var("b")), type: None }], body: Located(10..11, Var("a")) })"#
+            ]],
         );
     }
 
@@ -645,15 +657,21 @@ mod tests {
         );
         check_expr(
             "forall(a) a",
-            expect![[r#"Located(0..11, FunType { params: [FunParam { pat: Located(7..8, Var("a")), type: None }], body: Located(10..11, Var("a")) })"#]],
+            expect![[
+                r#"Located(0..11, FunType { params: [FunParam { pat: Located(7..8, Var("a")), type: None }], body: Located(10..11, Var("a")) })"#
+            ]],
         );
         check_expr(
             "forall(a: A) a",
-            expect![[r#"Located(0..14, FunType { params: [FunParam { pat: Located(7..8, Var("a")), type: Some(Located(10..11, Var("A"))) }], body: Located(13..14, Var("a")) })"#]],
+            expect![[
+                r#"Located(0..14, FunType { params: [FunParam { pat: Located(7..8, Var("a")), type: Some(Located(10..11, Var("A"))) }], body: Located(13..14, Var("a")) })"#
+            ]],
         );
         check_expr(
             "forall(a, b) a",
-            expect![[r#"Located(0..14, FunType { params: [FunParam { pat: Located(7..8, Var("a")), type: None }, FunParam { pat: Located(10..11, Var("b")), type: None }], body: Located(13..14, Var("a")) })"#]],
+            expect![[
+                r#"Located(0..14, FunType { params: [FunParam { pat: Located(7..8, Var("a")), type: None }, FunParam { pat: Located(10..11, Var("b")), type: None }], body: Located(13..14, Var("a")) })"#
+            ]],
         );
     }
 
