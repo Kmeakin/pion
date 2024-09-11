@@ -276,7 +276,31 @@ where
                     },
                 )
             }
-            TokenKind::Reserved(ReservedIdent::Let) => self.let_expr(),
+            TokenKind::Reserved(ReservedIdent::Let) => {
+                let start_range = self.range;
+                self.expect_token(TokenKind::Reserved(ReservedIdent::Let));
+
+                let pat = self.pat();
+                let r#type = self.type_annotation_opt();
+
+                self.expect_token(TokenKind::Punct('='));
+                let expr = self.expr();
+
+                self.expect_token(TokenKind::Punct(';'));
+                let body = self.expr();
+                let end_range = self.range;
+
+                let binding = LetBinding { pat, r#type, expr };
+                let binding = self.bump.alloc(binding);
+
+                Located::new(
+                    TextRange::new(start_range.start(), end_range.end()),
+                    Expr::Let {
+                        binding: self.bump.alloc(binding),
+                        body: body.map(|expr| &*self.bump.alloc(expr)),
+                    },
+                )
+            }
             _ => {
                 let mut expr = self.atom_expr();
 
@@ -322,32 +346,6 @@ where
                 expr
             }
         }
-    }
-
-    fn let_expr(&mut self) -> Located<Expr<'text, 'surface>> {
-        let start_range = self.range;
-        self.expect_token(TokenKind::Reserved(ReservedIdent::Let));
-
-        let pat = self.pat();
-        let r#type = self.type_annotation_opt();
-
-        self.expect_token(TokenKind::Punct('='));
-        let expr = self.expr();
-
-        self.expect_token(TokenKind::Punct(';'));
-        let body = self.expr();
-        let end_range = self.range;
-
-        let binding = LetBinding { pat, r#type, expr };
-        let binding = self.bump.alloc(binding);
-
-        Located::new(
-            TextRange::new(start_range.start(), end_range.end()),
-            Expr::Let {
-                binding: self.bump.alloc(binding),
-                body: body.map(|expr| &*self.bump.alloc(expr)),
-            },
-        )
     }
 
     fn atom_expr(&mut self) -> Located<Expr<'text, 'surface>> {
