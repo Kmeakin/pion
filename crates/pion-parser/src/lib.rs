@@ -192,23 +192,30 @@ where
                 let start_range = self.range;
                 self.expect_token(TokenKind::Reserved(ReservedIdent::Let));
 
-                let pat = self.pat();
-                let r#type = self.type_annotation_opt();
+                let binding = {
+                    let start_range = self.range;
+                    let pat = self.pat();
+                    let r#type = self.type_annotation_opt();
 
-                self.expect_token(TokenKind::Punct('='));
-                let expr = self.expr();
+                    self.expect_token(TokenKind::Punct('='));
+                    let expr = self.expr();
+                    let end_range = self.range;
+                    Located::new(
+                        TextRange::new(start_range.start(), end_range.end()),
+                        LetBinding { pat, r#type, expr },
+                    )
+                };
 
                 self.expect_token(TokenKind::Punct(';'));
                 let body = self.expr();
                 let end_range = self.range;
 
-                let binding = LetBinding { pat, r#type, expr };
                 let binding = self.bump.alloc(binding);
 
                 Located::new(
                     TextRange::new(start_range.start(), end_range.end()),
                     Expr::Let {
-                        binding: self.bump.alloc(binding),
+                        binding: binding.map(|binding| &*self.bump.alloc(binding)),
                         body: body.map(|expr| &*self.bump.alloc(expr)),
                     },
                 )
@@ -308,15 +315,20 @@ where
         }
     }
 
-    fn fun_args(&mut self) -> &'surface [FunArg<'text, 'surface>] {
+    fn fun_args(&mut self) -> &'surface [Located<FunArg<'text, 'surface>>] {
         let mut args = Vec::new_in(self.bump);
         while let Some(token) = self.peek_token() {
             if token.kind == TokenKind::RParen {
                 break;
             }
 
+            let start_range = self.range;
             let expr = self.expr();
-            args.push(FunArg { expr });
+            let end_range = self.range;
+            args.push(Located::new(
+                TextRange::new(start_range.start(), end_range.end()),
+                FunArg { expr },
+            ));
 
             if let Some(token) = self.peek_token() {
                 if token.kind == TokenKind::Punct(',') {
@@ -329,16 +341,21 @@ where
         args.leak()
     }
 
-    fn fun_params(&mut self) -> &'surface [FunParam<'text, 'surface>] {
+    fn fun_params(&mut self) -> &'surface [Located<FunParam<'text, 'surface>>] {
         let mut params = Vec::new_in(self.bump);
         while let Some(token) = self.peek_token() {
             if token.kind == TokenKind::RParen {
                 break;
             }
 
+            let start_range = self.range;
             let pat = self.pat();
             let r#type = self.type_annotation_opt();
-            params.push(FunParam { pat, r#type });
+            let end_range = self.range;
+            params.push(Located::new(
+                TextRange::new(start_range.start(), end_range.end()),
+                FunParam { pat, r#type },
+            ));
 
             if let Some(token) = self.peek_token() {
                 if token.kind == TokenKind::Punct(',') {
@@ -424,9 +441,10 @@ mod tests {
 
         let mut got = String::new();
         write!(got, "{expr:?}").unwrap();
+        let mut got = String::from(got.trim_end());
 
         if !diagnostics.is_empty() {
-            writeln!(got).unwrap();
+            got.push('\n');
             for diagnostic in diagnostics {
                 writeln!(got, "{diagnostic:?}").unwrap();
             }
@@ -435,31 +453,46 @@ mod tests {
     }
 
     #[test]
-    fn wildcard_pat() { check_pat("_", expect![[r"Located(0..1, Underscore)"]]); }
+    fn wildcard_pat() {
+        check_pat(
+            "_",
+            expect![[r"
+        0..1 @ Pat::Underscore
+    "]],
+        );
+    }
 
     #[test]
-    fn var_pat() { check_expr("abc", expect![[r#"Located(0..3, Var("abc"))"#]]); }
+    fn var_pat() { check_expr("abc", expect![[r#"0..3 @ Expr::Var("abc")"#]]); }
 
     #[test]
     fn paren_pat() {
         check_pat(
             "(_)",
-            expect![[r"Located(0..3, Paren(Located(1..2, Underscore)))"]],
+            expect![[r"
+                0..3 @ Pat::Paren
+                 1..2 @ Pat::Underscore
+            "]],
         );
     }
 
     #[test]
-    fn var_expr() { check_expr("abc", expect![[r#"Located(0..3, Var("abc"))"#]]); }
+    fn var_expr() { check_expr("abc", expect![[r#"0..3 @ Expr::Var("abc")"#]]); }
 
     #[test]
     fn paren_expr() {
         check_expr(
             "(abc)",
-            expect![[r#"Located(0..5, Paren(Located(1..4, Var("abc"))))"#]],
+            expect![[r#"
+                0..5 @ Expr::Paren
+                 1..4 @ Expr::Var("abc")"#]],
         );
         check_expr(
             "((abc))",
-            expect![[r#"Located(0..7, Paren(Located(1..6, Paren(Located(2..5, Var("abc"))))))"#]],
+            expect![[r#"
+                0..7 @ Expr::Paren
+                 1..6 @ Expr::Paren
+                  2..5 @ Expr::Var("abc")"#]],
         );
     }
 
@@ -467,21 +500,35 @@ mod tests {
     fn let_expr() {
         check_expr(
             "let x = y; z",
-            expect![[
-                r#"Located(0..12, Let { binding: LetBinding { pat: Located(4..5, Var("x")), type: None, expr: Located(8..9, Var("y")) }, body: Located(11..12, Var("z")) })"#
-            ]],
+            expect![[r#"
+                0..12 @ Expr::Let
+                 0..10 @ LetBinding
+                  4..5 @ Pat::Var("x")
+                  8..9 @ Expr::Var("y")
+                 11..12 @ Expr::Var("z")"#]],
         );
         check_expr(
             "let x: T = y; z",
-            expect![[
-                r#"Located(0..15, Let { binding: LetBinding { pat: Located(4..5, Var("x")), type: Some(Located(7..8, Var("T"))), expr: Located(11..12, Var("y")) }, body: Located(14..15, Var("z")) })"#
-            ]],
+            expect![[r#"
+                0..15 @ Expr::Let
+                 0..13 @ LetBinding
+                  4..5 @ Pat::Var("x")
+                  7..8 @ Expr::Var("T")
+                  11..12 @ Expr::Var("y")
+                 14..15 @ Expr::Var("z")"#]],
         );
         check_expr(
             "let x = y; let y = z; w",
-            expect![[
-                r#"Located(0..23, Let { binding: LetBinding { pat: Located(4..5, Var("x")), type: None, expr: Located(8..9, Var("y")) }, body: Located(11..23, Let { binding: LetBinding { pat: Located(15..16, Var("y")), type: None, expr: Located(19..20, Var("z")) }, body: Located(22..23, Var("w")) }) })"#
-            ]],
+            expect![[r#"
+                0..23 @ Expr::Let
+                 0..10 @ LetBinding
+                  4..5 @ Pat::Var("x")
+                  8..9 @ Expr::Var("y")
+                 11..23 @ Expr::Let
+                  11..21 @ LetBinding
+                   15..16 @ Pat::Var("y")
+                   19..20 @ Expr::Var("z")
+                  22..23 @ Expr::Var("w")"#]],
         );
     }
 
@@ -489,31 +536,46 @@ mod tests {
     fn call_expr() {
         check_expr(
             "f()",
-            expect![[r#"Located(0..3, FunCall { callee: Located(0..1, Var("f")), args: [] })"#]],
+            expect![[r#"
+                0..3 @ Expr::FunCall
+                 0..1 @ Expr::Var("f")"#]],
         );
         check_expr(
             "f(a)",
-            expect![[
-                r#"Located(0..4, FunCall { callee: Located(0..1, Var("f")), args: [FunArg { expr: Located(2..3, Var("a")) }] })"#
-            ]],
+            expect![[r#"
+                0..4 @ Expr::FunCall
+                 0..1 @ Expr::Var("f")
+                 2..4 @ FunArg
+                  2..3 @ Expr::Var("a")"#]],
         );
         check_expr(
             "f(a,)",
-            expect![[
-                r#"Located(0..5, FunCall { callee: Located(0..1, Var("f")), args: [FunArg { expr: Located(2..3, Var("a")) }] })"#
-            ]],
+            expect![[r#"
+                0..5 @ Expr::FunCall
+                 0..1 @ Expr::Var("f")
+                 2..4 @ FunArg
+                  2..3 @ Expr::Var("a")"#]],
         );
         check_expr(
             "f(a, b)",
-            expect![[
-                r#"Located(0..7, FunCall { callee: Located(0..1, Var("f")), args: [FunArg { expr: Located(2..3, Var("a")) }, FunArg { expr: Located(5..6, Var("b")) }] })"#
-            ]],
+            expect![[r#"
+                0..7 @ Expr::FunCall
+                 0..1 @ Expr::Var("f")
+                 2..4 @ FunArg
+                  2..3 @ Expr::Var("a")
+                 5..7 @ FunArg
+                  5..6 @ Expr::Var("b")"#]],
         );
         check_expr(
             "f(a)(b)",
-            expect![[
-                r#"Located(0..7, FunCall { callee: Located(0..4, FunCall { callee: Located(0..1, Var("f")), args: [FunArg { expr: Located(2..3, Var("a")) }] }), args: [FunArg { expr: Located(5..6, Var("b")) }] })"#
-            ]],
+            expect![[r#"
+                0..7 @ Expr::FunCall
+                 0..4 @ Expr::FunCall
+                  0..1 @ Expr::Var("f")
+                  2..4 @ FunArg
+                   2..3 @ Expr::Var("a")
+                 5..7 @ FunArg
+                  5..6 @ Expr::Var("b")"#]],
         );
     }
 
@@ -521,15 +583,19 @@ mod tests {
     fn arrow_expr() {
         check_expr(
             "a -> b",
-            expect![[
-                r#"Located(0..6, FunArrow { domain: Located(0..1, Var("a")), codomain: Located(5..6, Var("b")) })"#
-            ]],
+            expect![[r#"
+                0..6 @ Expr::FunArrow
+                 0..1 @ Expr::Var("a")
+                 5..6 @ Expr::Var("b")"#]],
         );
         check_expr(
             "a -> b -> c",
-            expect![[
-                r#"Located(0..11, FunArrow { domain: Located(0..1, Var("a")), codomain: Located(5..11, FunArrow { domain: Located(5..6, Var("b")), codomain: Located(10..11, Var("c")) }) })"#
-            ]],
+            expect![[r#"
+                0..11 @ Expr::FunArrow
+                 0..1 @ Expr::Var("a")
+                 5..11 @ Expr::FunArrow
+                  5..6 @ Expr::Var("b")
+                  10..11 @ Expr::Var("c")"#]],
         );
     }
 
@@ -537,25 +603,36 @@ mod tests {
     fn fun_expr() {
         check_expr(
             "fun() a",
-            expect![[r#"Located(0..7, FunType { params: [], body: Located(6..7, Var("a")) })"#]],
+            expect![[r#"
+                0..7 @ Expr::FunType
+                 6..7 @ Expr::Var("a")"#]],
         );
         check_expr(
             "fun(a) a",
-            expect![[
-                r#"Located(0..8, FunType { params: [FunParam { pat: Located(4..5, Var("a")), type: None }], body: Located(7..8, Var("a")) })"#
-            ]],
+            expect![[r#"
+                0..8 @ Expr::FunType
+                 4..6 @ FunParam
+                  4..5 @ Pat::Var("a")
+                 7..8 @ Expr::Var("a")"#]],
         );
         check_expr(
             "fun(a: A) a",
-            expect![[
-                r#"Located(0..11, FunType { params: [FunParam { pat: Located(4..5, Var("a")), type: Some(Located(7..8, Var("A"))) }], body: Located(10..11, Var("a")) })"#
-            ]],
+            expect![[r#"
+                0..11 @ Expr::FunType
+                 4..9 @ FunParam
+                  4..5 @ Pat::Var("a")
+                  7..8 @ Expr::Var("A")
+                 10..11 @ Expr::Var("a")"#]],
         );
         check_expr(
             "fun(a, b) a",
-            expect![[
-                r#"Located(0..11, FunType { params: [FunParam { pat: Located(4..5, Var("a")), type: None }, FunParam { pat: Located(7..8, Var("b")), type: None }], body: Located(10..11, Var("a")) })"#
-            ]],
+            expect![[r#"
+                0..11 @ Expr::FunType
+                 4..6 @ FunParam
+                  4..5 @ Pat::Var("a")
+                 7..9 @ FunParam
+                  7..8 @ Pat::Var("b")
+                 10..11 @ Expr::Var("a")"#]],
         );
     }
 
@@ -563,44 +640,55 @@ mod tests {
     fn forall_expr() {
         check_expr(
             "forall() a",
-            expect![[r#"Located(0..10, FunType { params: [], body: Located(9..10, Var("a")) })"#]],
+            expect![[r#"
+                0..10 @ Expr::FunType
+                 9..10 @ Expr::Var("a")"#]],
         );
         check_expr(
             "forall(a) a",
-            expect![[
-                r#"Located(0..11, FunType { params: [FunParam { pat: Located(7..8, Var("a")), type: None }], body: Located(10..11, Var("a")) })"#
-            ]],
+            expect![[r#"
+                0..11 @ Expr::FunType
+                 7..9 @ FunParam
+                  7..8 @ Pat::Var("a")
+                 10..11 @ Expr::Var("a")"#]],
         );
         check_expr(
             "forall(a: A) a",
-            expect![[
-                r#"Located(0..14, FunType { params: [FunParam { pat: Located(7..8, Var("a")), type: Some(Located(10..11, Var("A"))) }], body: Located(13..14, Var("a")) })"#
-            ]],
+            expect![[r#"
+                0..14 @ Expr::FunType
+                 7..12 @ FunParam
+                  7..8 @ Pat::Var("a")
+                  10..11 @ Expr::Var("A")
+                 13..14 @ Expr::Var("a")"#]],
         );
         check_expr(
             "forall(a, b) a",
-            expect![[
-                r#"Located(0..14, FunType { params: [FunParam { pat: Located(7..8, Var("a")), type: None }, FunParam { pat: Located(10..11, Var("b")), type: None }], body: Located(13..14, Var("a")) })"#
-            ]],
+            expect![[r#"
+                0..14 @ Expr::FunType
+                 7..9 @ FunParam
+                  7..8 @ Pat::Var("a")
+                 10..12 @ FunParam
+                  10..11 @ Pat::Var("b")
+                 13..14 @ Expr::Var("a")"#]],
         );
     }
 
     #[test]
     fn bool_expr() {
-        check_expr("true", expect!["Located(0..4, Bool(true))"]);
-        check_expr("false", expect!["Located(0..5, Bool(false))"]);
+        check_expr("true", expect!["0..4 @ Expr::Bool(true)"]);
+        check_expr("false", expect!["0..5 @ Expr::Bool(false)"]);
     }
 
     #[test]
     fn int_expr() {
-        check_expr("1234", expect![[r#"Located(0..4, Number("1234"))"#]]);
-        check_expr("0x1234", expect![[r#"Located(0..6, Number("0x1234"))"#]]);
-        check_expr("0x1010", expect![[r#"Located(0..6, Number("0x1010"))"#]]);
+        check_expr("1234", expect![[r#"0..4 @ Expr::Number("1234")"#]]);
+        check_expr("0x1234", expect![[r#"0..6 @ Expr::Number("0x1234")"#]]);
+        check_expr("0x1010", expect![[r#"0..6 @ Expr::Number("0x1010")"#]]);
     }
 
     #[test]
-    fn char_expr() { check_expr("'a'", expect![[r#"Located(0..3, Char("'a'"))"#]]); }
+    fn char_expr() { check_expr("'a'", expect![[r#"0..3 @ Expr::Char("'a'")"#]]); }
 
     #[test]
-    fn string_expr() { check_expr(r#""a""#, expect![[r#"Located(0..3, String("\"a\""))"#]]); }
+    fn string_expr() { check_expr(r#""a""#, expect![[r#"0..3 @ Expr::String("\"a\"")"#]]); }
 }
