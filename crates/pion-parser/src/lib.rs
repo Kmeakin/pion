@@ -182,7 +182,7 @@ where
                 let end_range = self.range;
                 Located::new(
                     TextRange::new(token.range.start(), end_range.end()),
-                    Expr::FunType {
+                    Expr::FunExpr {
                         params,
                         body: body.map(|expr| &*self.bump.alloc(expr)),
                     },
@@ -604,13 +604,13 @@ mod tests {
         check_expr(
             "fun() a",
             expect![[r#"
-                0..7 @ Expr::FunType
+                0..7 @ Expr::FunExpr
                  6..7 @ Expr::Var("a")"#]],
         );
         check_expr(
             "fun(a) a",
             expect![[r#"
-                0..8 @ Expr::FunType
+                0..8 @ Expr::FunExpr
                  4..6 @ FunParam
                   4..5 @ Pat::Var("a")
                  7..8 @ Expr::Var("a")"#]],
@@ -618,7 +618,7 @@ mod tests {
         check_expr(
             "fun(a: A) a",
             expect![[r#"
-                0..11 @ Expr::FunType
+                0..11 @ Expr::FunExpr
                  4..9 @ FunParam
                   4..5 @ Pat::Var("a")
                   7..8 @ Expr::Var("A")
@@ -627,7 +627,7 @@ mod tests {
         check_expr(
             "fun(a, b) a",
             expect![[r#"
-                0..11 @ Expr::FunType
+                0..11 @ Expr::FunExpr
                  4..6 @ FunParam
                   4..5 @ Pat::Var("a")
                  7..9 @ FunParam
