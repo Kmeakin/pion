@@ -1,0 +1,11 @@
+[package]
+name = "pion-surface"
+
+edition.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+text-size = { workspace = true }

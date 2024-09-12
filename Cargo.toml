@@ -32,8 +32,9 @@ clippy.too_many_lines          = { level = "allow", priority = 100 }
 clippy.wildcard_imports        = { level = "allow", priority = 100 }
 
 [workspace.dependencies]
-pion-lexer  = { path = "crates/pion-lexer" }
-pion-parser = { path = "crates/pion-parser" }
+pion-lexer   = { path = "crates/pion-lexer" }
+pion-parser  = { path = "crates/pion-parser" }
+pion-surface = { path = "crates/pion-surface" }
 
 bumpalo            = { version = "3.16.0", features = ["allocator_api"] }
 camino             = { version = "1.1.9" }
