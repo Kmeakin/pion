@@ -38,6 +38,12 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 (Pat::Var(name), Type::Error)
             }
             surface::Pat::Paren(pat) => self.synth_pat(*pat),
+            surface::Pat::TypeAnnotation { pat, r#type } => {
+                let r#type = self.check_expr(*r#type, &Type::TYPE);
+                let type_value = self.eval_expr(&r#type);
+                let pat = self.check_pat(*pat, &type_value);
+                (pat, type_value)
+            }
         }
     }
 
@@ -55,45 +61,21 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 Pat::Var(name)
             }
             surface::Pat::Paren(pat) => self.check_pat(*pat, expected),
+            surface::Pat::TypeAnnotation { .. } => self.synth_and_coerce_pat(pat, expected),
         }
     }
 
-    pub fn synth_ann_pat(
+    fn synth_and_coerce_pat(
         &mut self,
         pat: Located<&surface::Pat<'text, 'surface>>,
-        r#type: Option<Located<&surface::Expr<'text, 'surface>>>,
-    ) -> SynthPat<'core> {
-        match r#type {
-            None => self.synth_pat(pat),
-            Some(r#type) => {
-                let r#type_expr = self.check_expr(r#type, &Type::TYPE);
-                let r#type_value = self.eval_expr(&r#type_expr);
-                let pat = self.check_pat(pat, &type_value);
-                (pat, r#type_value)
-            }
-        }
-    }
-
-    pub fn check_ann_pat(
-        &mut self,
-        pat: Located<&surface::Pat<'text, 'surface>>,
-        r#type: Option<Located<&surface::Expr<'text, 'surface>>>,
         expected: &Type<'core>,
     ) -> CheckPat<'core> {
-        match r#type {
-            None => self.check_pat(pat, expected),
-            Some(r#type) => {
-                let pat_range = pat.range;
-                let r#type_expr = self.check_expr(r#type, &Type::TYPE);
-                let r#type_value = self.eval_expr(&r#type_expr);
-                let pat = self.check_pat(pat, &type_value);
-                let pat = self.coerce_pat(Located::new(pat_range, pat), &r#type_value, expected);
-                pat
-            }
-        }
+        let pat_range = pat.range;
+        let (pat, r#type) = self.synth_pat(pat);
+        self.coerce_pat(Located::new(pat_range, pat), &r#type, expected)
     }
 
-    pub fn coerce_pat(
+    fn coerce_pat(
         &mut self,
         pat: Located<Pat<'core>>,
         from: &Type<'core>,

@@ -53,6 +53,12 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 Type::STRING,
             ),
             surface::Expr::Paren(expr) => self.synth_expr(*expr),
+            surface::Expr::TypeAnnotation { expr, r#type } => {
+                let r#type = self.check_expr(*r#type, &Type::TYPE);
+                let r#type_value = self.eval_expr(&r#type);
+                let expr = self.check_expr(*expr, &r#type_value);
+                (expr, r#type_value)
+            }
             surface::Expr::FunCall { callee, args } => self.synth_fun_call(*callee, args),
             surface::Expr::FunExpr { params, body } => self.synth_fun_expr(params, *body),
             surface::Expr::FunType { params, body } => self.synth_fun_type(params, *body),
@@ -109,6 +115,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             | surface::Expr::Char(_)
             | surface::Expr::String(_)
             | surface::Expr::Paren(_)
+            | surface::Expr::TypeAnnotation { .. }
             | surface::Expr::FunCall { .. }
             | surface::Expr::FunType { .. }
             | surface::Expr::FunArrow { .. } => self.synth_and_coerce_expr(expr, expected),
@@ -170,12 +177,8 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         &mut self,
         binding: Located<&surface::LetBinding<'text, 'surface>>,
     ) -> Synth<'core, LetBinding<'core, Expr<'core>>> {
-        let surface::LetBinding {
-            pat,
-            r#type,
-            expr: rhs,
-        } = binding.data;
-        let (pat, r#type) = self.synth_ann_pat(pat.as_ref(), r#type.as_ref().map(|ty| ty.as_ref()));
+        let surface::LetBinding { pat, expr: rhs } = binding.data;
+        let (pat, r#type) = self.synth_pat(pat.as_ref());
         let rhs = self.check_expr(rhs.as_ref(), &r#type);
 
         let binding = LetBinding {
@@ -190,8 +193,8 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         &mut self,
         param: Located<&surface::FunParam<'text, 'surface>>,
     ) -> Synth<'core, FunParam<'core, Expr<'core>>> {
-        let surface::FunParam { pat, r#type } = param.data;
-        let (pat, r#type) = self.synth_ann_pat(pat.as_ref(), r#type.as_ref().map(|ty| ty.as_ref()));
+        let surface::FunParam { pat } = param.data;
+        let (pat, r#type) = self.synth_pat(pat.as_ref());
         let param = FunParam::new(Plicity::Explicit, pat.name(), self.quote_value(&r#type));
         (param, r#type)
     }
@@ -201,12 +204,8 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         param: Located<&surface::FunParam<'text, 'surface>>,
         expected: &Type<'core>,
     ) -> Check<FunParam<'core, Expr<'core>>> {
-        let surface::FunParam { pat, r#type } = param.data;
-        let pat = self.check_ann_pat(
-            pat.as_ref(),
-            r#type.as_ref().map(|ty| ty.as_ref()),
-            expected,
-        );
+        let surface::FunParam { pat } = param.data;
+        let pat = self.check_pat(pat.as_ref(), expected);
         FunParam::new(Plicity::Explicit, pat.name(), self.quote_value(expected))
     }
 

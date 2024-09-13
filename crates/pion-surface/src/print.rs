@@ -57,6 +57,13 @@ impl<W: Write> Printer<W> {
                 writeln!(self, "Expr::Paren")?;
                 self.with_indent(|this| this.expr(*expr))
             }
+            Expr::TypeAnnotation { expr, r#type } => {
+                writeln!(self, "Expr::TypeAnnotation")?;
+                self.with_indent(|this| {
+                    this.expr(*expr)?;
+                    this.expr(*r#type)
+                })
+            }
             Expr::FunCall { callee, args } => {
                 writeln!(self, "Expr::FunCall")?;
                 self.with_indent(|this| {
@@ -114,6 +121,13 @@ impl<W: Write> Printer<W> {
                 writeln!(self, "Pat::Paren")?;
                 self.with_indent(|this| this.pat(*pat))
             }
+            Pat::TypeAnnotation { pat: expr, r#type } => {
+                writeln!(self, "Pat::TypeAnnotation")?;
+                self.with_indent(|this| {
+                    this.pat(*expr)?;
+                    this.expr(*r#type)
+                })
+            }
         }
     }
 
@@ -122,9 +136,6 @@ impl<W: Write> Printer<W> {
         writeln!(self, "FunParam")?;
         self.with_indent(|this| {
             this.pat(param.data.pat.as_ref())?;
-            if let Some(ty) = &param.data.r#type {
-                this.expr(ty.as_ref())?;
-            }
             Ok(())
         })
     }
@@ -141,9 +152,6 @@ impl<W: Write> Printer<W> {
         writeln!(self, "LetBinding")?;
         self.with_indent(|this| {
             this.pat(binding.data.pat.as_ref())?;
-            if let Some(ty) = &binding.data.r#type {
-                this.expr(ty.as_ref())?;
-            }
             this.expr(binding.data.expr.as_ref())
         })
     }

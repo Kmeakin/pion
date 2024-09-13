@@ -9,15 +9,17 @@
 //!     | <Expr> -> <Expr>
 //!     | forall ( <FunParam>,* ) <Expr>
 //!     | fun ( <FunParam>,* ) <Expr>
-//!     | let <Pat> (: <Expr>)? = <Expr> ; <Expr>
+//!     | let <Pat> = <Expr> ; <Expr>
+//!     | <Expr> : <Expr>
 //!
 //! <Pat> ::=
 //!     | _
 //!     | Ident
 //!     | ( <Pat> )
+//!     | <Pat> : <Expr>
 //!
 //! <FunArg> ::= <Expr>
-//! <FunParam> ::= <Pat> (: <Expr>)?
+//! <FunParam> ::= <Pat>
 //! ```
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
@@ -35,6 +37,28 @@ where
     diagnostics: Vec<Diagnostic<usize>>,
     file: usize,
     range: TextRange,
+}
+
+type Binop<'text, 'surface> = fn(
+    Located<&'surface Expr<'text, 'surface>>,
+    Located<&'surface Expr<'text, 'surface>>,
+) -> Expr<'text, 'surface>;
+
+fn infix_binding_power<'text, 'surface>(
+    token: TokenKind,
+) -> Option<(u8, u8, Binop<'text, 'surface>)> {
+    match token {
+        TokenKind::Arrow => Some((3, 2, |domain, codomain| Expr::FunArrow { domain, codomain })),
+        TokenKind::Punct(':') => Some((1, 2, |expr, r#type| Expr::TypeAnnotation { expr, r#type })),
+        _ => None,
+    }
+}
+
+fn postfix_binding_power(token: TokenKind) -> Option<u8> {
+    match token {
+        TokenKind::LParen => Some(11),
+        _ => None,
+    }
 }
 
 impl<'text, 'surface, Tokens> Parser<'text, 'surface, Tokens>
@@ -69,6 +93,11 @@ where
                 }
             }
         }
+    }
+
+    fn assert_token(&mut self, kind: TokenKind) {
+        let next = self.next_token().map(|token| token.kind);
+        debug_assert_eq!(next, Some(kind));
     }
 
     fn peek_token(&mut self) -> Option<Token<'text>> {
@@ -112,7 +141,7 @@ where
         }
     }
 
-    pub fn pat(&mut self) -> Located<Pat<'text, 'surface>> {
+    fn atom_pat(&mut self) -> Located<Pat<'text, 'surface>> {
         let Some(token) = self.next_token() else {
             self.diagnostic(
                 self.range,
@@ -148,125 +177,30 @@ where
         }
     }
 
-    pub fn expr(&mut self) -> Located<Expr<'text, 'surface>> {
-        let Some(token) = self.peek_token() else {
-            self.diagnostic(
-                self.range,
-                Diagnostic::error()
-                    .with_message("Syntax error: unexpected end of file while parsing expression"),
-            );
-            return Located::new(self.range, Expr::Error);
-        };
+    pub fn pat(&mut self) -> Located<Pat<'text, 'surface>> {
+        let mut pat = self.atom_pat();
 
-        match token.kind {
-            TokenKind::Reserved(ReservedIdent::Forall) => {
-                self.next_token();
-                self.expect_token(TokenKind::LParen);
-                let params = self.fun_params();
-                self.expect_token(TokenKind::RParen);
-                let body = self.expr();
-                let end_range = self.range;
-                Located::new(
-                    TextRange::new(token.range.start(), end_range.end()),
-                    Expr::FunType {
-                        params,
-                        body: body.map(|expr| &*self.bump.alloc(expr)),
-                    },
-                )
-            }
-            TokenKind::Reserved(ReservedIdent::Fun) => {
-                self.next_token();
-                self.expect_token(TokenKind::LParen);
-                let params = self.fun_params();
-                self.expect_token(TokenKind::RParen);
-                let body = self.expr();
-                let end_range = self.range;
-                Located::new(
-                    TextRange::new(token.range.start(), end_range.end()),
-                    Expr::FunExpr {
-                        params,
-                        body: body.map(|expr| &*self.bump.alloc(expr)),
-                    },
-                )
-            }
-            TokenKind::Reserved(ReservedIdent::Let) => {
-                let start_range = self.range;
-                self.expect_token(TokenKind::Reserved(ReservedIdent::Let));
-
-                let binding = {
-                    let start_range = self.range;
-                    let pat = self.pat();
-                    let r#type = self.type_annotation_opt();
-
-                    self.expect_token(TokenKind::Punct('='));
-                    let expr = self.expr();
-                    let end_range = self.range;
-                    Located::new(
-                        TextRange::new(start_range.start(), end_range.end()),
-                        LetBinding { pat, r#type, expr },
-                    )
-                };
-
-                self.expect_token(TokenKind::Punct(';'));
-                let body = self.expr();
-                let end_range = self.range;
-
-                let binding = self.bump.alloc(binding);
-
-                Located::new(
-                    TextRange::new(start_range.start(), end_range.end()),
-                    Expr::Let {
-                        binding: binding.map(|binding| &*self.bump.alloc(binding)),
-                        body: body.map(|expr| &*self.bump.alloc(expr)),
-                    },
-                )
-            }
-            _ => {
-                let mut expr = self.atom_expr();
-
-                while let Some(token) = self.peek_token() {
-                    match token.kind {
-                        TokenKind::LParen => {
-                            let start_range = expr.range;
-                            self.next_token();
-                            let args = self.fun_args();
-                            self.expect_token(TokenKind::RParen);
-                            let end_range = self.range;
-                            expr = Located::new(
-                                TextRange::new(start_range.start(), end_range.end()),
-                                Expr::FunCall {
-                                    callee: expr.map(|expr| &*self.bump.alloc(expr)),
-                                    args,
-                                },
-                            );
-                        }
-                        _ => break,
-                    }
+        loop {
+            match self.peek_token() {
+                Some(token) if token.kind == TokenKind::Punct(':') => {
+                    self.next_token();
+                    let r#type = self.expr_bp(2);
+                    pat = Located::new(
+                        TextRange::new(pat.range.start(), r#type.range.end()),
+                        Pat::TypeAnnotation {
+                            pat: pat.map(|pat| &*self.bump.alloc(pat)),
+                            r#type: r#type.map(|ty| &*self.bump.alloc(ty)),
+                        },
+                    );
                 }
-
-                while let Some(token) = self.peek_token() {
-                    match token.kind {
-                        TokenKind::Arrow => {
-                            let start_range = expr.range;
-                            self.next_token();
-                            let codomain = self.expr();
-                            let end_range = self.range;
-                            expr = Located::new(
-                                TextRange::new(start_range.start(), end_range.end()),
-                                Expr::FunArrow {
-                                    domain: expr.map(|expr| &*self.bump.alloc(expr)),
-                                    codomain: codomain.map(|expr| &*self.bump.alloc(expr)),
-                                },
-                            );
-                        }
-                        _ => break,
-                    }
-                }
-
-                expr
+                _ => break,
             }
         }
+
+        pat
     }
+
+    fn expr(&mut self) -> Located<Expr<'text, 'surface>> { self.expr_bp(0) }
 
     fn atom_expr(&mut self) -> Located<Expr<'text, 'surface>> {
         let Some(token) = self.next_token() else {
@@ -304,6 +238,9 @@ where
                 Located::new(token.range, Expr::String(token.text))
             }
             TokenKind::Ident => Located::new(token.range, Expr::Var(token.text)),
+            TokenKind::Reserved(ReservedIdent::Forall) => self.forall_expr(),
+            TokenKind::Reserved(ReservedIdent::Fun) => self.fun_expr(),
+            TokenKind::Reserved(ReservedIdent::Let) => self.let_expr(),
             got => {
                 self.diagnostic(
                     token.range,
@@ -316,10 +253,134 @@ where
         }
     }
 
+    fn expr_bp(&mut self, min_bp: u8) -> Located<Expr<'text, 'surface>> {
+        let mut expr = self.atom_expr();
+
+        loop {
+            let Some(token) = self.peek_token() else {
+                break;
+            };
+
+            if let Some(l_bp) = postfix_binding_power(token.kind) {
+                if l_bp < min_bp {
+                    break;
+                }
+
+                self.next_token();
+                expr = match token.kind {
+                    TokenKind::LParen => {
+                        self.fun_call_expr(expr.map(|expr| &*self.bump.alloc(expr)))
+                    }
+                    _ => unreachable!(),
+                };
+
+                continue;
+            }
+
+            match infix_binding_power(token.kind) {
+                Some((l_bp, r_bp, op)) => {
+                    if l_bp < min_bp {
+                        break;
+                    }
+
+                    self.next_token();
+                    let rhs = self.expr_bp(r_bp);
+                    let lhs = expr.map(|expr| &*self.bump.alloc(expr));
+                    let rhs = rhs.map(|expr| &*self.bump.alloc(expr));
+
+                    expr = Located::new(
+                        TextRange::new(lhs.range.start(), rhs.range.end()),
+                        op(lhs, rhs),
+                    );
+                    continue;
+                }
+                None => break,
+            }
+        }
+
+        expr
+    }
+
+    fn let_expr(&mut self) -> Located<Expr<'text, 'surface>> {
+        let start_range = self.range;
+
+        let binding = {
+            let start_range = self.range;
+            let pat = self.pat();
+            self.expect_token(TokenKind::Punct('='));
+            let expr = self.expr();
+            let end_range = self.range;
+            Located::new(
+                TextRange::new(start_range.start(), end_range.end()),
+                LetBinding { pat, expr },
+            )
+        };
+
+        self.expect_token(TokenKind::Punct(';'));
+        let body = self.expr();
+        let end_range = self.range;
+
+        let binding = self.bump.alloc(binding);
+
+        Located::new(
+            TextRange::new(start_range.start(), end_range.end()),
+            Expr::Let {
+                binding: binding.map(|binding| &*self.bump.alloc(binding)),
+                body: body.map(|expr| &*self.bump.alloc(expr)),
+            },
+        )
+    }
+
+    fn forall_expr(&mut self) -> Located<Expr<'text, 'surface>> {
+        let start_range = self.range;
+        self.expect_token(TokenKind::LParen);
+        let params = self.fun_params();
+        self.expect_token(TokenKind::RParen);
+        let body = self.expr();
+        let end_range = self.range;
+        Located::new(
+            TextRange::new(start_range.start(), end_range.end()),
+            Expr::FunType {
+                params,
+                body: body.map(|expr| &*self.bump.alloc(expr)),
+            },
+        )
+    }
+
+    fn fun_expr(&mut self) -> Located<Expr<'text, 'surface>> {
+        let start_range = self.range;
+        self.expect_token(TokenKind::LParen);
+        let params = self.fun_params();
+        self.expect_token(TokenKind::RParen);
+        let body = self.expr();
+        let end_range = self.range;
+        Located::new(
+            TextRange::new(start_range.start(), end_range.end()),
+            Expr::FunExpr {
+                params,
+                body: body.map(|expr| &*self.bump.alloc(expr)),
+            },
+        )
+    }
+
+    fn fun_call_expr(
+        &mut self,
+        callee: Located<&'surface Expr<'text, 'surface>>,
+    ) -> Located<Expr<'text, 'surface>> {
+        let start_range = callee.range;
+        let args = self.fun_args();
+        let end_range = self.range;
+        Located::new(
+            TextRange::new(start_range.start(), end_range.end()),
+            Expr::FunCall { callee, args },
+        )
+    }
+
     fn fun_args(&mut self) -> &'surface [Located<FunArg<'text, 'surface>>] {
         let mut args = Vec::new_in(self.bump);
         while let Some(token) = self.peek_token() {
             if token.kind == TokenKind::RParen {
+                self.next_token();
                 break;
             }
 
@@ -351,11 +412,10 @@ where
 
             let start_range = self.range;
             let pat = self.pat();
-            let r#type = self.type_annotation_opt();
             let end_range = self.range;
             params.push(Located::new(
                 TextRange::new(start_range.start(), end_range.end()),
-                FunParam { pat, r#type },
+                FunParam { pat },
             ));
 
             if let Some(token) = self.peek_token() {
@@ -367,19 +427,6 @@ where
         }
 
         params.leak()
-    }
-
-    fn type_annotation_opt(&mut self) -> Option<Located<Expr<'text, 'surface>>> {
-        if let Some(Token {
-            kind: TokenKind::Punct(':'),
-            ..
-        }) = self.peek_token()
-        {
-            self.next_token();
-            Some(self.expr())
-        } else {
-            None
-        }
     }
 }
 
@@ -513,10 +560,24 @@ mod tests {
             expect![[r#"
                 0..15 @ Expr::Let
                  0..13 @ LetBinding
-                  4..5 @ Pat::Var("x")
-                  7..8 @ Expr::Var("T")
+                  4..8 @ Pat::TypeAnnotation
+                   4..5 @ Pat::Var("x")
+                   7..8 @ Expr::Var("T")
                   11..12 @ Expr::Var("y")
                  14..15 @ Expr::Var("z")"#]],
+        );
+        check_expr(
+            "let x: T: V = y; z",
+            expect![[r#"
+                0..18 @ Expr::Let
+                 0..16 @ LetBinding
+                  4..11 @ Pat::TypeAnnotation
+                   4..8 @ Pat::TypeAnnotation
+                    4..5 @ Pat::Var("x")
+                    7..8 @ Expr::Var("T")
+                   10..11 @ Expr::Var("V")
+                  14..15 @ Expr::Var("y")
+                 17..18 @ Expr::Var("z")"#]],
         );
         check_expr(
             "let x = y; let y = z; w",
@@ -621,8 +682,9 @@ mod tests {
             expect![[r#"
                 0..11 @ Expr::FunExpr
                  4..9 @ FunParam
-                  4..5 @ Pat::Var("a")
-                  7..8 @ Expr::Var("A")
+                  4..8 @ Pat::TypeAnnotation
+                   4..5 @ Pat::Var("a")
+                   7..8 @ Expr::Var("A")
                  10..11 @ Expr::Var("a")"#]],
         );
         check_expr(
@@ -658,8 +720,9 @@ mod tests {
             expect![[r#"
                 0..14 @ Expr::FunType
                  7..12 @ FunParam
-                  7..8 @ Pat::Var("a")
-                  10..11 @ Expr::Var("A")
+                  7..11 @ Pat::TypeAnnotation
+                   7..8 @ Pat::Var("a")
+                   10..11 @ Expr::Var("A")
                  13..14 @ Expr::Var("a")"#]],
         );
         check_expr(

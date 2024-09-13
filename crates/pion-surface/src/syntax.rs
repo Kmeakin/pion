@@ -36,6 +36,10 @@ pub enum Expr<'text, 'surface> {
     Char(&'text str),
     String(&'text str),
     Paren(Located<&'surface Self>),
+    TypeAnnotation {
+        expr: Located<&'surface Self>,
+        r#type: Located<&'surface Self>,
+    },
     FunCall {
         callee: Located<&'surface Self>,
         args: &'surface [Located<FunArg<'text, 'surface>>],
@@ -61,7 +65,6 @@ pub enum Expr<'text, 'surface> {
 #[derive(Copy, Clone)]
 pub struct LetBinding<'text, 'surface> {
     pub pat: Located<Pat<'text, 'surface>>,
-    pub r#type: Option<Located<Expr<'text, 'surface>>>,
     pub expr: Located<Expr<'text, 'surface>>,
 }
 
@@ -71,6 +74,10 @@ pub enum Pat<'text, 'surface> {
     Underscore,
     Var(&'text str),
     Paren(Located<&'surface Self>),
+    TypeAnnotation {
+        pat: Located<&'surface Self>,
+        r#type: Located<&'surface Expr<'text, 'surface>>,
+    },
 }
 
 #[derive(Copy, Clone)]
@@ -81,5 +88,4 @@ pub struct FunArg<'text, 'surface> {
 #[derive(Copy, Clone)]
 pub struct FunParam<'text, 'surface> {
     pub pat: Located<Pat<'text, 'surface>>,
-    pub r#type: Option<Located<Expr<'text, 'surface>>>,
 }
