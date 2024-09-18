@@ -28,7 +28,8 @@ mod tests {
         let (expr, r#type) = elaborator.synth_expr(surface.as_ref());
         let diagnostics = elaborator.finish();
 
-        let mut got = format!("{expr:?} : {type:?}");
+        let mut got = String::new();
+        pion_core::print::type_ann_expr(&mut got, &expr, &r#type).unwrap();
         if !diagnostics.is_empty() {
             got.push('\n');
             for diagnostic in diagnostics {
@@ -41,18 +42,18 @@ mod tests {
 
     #[test]
     fn bool_expr() {
-        expr("true", expect!["true : PrimVar(Bool)"]);
-        expr("false", expect!["false : PrimVar(Bool)"]);
+        expr("true", expect!["true : Bool"]);
+        expr("false", expect!["false : Bool"]);
     }
 
     #[test]
     fn int_expr() {
-        expr("123", expect!["123 : PrimVar(Int)"]);
+        expr("123", expect!["123 : Int"]);
 
         expr(
             "123-",
             expect![[r#"
-                Error : PrimVar(Int)
+                #error : Int
                 Diagnostic { severity: Error, code: None, message: "Invalid integer literal: invalid digit found in string", labels: [Label { style: Primary, file_id: 0, range: 0..4, message: "" }], notes: [] }
             "#]],
         );
@@ -60,30 +61,30 @@ mod tests {
         expr(
             "999999999999999999999999999",
             expect![[r#"
-                Error : PrimVar(Int)
+                #error : Int
                 Diagnostic { severity: Error, code: None, message: "Invalid integer literal: number too large to fit in target type", labels: [Label { style: Primary, file_id: 0, range: 0..27, message: "" }], notes: [] }
             "#]],
         );
     }
 
     #[test]
-    fn char_expr() { expr(r"'a'", expect![[r"'\0' : PrimVar(Char)"]]); }
+    fn char_expr() { expr(r"'a'", expect![[r"'\0' : Char"]]); }
 
     #[test]
     fn string_expr() {
         expr(
             r#""hello world""#,
-            expect![[r#""\"hello world\"" : PrimVar(String)"#]],
+            expect![[r#""\"hello world\"" : String"#]],
         );
     }
 
     #[test]
     fn prim_var() {
-        expr("Type", expect!["PrimVar(Type) : PrimVar(Type)"]);
-        expr("Bool", expect!["PrimVar(Bool) : PrimVar(Type)"]);
-        expr("Int", expect!["PrimVar(Int) : PrimVar(Type)"]);
-        expr("Char", expect!["PrimVar(Char) : PrimVar(Type)"]);
-        expr("String", expect!["PrimVar(String) : PrimVar(Type)"]);
+        expr("Type", expect!["Type : Type"]);
+        expr("Bool", expect!["Bool : Type"]);
+        expr("Int", expect!["Int : Type"]);
+        expr("Char", expect!["Char : Type"]);
+        expr("String", expect!["String : Type"]);
     }
 
     #[test]
@@ -91,74 +92,47 @@ mod tests {
         expr(
             "hello-world",
             expect![[r#"
-        Error : Error
-        Diagnostic { severity: Error, code: None, message: "Unbound variable: `hello-world`", labels: [Label { style: Primary, file_id: 0, range: 0..11, message: "" }], notes: [] }
-    "#]],
+                #error : #error
+                Diagnostic { severity: Error, code: None, message: "Unbound variable: `hello-world`", labels: [Label { style: Primary, file_id: 0, range: 0..11, message: "" }], notes: [] }
+            "#]],
         );
     }
 
     #[test]
-    fn let_expr() {
-        expr(
-            "let x: Int = 5; x",
-            expect![[
-                r#"Let { binding: LetBinding { name: Some("x"), type: PrimVar(Int), rhs: 5 }, body: LocalVar(0) } : PrimVar(Int)"#
-            ]],
-        );
-    }
+    fn let_expr() { expr("let x: Int = 5; x", expect!["(let x : Int = 5; _#0) : Int"]); }
 
     #[test]
     fn fun_expr() {
-        expr("fun() 5", expect!["5 : PrimVar(Int)"]);
+        expr("fun() 5", expect!["5 : Int"]);
         expr(
             "fun(_: Int) 5",
-            expect![
-                "fun(FunParam { plicity: Explicit, name: None, type: PrimVar(Int) }) 5 : \
-                 forall(FunParam { plicity: Explicit, name: None, type: PrimVar(Int) }) Closure { \
-                 local_values: SharedEnv { elems: [] }, body: PrimVar(Int) }"
-            ],
+            expect!["(fun(_ : Int) 5) : forall(_ : Int) Int"],
         );
         expr(
             "fun(x: Int) x",
-            expect![[
-                r#"fun(FunParam { plicity: Explicit, name: Some("x"), type: PrimVar(Int) }) LocalVar(0) : forall(FunParam { plicity: Explicit, name: Some("x"), type: PrimVar(Int) }) Closure { local_values: SharedEnv { elems: [] }, body: PrimVar(Int) }"#
-            ]],
+            expect!["(fun(x : Int) _#0) : forall(x : Int) Int"],
         );
         expr(
             "fun(x: Int, _: Bool) x",
-            expect![[
-                r#"fun(FunParam { plicity: Explicit, name: Some("x"), type: PrimVar(Int) }) fun(FunParam { plicity: Explicit, name: None, type: PrimVar(Bool) }) LocalVar(1) : forall(FunParam { plicity: Explicit, name: Some("x"), type: PrimVar(Int) }) Closure { local_values: SharedEnv { elems: [] }, body: forall(FunParam { plicity: Explicit, name: None, type: PrimVar(Bool) }) PrimVar(Int) }"#
-            ]],
+            expect!["(fun(x : Int) fun(_ : Bool) _#1) : forall(x : Int) forall(_ : Bool) Int"],
         );
     }
 
     #[test]
     fn fun_type() {
-        expr("forall() Type", expect!["PrimVar(Type) : PrimVar(Type)"]);
+        expr("forall() Type", expect!["Type : Type"]);
         expr(
             "forall(A: Type, a: A) A",
-            expect![[
-                r#"forall(FunParam { plicity: Explicit, name: Some("A"), type: PrimVar(Type) }) forall(FunParam { plicity: Explicit, name: Some("a"), type: LocalVar(0) }) LocalVar(1) : PrimVar(Type)"#
-            ]],
+            expect!["(forall(A : Type) forall(a : _#0) _#1) : Type"],
         );
     }
 
     #[test]
     fn fun_arrow() {
-        expr(
-            "Int -> Bool",
-            expect![
-                "forall(FunParam { plicity: Explicit, name: None, type: PrimVar(Int) }) \
-                 PrimVar(Bool) : PrimVar(Type)"
-            ],
-        );
+        expr("Int -> Bool", expect!["(forall(_ : Int) Bool) : Type"]);
         expr(
             "Int -> Bool -> Type",
-            expect![
-                "forall(FunParam { plicity: Explicit, name: None, type: PrimVar(Int) }) \
-                 forall(FunParam { plicity: Explicit, name: None, type: PrimVar(Bool) }) \
-                 PrimVar(Type) : PrimVar(Type)"
-            ],
+            expect!["(forall(_ : Int) forall(_ : Bool) Type) : Type"],
         );
     }
 
@@ -166,22 +140,20 @@ mod tests {
     fn fun_call() {
         expr(
             "let f: Int -> Int = fun(x: Int) x; f(1)",
-            expect![[
-                r#"Let { binding: LetBinding { name: Some("f"), type: forall(FunParam { plicity: Explicit, name: None, type: PrimVar(Int) }) PrimVar(Int), rhs: fun(FunParam { plicity: Explicit, name: Some("x"), type: PrimVar(Int) }) LocalVar(0) }, body: LocalVar(0) } : PrimVar(Int)"#
-            ]],
+            expect!["(let f : forall(_ : Int) Int = fun(x : Int) _#0; _#0) : Int"],
         );
         expr(
             "let f: Int = 5; f(1)",
             expect![[r#"
-                Let { binding: LetBinding { name: Some("f"), type: PrimVar(Int), rhs: 5 }, body: Error } : Error
-                Diagnostic { severity: Error, code: None, message: "Expected a function", labels: [Label { style: Primary, file_id: 0, range: 16..17, message: "" }], notes: ["Help: the type of the callee is PrimVar(Int)"] }
+                (let f : Int = 5; #error) : #error
+                Diagnostic { severity: Error, code: None, message: "Expected a function", labels: [Label { style: Primary, file_id: 0, range: 16..17, message: "" }], notes: ["Help: the type of the callee is Int"] }
             "#]],
         );
         expr(
             "let f: Int -> Int = fun(x) x; f(1, 2)",
             expect![[r#"
-                Let { binding: LetBinding { name: Some("f"), type: forall(FunParam { plicity: Explicit, name: None, type: PrimVar(Int) }) PrimVar(Int), rhs: fun(FunParam { plicity: Explicit, name: Some("x"), type: PrimVar(Int) }) LocalVar(0) }, body: Error } : Error
-                Diagnostic { severity: Error, code: None, message: "Called function with too many arguments", labels: [Label { style: Primary, file_id: 0, range: 30..31, message: "" }], notes: ["Help: the function expects 1 arguments, but received 2", "Help: the type of the callee is forall(FunParam { plicity: Explicit, name: None, type: PrimVar(Int) }) Closure { local_values: SharedEnv { elems: [] }, body: PrimVar(Int) }"] }
+                (let f : forall(_ : Int) Int = fun(x : Int) _#0; #error) : #error
+                Diagnostic { severity: Error, code: None, message: "Called function with too many arguments", labels: [Label { style: Primary, file_id: 0, range: 30..31, message: "" }], notes: ["Help: the function expects 1 arguments, but received 2", "Help: the type of the callee is forall(_ : Int) Int"] }
             "#]],
         );
     }

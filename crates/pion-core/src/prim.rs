@@ -42,6 +42,10 @@ impl fmt::Debug for PrimVar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
 }
 
+impl fmt::Display for PrimVar {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { fmt::Debug::fmt(&self, f) }
+}
+
 impl PrimVar {
     pub const fn r#type(&self) -> Type<'static> {
         match self {

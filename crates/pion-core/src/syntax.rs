@@ -1,10 +1,7 @@
-use core::fmt;
-
 use pion_interner::InternedStr;
 
 use crate::env::{AbsoluteVar, RelativeVar};
 use crate::prim::PrimVar;
-use crate::semantics::Value;
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Expr<'core> {
@@ -93,71 +90,6 @@ impl Plicity {
         match self {
             Self::Implicit => "implicit",
             Self::Explicit => "explicit",
-        }
-    }
-}
-
-impl<'core> fmt::Debug for Expr<'core> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Error => write!(f, "Error"),
-            Self::Bool(b) => fmt::Debug::fmt(b, f),
-            Self::Int(n) => fmt::Debug::fmt(n, f),
-            Self::Char(c) => fmt::Debug::fmt(c, f),
-            Self::String(s) => fmt::Debug::fmt(s, f),
-            Self::PrimVar(var) => f.debug_tuple("PrimVar").field(var).finish(),
-            Self::LocalVar(var) => f.debug_tuple("LocalVar").field(&usize::from(*var)).finish(),
-            Self::MetaVar(var) => f.debug_tuple("MetaVar").field(&usize::from(*var)).finish(),
-            Self::Let { binding, body } => f
-                .debug_struct("Let")
-                .field("binding", binding)
-                .field("body", body)
-                .finish(),
-            Self::FunType { param, body } => {
-                f.debug_tuple("forall").field(param).finish()?;
-                write!(f, " ")?;
-                fmt::Debug::fmt(body, f)?;
-                Ok(())
-            }
-            Self::FunLit { param, body } => {
-                f.debug_tuple("fun").field(param).finish()?;
-                write!(f, " ")?;
-                fmt::Debug::fmt(body, f)?;
-                Ok(())
-            }
-            Self::FunApp { fun, arg } => f
-                .debug_struct("FunApp")
-                .field("fun", fun)
-                .field("arg", arg)
-                .finish(),
-        }
-    }
-}
-
-impl<'core> fmt::Debug for Value<'core> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Error => write!(f, "Error"),
-            Self::Bool(b) => fmt::Debug::fmt(b, f),
-            Self::Int(n) => fmt::Debug::fmt(n, f),
-            Self::Char(c) => fmt::Debug::fmt(c, f),
-            Self::String(s) => fmt::Debug::fmt(s, f),
-            Self::Neutral(head, spine) if spine.is_empty() => fmt::Debug::fmt(head, f),
-            Self::Neutral(head, spine) => {
-                f.debug_tuple("Neutral").field(head).field(spine).finish()
-            }
-            Self::FunType { param, body } => {
-                f.debug_tuple("forall").field(param).finish()?;
-                write!(f, " ")?;
-                fmt::Debug::fmt(body, f)?;
-                Ok(())
-            }
-            Self::FunLit { param, body } => {
-                f.debug_tuple("fun").field(param).finish()?;
-                write!(f, " ")?;
-                fmt::Debug::fmt(body, f)?;
-                Ok(())
-            }
         }
     }
 }
