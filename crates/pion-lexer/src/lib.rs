@@ -40,7 +40,7 @@
 //!     | '_' XID_Continue (XID_Continue | '-')*
 //!
 //! Literal ::= Number | Char | String
-//! Number ::= ('+' | '-')? DecimalDigit XID_Continue*
+//! Number ::= BinInt | OctInt | DecInt | HexInt
 //! Char ::= SingleQuote ((not SingleQuote) | ('\' AnyChar))* SingleQuote
 //! String ::= DoubleQuote ((not DoubleQuote) | ('\' AnyChar))* DoubleQuote
 //! ```
@@ -240,10 +240,6 @@ pub fn next_token(source: &str) -> Option<(&str, TokenKind, &str)> {
         }
 
         '0'..='9' => {
-            skip_while(&mut chars, classify::ident_continue);
-            TokenKind::Literal(LiteralKind::Number)
-        }
-        '-' | '+' if peek().is_some_and(|c| char::is_ascii_digit(&c)) => {
             skip_while(&mut chars, classify::ident_continue);
             TokenKind::Literal(LiteralKind::Number)
         }
@@ -500,9 +496,11 @@ mod tests {
             Whitespace 17..18 " "
             Literal(Number) 18..27 "0b123_456"
             Whitespace 27..28 " "
-            Literal(Number) 28..32 "-123"
+            Punct('-') 28..29 "-"
+            Literal(Number) 29..32 "123"
             Whitespace 32..33 " "
-            Literal(Number) 33..37 "+123""#]]);
+            Punct('+') 33..34 "+"
+            Literal(Number) 34..37 "123""#]]);
     }
 
     #[test]
