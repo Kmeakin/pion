@@ -17,7 +17,7 @@ pub struct Elaborator<'core> {
     diagnostics: Vec<Diagnostic<usize>>,
 }
 
-impl<'text, 'core> Elaborator<'core> {
+impl<'core> Elaborator<'core> {
     pub fn new(
         bump: &'core bumpalo::Bump,
         interner: &'core mut pion_interner::Interner<'core, str>,
@@ -51,7 +51,7 @@ impl<'text, 'core> Elaborator<'core> {
         .unwrap()
     }
 
-    fn quote_value(&mut self, value: &Value<'core>) -> Expr<'core> {
+    fn quote_value(&self, value: &Value<'core>) -> Expr<'core> {
         pion_core::semantics::quote(
             value,
             self.bump,

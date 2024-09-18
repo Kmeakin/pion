@@ -255,15 +255,7 @@ pub mod equality {
     }
 
     impl AlphaEq for Head {
-        fn alpha_eq(&self, other: &Self) -> bool {
-            let (lhs, rhs) = (self, other);
-            match (lhs, rhs) {
-                (Self::LocalVar(lhs), Self::LocalVar(rhs)) => lhs == rhs,
-                (Self::MetaVar(lhs), Self::MetaVar(rhs)) => lhs == rhs,
-                (Self::PrimVar(lhs), Self::PrimVar(rhs)) => lhs == rhs,
-                _ => false,
-            }
-        }
+        fn alpha_eq(&self, other: &Self) -> bool { self == other }
     }
 
     impl<'core> AlphaEq for Elim<'core> {

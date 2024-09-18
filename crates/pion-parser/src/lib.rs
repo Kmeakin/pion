@@ -95,11 +95,6 @@ where
         }
     }
 
-    fn assert_token(&mut self, kind: TokenKind) {
-        let next = self.next_token().map(|token| token.kind);
-        debug_assert_eq!(next, Some(kind));
-    }
-
     fn peek_token(&mut self) -> Option<Token<'text>> {
         loop {
             let mut tokens = self.tokens.clone();
@@ -463,7 +458,7 @@ mod tests {
     #[track_caller]
     #[allow(clippy::needless_pass_by_value, reason = "It's just a test")]
     fn check_pat(text: &str, expected: Expect) {
-        let tokens = pion_lexer::lex(text);
+        let tokens = lex(text);
         let bump = bumpalo::Bump::new();
         let (pat, diagnostics) = parse_pat(0, tokens, &bump);
 
@@ -483,7 +478,7 @@ mod tests {
     #[track_caller]
     #[allow(clippy::needless_pass_by_value, reason = "It's just a test")]
     fn check_expr(text: &str, expected: Expect) {
-        let tokens = pion_lexer::lex(text);
+        let tokens = lex(text);
         let bump = bumpalo::Bump::new();
         let (expr, diagnostics) = parse_expr(0, tokens, &bump);
 

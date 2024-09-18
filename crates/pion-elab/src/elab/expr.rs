@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::str::FromStr;
 
-use codespan_reporting::diagnostic::{Diagnostic, Label};
+use codespan_reporting::diagnostic::Diagnostic;
 use pion_core::prim::PrimVar;
 use pion_core::semantics::equality::AlphaEq;
 use pion_core::semantics::{Closure, Type, Value};
@@ -382,16 +382,16 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         };
 
         let res = match () {
-            _ if text.starts_with("0b") || text.starts_with("0B") => {
+            () if text.starts_with("0b") || text.starts_with("0B") => {
                 u32::from_str_radix(&text[2..], 16)
             }
-            _ if text.starts_with("0o") || text.starts_with("0O") => {
+            () if text.starts_with("0o") || text.starts_with("0O") => {
                 u32::from_str_radix(&text[2..], 16)
             }
-            _ if text.starts_with("0x") || text.starts_with("0X") => {
+            () if text.starts_with("0x") || text.starts_with("0X") => {
                 u32::from_str_radix(&text[2..], 16)
             }
-            _ => u32::from_str(&text),
+            () => u32::from_str(&text),
         };
 
         match res {
