@@ -225,6 +225,9 @@ dependencies = [
  "camino",
  "clap",
  "codespan-reporting",
+ "pion-core",
+ "pion-elab",
+ "pion-interner",
  "pion-lexer",
  "pion-parser",
 ]

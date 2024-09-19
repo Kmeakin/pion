@@ -14,5 +14,8 @@ bumpalo            = { workspace = true }
 camino             = { workspace = true }
 clap               = { workspace = true }
 codespan-reporting = { workspace = true }
+pion-core          = { workspace = true }
+pion-elab          = { workspace = true }
+pion-interner      = { workspace = true }
 pion-lexer         = { workspace = true }
 pion-parser        = { workspace = true }
