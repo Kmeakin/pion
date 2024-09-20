@@ -509,6 +509,8 @@ mod tests {
         assert_lex!("'abc'" => expect![[r#"Literal(Char) 0..5 "'abc'""#]]);
         assert_lex!("'abc" => expect![[r#"Literal(Char) 0..4 "'abc""#]]);
         assert_lex!(r"'abc\'def'" => expect![[r#"Literal(Char) 0..10 "'abc\\'def'""#]]);
+        assert_lex!(r"'abc\'" => expect![[r#"Literal(Char) 0..6 "'abc\\'""#]]);
+        assert_lex!(r"'abc\" => expect![[r#"Literal(Char) 0..5 "'abc\\""#]]);
         assert_lex!(
             r"'abc\\'def'" => expect![[r#"
                 Literal(Char) 0..7 "'abc\\\\'"
@@ -524,6 +526,8 @@ mod tests {
         assert_lex!(r#""abc""# => expect![[r#"Literal(String) 0..5 "\"abc\"""#]]);
         assert_lex!(r#""abc"# => expect![[r#"Literal(String) 0..4 "\"abc""#]]);
         assert_lex!(r#""abc\"def"# => expect![[r#"Literal(String) 0..9 "\"abc\\\"def""#]]);
+        assert_lex!(r#""abc\""# => expect![[r#"Literal(String) 0..6 "\"abc\\\"""#]]);
+        assert_lex!(r#""abc\"# => expect![[r#"Literal(String) 0..5 "\"abc\\""#]]);
         assert_lex!(r#""abc\\"def""# => expect![[r#"
             Literal(String) 0..7 "\"abc\\\\\""
             Ident 7..10 "def"
