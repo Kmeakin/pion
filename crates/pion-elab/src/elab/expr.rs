@@ -7,6 +7,7 @@ use pion_core::semantics::equality::AlphaEq;
 use pion_core::semantics::{Closure, Type, Value};
 use pion_core::syntax::{Expr, FunArg, FunParam, LetBinding, Plicity};
 use pion_surface::syntax::{self as surface, Located};
+use text_size::{TextRange, TextSize};
 
 use super::{Check, Synth};
 use crate::Elaborator;
@@ -410,9 +411,75 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         let range = text.range;
         let text = text.data;
 
-        // TODO: Handle escape sequences, check string is terminated, check for invalid
-        // characters
-        Expr::String(self.bump.alloc_str(text))
+        let text = text.strip_prefix('"').expect("Guaranteed by lexer");
+
+        let (text, mut terminated) = match text.strip_suffix('"') {
+            Some(text) => (text, true),
+            None => (text, false),
+        };
+
+        let mut error = false;
+        let text = match text.contains('\\') {
+            false => Cow::Borrowed(text),
+            true => {
+                let mut result = String::with_capacity(text.len());
+                let mut chars = text.char_indices();
+
+                while let Some((idx1, c)) = chars.next() {
+                    match c {
+                        '\\' => {
+                            let Some((idx2, c)) = chars.next() else {
+                                terminated = false;
+                                break;
+                            };
+                            match c {
+                                'n' => result.push('\n'),
+                                'r' => result.push('\r'),
+                                't' => result.push('\t'),
+                                '\\' => result.push('\\'),
+                                '"' => result.push('"'),
+                                c => {
+                                    error = true;
+                                    let range = range + TextSize::from(1); // add 1 to skip past the leading '"'
+                                    let idx1 = TextSize::try_from(idx1).unwrap();
+                                    let idx2 = TextSize::try_from(idx2 + c.len_utf8()).unwrap();
+
+                                    debug_assert_eq!(
+                                        text[TextRange::new(idx1, idx2)],
+                                        format!("\\{c}")
+                                    );
+
+                                    let range =
+                                        TextRange::new(range.start() + idx1, range.start() + idx2);
+                                    self.diagnostic(
+                                        range,
+                                        Diagnostic::error().with_message(format!(
+                                            "Unknown escape character: `{c}`"
+                                        )),
+                                    );
+                                }
+                            }
+                        }
+                        c => result.push(c),
+                    }
+                }
+                Cow::Owned(result)
+            }
+        };
+
+        if !terminated {
+            error = true;
+            self.diagnostic(
+                range,
+                Diagnostic::error().with_message("Unterminated string literal"),
+            );
+        }
+
+        if error {
+            return Expr::Error;
+        }
+
+        return Expr::String(self.bump.alloc_str(&text));
     }
 
     fn synth_char(&mut self, text: Located<&str>) -> Expr<'core> {

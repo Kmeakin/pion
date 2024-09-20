@@ -72,9 +72,61 @@ mod tests {
 
     #[test]
     fn string_expr() {
+        expr(r#""hello world""#, expect![[r#""hello world" : String"#]]);
+
         expr(
-            r#""hello world""#,
-            expect![[r#""\"hello world\"" : String"#]],
+            r#" "hello \t world \n\r" "#,
+            expect![[r#""hello \t world \n\r" : String"#]],
+        );
+
+        expr(
+            r#"let s: String = "the famous \"hello world\" string"; s "#,
+            expect![[r#"(let s : String = "the famous \"hello world\" string"; _#0) : String"#]],
+        );
+
+        expr(
+            r#"let ugly-regex: String = "\\\\."; ugly-regex "#,
+            expect![[r#"(let ugly-regex : String = "\\\\."; _#0) : String"#]],
+        );
+
+        expr(
+            r#" "  "#,
+            expect![[r#"
+            #error : String
+            Diagnostic { severity: Error, code: None, message: "Unterminated string literal", labels: [Label { style: Primary, file_id: 0, range: 1..4, message: "" }], notes: [] }
+        "#]],
+        );
+
+        expr(
+            r#" "  \""#,
+            expect![[r#"
+                #error : String
+                Diagnostic { severity: Error, code: None, message: "Unterminated string literal", labels: [Label { style: Primary, file_id: 0, range: 1..6, message: "" }], notes: [] }
+            "#]],
+        );
+
+        expr(
+            r#" " \a ""#,
+            expect![[r#"
+                #error : String
+                Diagnostic { severity: Error, code: None, message: "Unknown escape character: `a`", labels: [Label { style: Primary, file_id: 0, range: 3..5, message: "" }], notes: [] }
+            "#]],
+        );
+
+        expr(
+            r#" " \🦀 ""#,
+            expect![[r#"
+                #error : String
+                Diagnostic { severity: Error, code: None, message: "Unknown escape character: `🦀`", labels: [Label { style: Primary, file_id: 0, range: 3..8, message: "" }], notes: [] }
+            "#]],
+        );
+
+        expr(
+            r#" " \🇬🇧 ""#,
+            expect![[r#"
+                #error : String
+                Diagnostic { severity: Error, code: None, message: "Unknown escape character: `🇬`", labels: [Label { style: Primary, file_id: 0, range: 3..8, message: "" }], notes: [] }
+            "#]],
         );
     }
 
