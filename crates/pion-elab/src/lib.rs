@@ -40,6 +40,7 @@ impl<'core> Elaborator<'core> {
 
     pub fn finish(self) -> Vec<Diagnostic<usize>> { self.diagnostics }
 
+    #[cfg(FALSE)]
     fn eval_expr(&mut self, expr: &Expr<'core>) -> Value<'core> {
         pion_core::semantics::eval(
             expr,
@@ -48,6 +49,14 @@ impl<'core> Elaborator<'core> {
             &self.env.metas.values,
         )
         .unwrap()
+    }
+
+    fn eval_expr(&self, expr: &Expr<'core>) -> Value<'core> {
+        pion_core::semantics::cek::eval(
+            expr,
+            self.env.locals.values.clone(),
+            &self.env.metas.values,
+        )
     }
 
     fn quote_value(&self, value: &Value<'core>) -> Expr<'core> {

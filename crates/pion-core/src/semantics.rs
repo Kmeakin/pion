@@ -9,6 +9,8 @@ pub type MetaValues<'core> = SliceEnv<Option<Value<'core>>>;
 
 pub type Type<'core> = Value<'core>;
 
+pub mod cek;
+
 #[derive(Clone, PartialEq, Eq)]
 pub enum Value<'core> {
     Error,
