@@ -3,7 +3,7 @@ use pion_interner::InternedStr;
 use crate::env::{AbsoluteVar, RelativeVar};
 use crate::prim::PrimVar;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Expr<'core> {
     Error,
 
@@ -65,7 +65,7 @@ impl<'core, T> FunParam<'core, T> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct FunArg<T> {
     pub plicity: Plicity,
     pub expr: T,

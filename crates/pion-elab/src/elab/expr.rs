@@ -328,7 +328,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         args: &&[Located<surface::FunArg<'text, 'surface>>],
     ) -> (Expr<'core>, Value<'core>) {
         let (callee_expr, callee_type) = self.synth_expr(callee);
-        let mut result_expr = callee_expr.clone();
+        let mut result_expr = callee_expr;
         let mut result_type = callee_type.clone();
 
         for (arity, arg) in args.iter().enumerate() {
