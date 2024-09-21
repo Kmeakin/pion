@@ -86,11 +86,15 @@ impl EvalOpts {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error<'core> {
-    UnboundLocalVar {
+    EvalUnboundLocalVar {
         var: RelativeVar,
         len: EnvLen,
     },
-    UnboundMetaVar {
+    QuoteUnboundLocalVar {
+        var: AbsoluteVar,
+        len: EnvLen,
+    },
+    EvalUnboundMetaVar {
         var: AbsoluteVar,
         len: EnvLen,
     },
@@ -286,14 +290,14 @@ pub fn eval<'core, 'env>(
         Expr::PrimVar(prim) => Ok(Value::Neutral(Head::PrimVar(*prim), EcoVec::new())),
 
         Expr::LocalVar(var) => match local_values.get_relative(*var) {
-            None => Err(Error::UnboundLocalVar {
+            None => Err(Error::EvalUnboundLocalVar {
                 var: *var,
                 len: local_values.len(),
             }),
             Some(value) => Ok(value.clone()),
         },
         Expr::MetaVar(var) => match meta_values.get_absolute(*var) {
-            None => Err(Error::UnboundMetaVar {
+            None => Err(Error::EvalUnboundMetaVar {
                 var: *var,
                 len: meta_values.len(),
             }),
@@ -418,12 +422,15 @@ fn quote_head<'core>(
     match head {
         Head::LocalVar(var) => match local_len.absolute_to_relative(var) {
             Some(var) => Ok(Expr::LocalVar(var)),
-            None => todo!("Unbound local var: {var:?}"),
+            None => Err(Error::QuoteUnboundLocalVar {
+                var,
+                len: local_len,
+            }),
         },
         Head::MetaVar(var) => match meta_values.get_absolute(var) {
             Some(Some(value)) => quote(value, bump, local_len, meta_values),
             Some(None) => Ok(Expr::MetaVar(var)),
-            None => Err(Error::UnboundMetaVar {
+            None => Err(Error::EvalUnboundMetaVar {
                 var,
                 len: meta_values.len(),
             }),
@@ -465,7 +472,7 @@ pub fn update_metas<'core>(
     while let Value::Neutral(Head::MetaVar(var), spine) = value {
         match meta_values.get_absolute(var) {
             None => {
-                return Err(Error::UnboundMetaVar {
+                return Err(Error::EvalUnboundMetaVar {
                     var,
                     len: meta_values.len(),
                 })
@@ -547,7 +554,7 @@ mod tests {
     fn eval_unbound_local_var() {
         assert_eval(
             Expr::LocalVar(RelativeVar::new(0)),
-            Err(Error::UnboundLocalVar {
+            Err(Error::EvalUnboundLocalVar {
                 var: RelativeVar::new(0),
                 len: EnvLen::new(0),
             }),
@@ -562,7 +569,7 @@ mod tests {
                 },
                 body: &Expr::LocalVar(RelativeVar::new(1)),
             },
-            Err(Error::UnboundLocalVar {
+            Err(Error::EvalUnboundLocalVar {
                 var: RelativeVar::new(1),
                 len: EnvLen::new(1),
             }),
@@ -573,7 +580,7 @@ mod tests {
     fn eval_unbound_meta_var() {
         assert_eval(
             Expr::MetaVar(AbsoluteVar::new(0)),
-            Err(Error::UnboundMetaVar {
+            Err(Error::EvalUnboundMetaVar {
                 var: AbsoluteVar::new(0),
                 len: EnvLen::new(0),
             }),
