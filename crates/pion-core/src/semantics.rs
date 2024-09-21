@@ -21,11 +21,11 @@ pub enum Value<'core> {
     Neutral(Head, EcoVec<Elim<'core>>),
 
     FunType {
-        param: FunParam<'core, &'core Self>,
+        param: FunParam<'core, &'core Expr<'core>>,
         body: Closure<'core>,
     },
     FunLit {
-        param: FunParam<'core, &'core Self>,
+        param: FunParam<'core, &'core Expr<'core>>,
         body: Closure<'core>,
     },
 }
@@ -274,7 +274,6 @@ pub mod equality {
 
 pub fn eval<'core, 'env>(
     expr: &Expr<'core>,
-    bump: &'core bumpalo::Bump,
     opts: EvalOpts,
     local_values: &'env mut LocalValues<'core>,
     meta_values: &'env MetaValues<'core>,
@@ -305,35 +304,31 @@ pub fn eval<'core, 'env>(
             Some(None) => Ok(Value::meta_var(*var)),
         },
         Expr::Let { binding, body } => {
-            let rhs = eval(binding.rhs, bump, opts, local_values, meta_values)?;
+            let rhs = eval(binding.rhs, opts, local_values, meta_values)?;
             local_values.push(rhs);
-            let body = eval(body, bump, opts, local_values, meta_values);
+            let body = eval(body, opts, local_values, meta_values);
             local_values.pop();
             body
         }
         Expr::FunType { param, body } => {
-            let r#type = eval(param.r#type, bump, opts, local_values, meta_values)?;
-            let r#type = &*bump.alloc(r#type);
             let body = Closure::new(local_values.clone(), body);
             Ok(Value::FunType {
-                param: FunParam::new(param.plicity, param.name, r#type),
+                param: *param,
                 body,
             })
         }
         Expr::FunLit { param, body } => {
-            let r#type = eval(param.r#type, bump, opts, local_values, meta_values)?;
-            let r#type = &*bump.alloc(r#type);
             let body = Closure::new(local_values.clone(), body);
             Ok(Value::FunLit {
-                param: FunParam::new(param.plicity, param.name, r#type),
+                param: *param,
                 body,
             })
         }
         Expr::FunApp { fun, arg } => {
-            let fun = eval(fun, bump, opts, local_values, meta_values)?;
-            let arg_expr = eval(arg.expr, bump, opts, local_values, meta_values)?;
+            let fun = eval(fun, opts, local_values, meta_values)?;
+            let arg_expr = eval(arg.expr, opts, local_values, meta_values)?;
             let arg = FunArg::new(arg.plicity, arg_expr);
-            fun_app(fun, arg, bump, opts, meta_values)
+            fun_app(fun, arg, opts, meta_values)
         }
     }
 }
@@ -341,7 +336,6 @@ pub fn eval<'core, 'env>(
 pub fn fun_app<'core>(
     fun: Value<'core>,
     arg: FunArg<Value<'core>>,
-    bump: &'core bumpalo::Bump,
     opts: EvalOpts,
     meta_values: &MetaValues<'core>,
 ) -> Result<Value<'core>, Error<'core>> {
@@ -357,7 +351,7 @@ pub fn fun_app<'core>(
                 arg_plicity: arg.plicity,
             })
         }
-        Value::FunLit { param: _, body } => apply_closure(body, arg.expr, bump, opts, meta_values),
+        Value::FunLit { param: _, body } => apply_closure(body, arg.expr, opts, meta_values),
         _ => Err(Error::FunAppHeadNotFun { head: fun }),
     }
 }
@@ -365,7 +359,6 @@ pub fn fun_app<'core>(
 pub fn apply_closure<'core>(
     closure: Closure<'core>,
     arg: Value<'core>,
-    bump: &'core bumpalo::Bump,
     opts: EvalOpts,
     meta_values: &MetaValues<'core>,
 ) -> Result<Value<'core>, Error<'core>> {
@@ -374,7 +367,7 @@ pub fn apply_closure<'core>(
         body,
     } = closure;
     local_values.push(arg);
-    eval(body, bump, opts, &mut local_values, meta_values)
+    eval(body, opts, &mut local_values, meta_values)
 }
 
 pub fn quote<'core>(
@@ -440,32 +433,21 @@ fn quote_head<'core>(
 }
 
 fn quote_fun<'core>(
-    param: FunParam<'core, &'core Value<'core>>,
+    param: FunParam<'core, &'core Expr<'core>>,
     closure: &Closure<'core>,
     bump: &'core bumpalo::Bump,
     local_len: EnvLen,
     meta_values: &MetaValues<'core>,
 ) -> Result<(FunParam<'core, &'core Expr<'core>>, &'core Expr<'core>), Error<'core>> {
-    let r#type = quote(param.r#type, bump, local_len, meta_values)?;
-
     let arg = Value::local_var(local_len.to_absolute());
-    let body = apply_closure(
-        closure.clone(),
-        arg,
-        bump,
-        EvalOpts::for_quote(),
-        meta_values,
-    )?;
+    let body = apply_closure(closure.clone(), arg, EvalOpts::for_quote(), meta_values)?;
     let body = quote(&body, bump, local_len.succ(), meta_values)?;
-
-    let (r#type, body) = bump.alloc((r#type, body));
-
-    Ok((FunParam::new(param.plicity, param.name, r#type), body))
+    let body = bump.alloc(body);
+    Ok((param, body))
 }
 
 pub fn update_metas<'core>(
     value: &Value<'core>,
-    bump: &'core bumpalo::Bump,
     meta_values: &MetaValues<'core>,
 ) -> Result<Value<'core>, Error<'core>> {
     let mut value = value.clone();
@@ -482,9 +464,7 @@ pub fn update_metas<'core>(
                 value = spine
                     .into_iter()
                     .try_fold(head.clone(), |head, elim| match elim {
-                        Elim::FunApp(arg) => {
-                            fun_app(head, arg, bump, EvalOpts::for_quote(), meta_values)
-                        }
+                        Elim::FunApp(arg) => fun_app(head, arg, EvalOpts::for_quote(), meta_values),
                     })?;
             }
         }
@@ -501,17 +481,9 @@ mod tests {
     #[track_caller]
     #[allow(clippy::needless_pass_by_value, reason = "It's only a test")]
     fn assert_eval(expr: Expr, expected: Result<Value, Error>) {
-        let bump = bumpalo::Bump::default();
         let mut local_values = LocalValues::default();
         let meta_values = UniqueEnv::default();
-
-        let value = eval(
-            &expr,
-            &bump,
-            EvalOpts::for_eval(),
-            &mut local_values,
-            &meta_values,
-        );
+        let value = eval(&expr, EvalOpts::for_eval(), &mut local_values, &meta_values);
         assert_eq!(value, expected);
     }
 
@@ -660,7 +632,7 @@ mod tests {
     fn quote_fun_lit() {
         let body = Expr::LocalVar(RelativeVar::new(0));
         let fun = Value::FunLit {
-            param: FunParam::explicit(None, &Value::Error),
+            param: FunParam::explicit(None, &Expr::Error),
             body: Closure::empty(&body),
         };
         assert_quote(
@@ -676,7 +648,7 @@ mod tests {
     fn quote_fun_type() {
         let body = Expr::LocalVar(RelativeVar::new(0));
         let fun = Value::FunType {
-            param: FunParam::explicit(None, &Value::Error),
+            param: FunParam::explicit(None, &Expr::Error),
             body: Closure::empty(&body),
         };
         assert_quote(

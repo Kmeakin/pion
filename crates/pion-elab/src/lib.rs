@@ -43,7 +43,6 @@ impl<'core> Elaborator<'core> {
     fn eval_expr(&mut self, expr: &Expr<'core>) -> Value<'core> {
         pion_core::semantics::eval(
             expr,
-            self.bump,
             EvalOpts::for_eval(),
             &mut self.env.locals.values,
             &self.env.metas.values,
@@ -65,7 +64,6 @@ impl<'core> Elaborator<'core> {
         pion_core::semantics::apply_closure(
             closure,
             arg,
-            self.bump,
             EvalOpts::for_eval(),
             &self.env.metas.values,
         )

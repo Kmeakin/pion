@@ -125,13 +125,13 @@ pub fn value_prec(out: &mut impl Write, value: &Value, prec: Prec) -> fmt::Resul
         }
         Value::FunType { param, body } => {
             write!(out, "forall(")?;
-            fun_param(out, param, |out, value| value_prec(out, value, Prec::MAX))?;
+            fun_param(out, param, |out, expr| expr_prec(out, expr, Prec::MAX))?;
             write!(out, ") ")?;
             expr_prec(out, body.body, Prec::MAX)?;
         }
         Value::FunLit { param, body } => {
             write!(out, "fun(")?;
-            fun_param(out, param, |out, value| value_prec(out, value, Prec::MAX))?;
+            fun_param(out, param, |out, expr| expr_prec(out, expr, Prec::MAX))?;
             write!(out, ") ")?;
             expr_prec(out, body.body, Prec::MAX)?;
         }

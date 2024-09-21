@@ -271,7 +271,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     body: self.bump.alloc(body_expr),
                 };
                 let r#type = Type::FunType {
-                    param: FunParam::new(param.plicity, param.name, self.bump.alloc(param_type)),
+                    param,
                     body: Closure::new(self.env.locals.values.clone(), self.bump.alloc(body_type)),
                 };
                 (expr, r#type)
@@ -292,13 +292,12 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     param: expected_param,
                     body: expected_body,
                 } => {
-                    let param = self.check_fun_param(param.as_ref(), expected_param.r#type);
+                    let expected_param_type = self.eval_expr(expected_param.r#type);
+                    let param = self.check_fun_param(param.as_ref(), &expected_param_type);
                     let body_expr = {
                         let arg_value =
                             Value::local_var(self.env.locals.values.len().to_absolute());
-                        self.env
-                            .locals
-                            .push_param(param.name, expected_param.r#type.clone());
+                        self.env.locals.push_param(param.name, expected_param_type);
                         let expected = self.apply_closure(expected_body.clone(), arg_value);
                         let body_expr = self.check_fun_expr(params, body, &expected);
                         self.env.locals.pop();
@@ -334,7 +333,8 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         for (arity, arg) in args.iter().enumerate() {
             match result_type {
                 Value::FunType { param, body } => {
-                    let arg_expr = self.check_expr(arg.data.expr.as_ref(), param.r#type);
+                    let param_type = self.eval_expr(param.r#type);
+                    let arg_expr = self.check_expr(arg.data.expr.as_ref(), &param_type);
                     let arg_value = self.eval_expr(&arg_expr);
                     let (expr, arg_expr) = self.bump.alloc((result_expr, arg_expr));
                     result_expr = Expr::FunApp {
