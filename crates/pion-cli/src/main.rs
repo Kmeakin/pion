@@ -3,9 +3,7 @@ use std::str::FromStr;
 
 use camino::Utf8PathBuf;
 use clap::Parser;
-use codespan_reporting::diagnostic;
 use codespan_reporting::files::Files;
-use codespan_reporting::term::emit;
 
 #[derive(Debug, Parser)]
 #[command(version)]

@@ -482,10 +482,13 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         return Expr::String(self.bump.alloc_str(&text));
     }
 
+    #[allow(
+        unused_variables,
+        clippy::unused_self,
+        clippy::needless_pass_by_ref_mut,
+        reason = "not implemented yet"
+    )]
     fn synth_char(&mut self, text: Located<&str>) -> Expr<'core> {
-        let range = text.range;
-        let text = text.data;
-
         // TODO: Handle escape sequences, check string is terminated, check for invalid
         // characters
         Expr::Char('\0')
