@@ -220,6 +220,69 @@ pub mod equality {
     }
 }
 
+pub fn fun_app<'core>(
+    fun: Value<'core>,
+    arg: FunArg<Value<'core>>,
+    opts: EvalOpts,
+    meta_values: &MetaValues<'core>,
+) -> Result<Value<'core>, Error<'core>> {
+    match fun {
+        Value::Neutral(head, mut spine) => {
+            spine.push(Elim::FunApp(arg));
+            Ok(Value::Neutral(head, spine))
+        }
+        Value::FunLit(param, _) if param.plicity != arg.plicity => {
+            Err(Error::FunAppPlicityMismatch {
+                param_plicity: param.plicity,
+                arg_plicity: arg.plicity,
+            })
+        }
+        Value::FunLit(_, body) => apply_closure(body, arg.expr, opts, meta_values),
+        _ => Err(Error::CalleeNotFun { callee: fun }),
+    }
+}
+
+pub fn apply_closure<'core>(
+    closure: Closure<'core>,
+    arg: Value<'core>,
+    opts: EvalOpts,
+    meta_values: &MetaValues<'core>,
+) -> Result<Value<'core>, Error<'core>> {
+    let Closure {
+        mut local_values,
+        body,
+    } = closure;
+    local_values.push(arg);
+    eval(body, opts, &mut local_values, meta_values)
+}
+
+/// Substitute meta variables in neutral spines with thier values.
+pub fn update_metas<'core>(
+    value: &Value<'core>,
+    meta_values: &MetaValues<'core>,
+) -> Result<Value<'core>, Error<'core>> {
+    let mut value = value.clone();
+    while let Value::Neutral(Head::MetaVar(var), spine) = value {
+        match meta_values.get_absolute(var) {
+            None => {
+                return Err(Error::UnboundMetaVar {
+                    var,
+                    len: meta_values.len(),
+                })
+            }
+            Some(None) => return Ok(Value::Neutral(Head::MetaVar(var), spine)),
+            Some(Some(head)) => {
+                value = spine
+                    .into_iter()
+                    .try_fold(head.clone(), |head, elim| match elim {
+                        Elim::FunApp(arg) => fun_app(head, arg, EvalOpts::for_quote(), meta_values),
+                    })?;
+            }
+        }
+    }
+    Ok(value)
+}
+
 pub fn eval<'core, 'env>(
     expr: &Expr<'core>,
     opts: EvalOpts,
@@ -273,42 +336,6 @@ pub fn eval<'core, 'env>(
             fun_app(fun, arg, opts, meta_values)
         }
     }
-}
-
-pub fn fun_app<'core>(
-    fun: Value<'core>,
-    arg: FunArg<Value<'core>>,
-    opts: EvalOpts,
-    meta_values: &MetaValues<'core>,
-) -> Result<Value<'core>, Error<'core>> {
-    match fun {
-        Value::Neutral(head, mut spine) => {
-            spine.push(Elim::FunApp(arg));
-            Ok(Value::Neutral(head, spine))
-        }
-        Value::FunLit(param, _) if param.plicity != arg.plicity => {
-            Err(Error::FunAppPlicityMismatch {
-                param_plicity: param.plicity,
-                arg_plicity: arg.plicity,
-            })
-        }
-        Value::FunLit(_, body) => apply_closure(body, arg.expr, opts, meta_values),
-        _ => Err(Error::CalleeNotFun { callee: fun }),
-    }
-}
-
-pub fn apply_closure<'core>(
-    closure: Closure<'core>,
-    arg: Value<'core>,
-    opts: EvalOpts,
-    meta_values: &MetaValues<'core>,
-) -> Result<Value<'core>, Error<'core>> {
-    let Closure {
-        mut local_values,
-        body,
-    } = closure;
-    local_values.push(arg);
-    eval(body, opts, &mut local_values, meta_values)
 }
 
 pub fn quote<'core>(
@@ -390,32 +417,6 @@ fn quote_closure<'core>(
     let body = quote(&body, bump, local_len.succ(), meta_values)?;
     let body = bump.alloc(body);
     Ok(body)
-}
-
-pub fn update_metas<'core>(
-    value: &Value<'core>,
-    meta_values: &MetaValues<'core>,
-) -> Result<Value<'core>, Error<'core>> {
-    let mut value = value.clone();
-    while let Value::Neutral(Head::MetaVar(var), spine) = value {
-        match meta_values.get_absolute(var) {
-            None => {
-                return Err(Error::UnboundMetaVar {
-                    var,
-                    len: meta_values.len(),
-                })
-            }
-            Some(None) => return Ok(Value::Neutral(Head::MetaVar(var), spine)),
-            Some(Some(head)) => {
-                value = spine
-                    .into_iter()
-                    .try_fold(head.clone(), |head, elim| match elim {
-                        Elim::FunApp(arg) => fun_app(head, arg, EvalOpts::for_quote(), meta_values),
-                    })?;
-            }
-        }
-    }
-    Ok(value)
 }
 
 #[cfg(test)]
