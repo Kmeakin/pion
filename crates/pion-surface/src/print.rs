@@ -57,14 +57,14 @@ impl<W: Write> Printer<W> {
                 writeln!(self, "Expr::Paren")?;
                 self.with_indent(|this| this.expr(*expr))
             }
-            Expr::TypeAnnotation { expr, r#type } => {
+            Expr::TypeAnnotation(expr, r#type) => {
                 writeln!(self, "Expr::TypeAnnotation")?;
                 self.with_indent(|this| {
                     this.expr(*expr)?;
                     this.expr(*r#type)
                 })
             }
-            Expr::FunCall { callee, args } => {
+            Expr::FunCall(callee, args) => {
                 writeln!(self, "Expr::FunCall")?;
                 self.with_indent(|this| {
                     this.expr(*callee)?;
@@ -74,7 +74,7 @@ impl<W: Write> Printer<W> {
                     Ok(())
                 })
             }
-            Expr::FunExpr { params, body } => {
+            Expr::FunExpr(params, body) => {
                 writeln!(self, "Expr::FunExpr")?;
                 self.with_indent(|this| {
                     for param in *params {
@@ -84,7 +84,7 @@ impl<W: Write> Printer<W> {
                     Ok(())
                 })
             }
-            Expr::FunType { params, body } => {
+            Expr::FunType(params, body) => {
                 writeln!(self, "Expr::FunType")?;
                 self.with_indent(|this| {
                     for param in *params {
@@ -94,14 +94,14 @@ impl<W: Write> Printer<W> {
                     Ok(())
                 })
             }
-            Expr::FunArrow { domain, codomain } => {
+            Expr::FunArrow(domain, codomain) => {
                 writeln!(self, "Expr::FunArrow")?;
                 self.with_indent(|this| {
                     this.expr(*domain)?;
                     this.expr(*codomain)
                 })
             }
-            Expr::Let { binding, body } => {
+            Expr::Let(binding, body) => {
                 writeln!(self, "Expr::Let")?;
                 self.with_indent(|this| {
                     this.let_binding(*binding)?;

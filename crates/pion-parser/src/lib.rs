@@ -48,10 +48,8 @@ fn infix_binding_power<'text, 'surface>(
     token: TokenKind,
 ) -> Option<(u8, u8, Binop<'text, 'surface>)> {
     match token {
-        TokenKind::SingleArrow => {
-            Some((3, 2, |domain, codomain| Expr::FunArrow { domain, codomain }))
-        }
-        TokenKind::Punct(':') => Some((1, 2, |expr, r#type| Expr::TypeAnnotation { expr, r#type })),
+        TokenKind::SingleArrow => Some((3, 2, |domain, codomain| Expr::FunArrow(domain, codomain))),
+        TokenKind::Punct(':') => Some((1, 2, |expr, r#type| Expr::TypeAnnotation(expr, r#type))),
         _ => None,
     }
 }
@@ -321,10 +319,10 @@ where
 
         Located::new(
             TextRange::new(start_range.start(), end_range.end()),
-            Expr::Let {
-                binding: binding.map(|binding| &*self.bump.alloc(binding)),
-                body: body.map(|expr| &*self.bump.alloc(expr)),
-            },
+            Expr::Let(
+                binding.map(|binding| &*self.bump.alloc(binding)),
+                body.map(|expr| &*self.bump.alloc(expr)),
+            ),
         )
     }
 
@@ -338,10 +336,7 @@ where
         let end_range = self.range;
         Located::new(
             TextRange::new(start_range.start(), end_range.end()),
-            Expr::FunType {
-                params,
-                body: body.map(|expr| &*self.bump.alloc(expr)),
-            },
+            Expr::FunType(params, body.map(|expr| &*self.bump.alloc(expr))),
         )
     }
 
@@ -355,10 +350,7 @@ where
         let end_range = self.range;
         Located::new(
             TextRange::new(start_range.start(), end_range.end()),
-            Expr::FunExpr {
-                params,
-                body: body.map(|expr| &*self.bump.alloc(expr)),
-            },
+            Expr::FunExpr(params, body.map(|expr| &*self.bump.alloc(expr))),
         )
     }
 
@@ -371,7 +363,7 @@ where
         let end_range = self.range;
         Located::new(
             TextRange::new(start_range.start(), end_range.end()),
-            Expr::FunCall { callee, args },
+            Expr::FunCall(callee, args),
         )
     }
 

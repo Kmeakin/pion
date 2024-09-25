@@ -36,30 +36,24 @@ pub enum Expr<'text, 'surface> {
     Char(&'text str),
     String(&'text str),
     Paren(Located<&'surface Self>),
-    TypeAnnotation {
-        expr: Located<&'surface Self>,
-        r#type: Located<&'surface Self>,
-    },
-    FunCall {
-        callee: Located<&'surface Self>,
-        args: &'surface [Located<FunArg<'text, 'surface>>],
-    },
-    FunExpr {
-        params: &'surface [Located<FunParam<'text, 'surface>>],
-        body: Located<&'surface Self>,
-    },
-    FunType {
-        params: &'surface [Located<FunParam<'text, 'surface>>],
-        body: Located<&'surface Self>,
-    },
-    FunArrow {
-        domain: Located<&'surface Self>,
-        codomain: Located<&'surface Self>,
-    },
-    Let {
-        binding: Located<&'surface LetBinding<'text, 'surface>>,
-        body: Located<&'surface Self>,
-    },
+    TypeAnnotation(Located<&'surface Self>, Located<&'surface Self>),
+    FunCall(
+        Located<&'surface Self>,
+        &'surface [Located<FunArg<'text, 'surface>>],
+    ),
+    FunExpr(
+        &'surface [Located<FunParam<'text, 'surface>>],
+        Located<&'surface Self>,
+    ),
+    FunType(
+        &'surface [Located<FunParam<'text, 'surface>>],
+        Located<&'surface Self>,
+    ),
+    FunArrow(Located<&'surface Self>, Located<&'surface Self>),
+    Let(
+        Located<&'surface LetBinding<'text, 'surface>>,
+        Located<&'surface Self>,
+    ),
 }
 
 #[derive(Copy, Clone)]

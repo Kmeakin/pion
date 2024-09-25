@@ -16,23 +16,11 @@ pub enum Expr<'core> {
     LocalVar(RelativeVar),
     MetaVar(AbsoluteVar),
 
-    Let {
-        binding: LetBinding<'core, &'core Self>,
-        body: &'core Self,
-    },
+    Let(LetBinding<'core, &'core Self>, &'core Self),
 
-    FunType {
-        param: FunParam<'core, &'core Self>,
-        body: &'core Self,
-    },
-    FunLit {
-        param: FunParam<'core, &'core Self>,
-        body: &'core Self,
-    },
-    FunApp {
-        fun: &'core Self,
-        arg: FunArg<&'core Self>,
-    },
+    FunType(FunParam<'core, &'core Self>, &'core Self),
+    FunLit(FunParam<'core, &'core Self>, &'core Self),
+    FunApp(&'core Self, FunArg<&'core Self>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

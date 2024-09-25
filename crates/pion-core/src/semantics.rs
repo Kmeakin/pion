@@ -20,14 +20,8 @@ pub enum Value<'core> {
 
     Neutral(Head, EcoVec<Elim<'core>>),
 
-    FunType {
-        param: FunParam<'core, &'core Expr<'core>>,
-        body: Closure<'core>,
-    },
-    FunLit {
-        param: FunParam<'core, &'core Expr<'core>>,
-        body: Closure<'core>,
-    },
+    FunType(FunParam<'core, &'core Expr<'core>>, Closure<'core>),
+    FunLit(FunParam<'core, &'core Expr<'core>>, Closure<'core>),
 }
 
 impl<'core> Value<'core> {
@@ -141,26 +135,10 @@ pub mod equality {
                             .zip(rhs_spine.iter())
                             .all(|(lhs, rhs)| lhs.alpha_eq(rhs))
                 }
-                (
-                    Value::FunType {
-                        param: lhs_param,
-                        body: lhs_body,
-                    },
-                    Value::FunType {
-                        param: rhs_param,
-                        body: rhs_body,
-                    },
-                )
-                | (
-                    Value::FunLit {
-                        param: lhs_param,
-                        body: lhs_body,
-                    },
-                    Value::FunLit {
-                        param: rhs_param,
-                        body: rhs_body,
-                    },
-                ) => lhs_param.r#type.alpha_eq(rhs_param.r#type) && lhs_body.alpha_eq(rhs_body),
+                (Value::FunType(lhs_param, lhs_body), Value::FunType(rhs_param, rhs_body))
+                | (Value::FunLit(lhs_param, lhs_body), Value::FunLit(rhs_param, rhs_body)) => {
+                    lhs_param.r#type.alpha_eq(rhs_param.r#type) && lhs_body.alpha_eq(rhs_body)
+                }
 
                 _ => false,
             }
@@ -185,48 +163,18 @@ pub mod equality {
                 (Expr::LocalVar(lhs), Expr::LocalVar(rhs)) => lhs == rhs,
                 (Expr::MetaVar(lhs), Expr::MetaVar(rhs)) => lhs == rhs,
 
-                (
-                    Expr::Let {
-                        binding: lhs_binding,
-                        body: lhs_body,
-                    },
-                    Expr::Let {
-                        binding: rhs_binding,
-                        body: rhs_body,
-                    },
-                ) => lhs_binding.alpha_eq(rhs_binding) && lhs_body.alpha_eq(rhs_body),
+                (Expr::Let(lhs_binding, lhs_body), Expr::Let(rhs_binding, rhs_body)) => {
+                    lhs_binding.alpha_eq(rhs_binding) && lhs_body.alpha_eq(rhs_body)
+                }
 
-                (
-                    Expr::FunType {
-                        param: lhs_param,
-                        body: lhs_body,
-                    },
-                    Expr::FunType {
-                        param: rhs_param,
-                        body: rhs_body,
-                    },
-                )
-                | (
-                    Expr::FunLit {
-                        param: lhs_param,
-                        body: lhs_body,
-                    },
-                    Expr::FunLit {
-                        param: rhs_param,
-                        body: rhs_body,
-                    },
-                ) => lhs_param.alpha_eq(rhs_param) && lhs_body.alpha_eq(rhs_body),
+                (Expr::FunType(lhs_param, lhs_body), Expr::FunType(rhs_param, rhs_body))
+                | (Expr::FunLit(lhs_param, lhs_body), Expr::FunLit(rhs_param, rhs_body)) => {
+                    lhs_param.alpha_eq(rhs_param) && lhs_body.alpha_eq(rhs_body)
+                }
 
-                (
-                    Expr::FunApp {
-                        fun: lhs_fun,
-                        arg: lhs_arg,
-                    },
-                    Expr::FunApp {
-                        fun: rhs_fun,
-                        arg: rhs_arg,
-                    },
-                ) => lhs_fun.alpha_eq(rhs_fun) && lhs_arg.alpha_eq(rhs_arg),
+                (Expr::FunApp(lhs_fun, lhs_arg), Expr::FunApp(rhs_fun, rhs_arg)) => {
+                    lhs_fun.alpha_eq(rhs_fun) && lhs_arg.alpha_eq(rhs_arg)
+                }
 
                 _ => false,
             }
@@ -303,28 +251,22 @@ pub fn eval<'core, 'env>(
             Some(Some(value)) => Ok(value.clone()),
             Some(None) => Ok(Value::meta_var(*var)),
         },
-        Expr::Let { binding, body } => {
+        Expr::Let(binding, body) => {
             let rhs = eval(binding.rhs, opts, local_values, meta_values)?;
             local_values.push(rhs);
             let body = eval(body, opts, local_values, meta_values);
             local_values.pop();
             body
         }
-        Expr::FunType { param, body } => {
+        Expr::FunType(param, body) => {
             let body = Closure::new(local_values.clone(), body);
-            Ok(Value::FunType {
-                param: *param,
-                body,
-            })
+            Ok(Value::FunType(*param, body))
         }
-        Expr::FunLit { param, body } => {
+        Expr::FunLit(param, body) => {
             let body = Closure::new(local_values.clone(), body);
-            Ok(Value::FunLit {
-                param: *param,
-                body,
-            })
+            Ok(Value::FunLit(*param, body))
         }
-        Expr::FunApp { fun, arg } => {
+        Expr::FunApp(fun, arg) => {
             let fun = eval(fun, opts, local_values, meta_values)?;
             let arg_expr = eval(arg.expr, opts, local_values, meta_values)?;
             let arg = FunArg::new(arg.plicity, arg_expr);
@@ -345,13 +287,13 @@ pub fn fun_app<'core>(
             spine.push(Elim::FunApp(arg));
             Ok(Value::Neutral(head, spine))
         }
-        Value::FunLit { param, body: _ } if param.plicity != arg.plicity => {
+        Value::FunLit(param, _) if param.plicity != arg.plicity => {
             Err(Error::FunAppPlicityMismatch {
                 param_plicity: param.plicity,
                 arg_plicity: arg.plicity,
             })
         }
-        Value::FunLit { param: _, body } => apply_closure(body, arg.expr, opts, meta_values),
+        Value::FunLit(_, body) => apply_closure(body, arg.expr, opts, meta_values),
         _ => Err(Error::FunAppHeadNotFun { head: fun }),
     }
 }
@@ -391,23 +333,17 @@ pub fn quote<'core>(
                     let arg_expr = quote(&arg.expr, bump, local_len, meta_values)?;
                     let (fun, arg_expr) = bump.alloc((head, arg_expr));
                     let arg = FunArg::new(arg.plicity, &*arg_expr);
-                    Ok(Expr::FunApp { fun, arg })
+                    Ok(Expr::FunApp(fun, arg))
                 }
             })
         }
-        Value::FunType { param, body } => {
+        Value::FunType(param, body) => {
             let body = quote_closure(body, bump, local_len, meta_values)?;
-            Ok(Expr::FunType {
-                param: *param,
-                body,
-            })
+            Ok(Expr::FunType(*param, body))
         }
-        Value::FunLit { param, body } => {
+        Value::FunLit(param, body) => {
             let body = quote_closure(body, bump, local_len, meta_values)?;
-            Ok(Expr::FunLit {
-                param: *param,
-                body,
-            })
+            Ok(Expr::FunLit(*param, body))
         }
     }
 }
@@ -515,14 +451,14 @@ mod tests {
     #[test]
     fn eval_let() {
         assert_eval(
-            Expr::Let {
-                binding: LetBinding {
+            Expr::Let(
+                LetBinding {
                     name: None,
                     r#type: &Expr::Error,
                     rhs: &Expr::Int(10),
                 },
-                body: &Expr::LocalVar(RelativeVar::new(0)),
-            },
+                &Expr::LocalVar(RelativeVar::new(0)),
+            ),
             Ok(Value::Int(10)),
         );
     }
@@ -538,14 +474,14 @@ mod tests {
         );
 
         assert_eval(
-            Expr::Let {
-                binding: LetBinding {
+            Expr::Let(
+                LetBinding {
                     name: None,
                     r#type: &Expr::Error,
                     rhs: &Expr::Int(10),
                 },
-                body: &Expr::LocalVar(RelativeVar::new(1)),
-            },
+                &Expr::LocalVar(RelativeVar::new(1)),
+            ),
             Err(Error::EvalUnboundLocalVar {
                 var: RelativeVar::new(1),
                 len: EnvLen::new(1),
@@ -566,23 +502,19 @@ mod tests {
 
     #[test]
     fn eval_fun_app_beta_reduction() {
-        let fun = Expr::FunLit {
-            param: FunParam::explicit(None, &Expr::Error),
-            body: &Expr::LocalVar(RelativeVar::new(0)),
-        };
+        let body = Expr::LocalVar(RelativeVar::new(0));
+        let fun = Expr::FunLit(FunParam::explicit(None, &Expr::Error), &body);
         let arg = FunArg::explicit(&Expr::Int(10));
-        let expr = Expr::FunApp { fun: &fun, arg };
+        let expr = Expr::FunApp(&fun, arg);
         assert_eval(expr, Ok(Value::Int(10)));
     }
 
     #[test]
     fn eval_fun_app_plicity_mismatch() {
-        let fun = Expr::FunLit {
-            param: FunParam::implicit(None, &Expr::Error),
-            body: &Expr::LocalVar(RelativeVar::new(0)),
-        };
+        let body = Expr::LocalVar(RelativeVar::new(0));
+        let fun = Expr::FunLit(FunParam::implicit(None, &Expr::Error), &body);
         let arg = FunArg::explicit(&Expr::Int(10));
-        let expr = Expr::FunApp { fun: &fun, arg };
+        let expr = Expr::FunApp(&fun, arg);
         assert_eval(
             expr,
             Err(Error::FunAppPlicityMismatch {
@@ -591,12 +523,10 @@ mod tests {
             }),
         );
 
-        let fun = Expr::FunLit {
-            param: FunParam::explicit(None, &Expr::Error),
-            body: &Expr::LocalVar(RelativeVar::new(0)),
-        };
+        let body = Expr::LocalVar(RelativeVar::new(0));
+        let fun = Expr::FunLit(FunParam::explicit(None, &Expr::Error), &body);
         let arg = FunArg::implicit(&Expr::Int(10));
-        let expr = Expr::FunApp { fun: &fun, arg };
+        let expr = Expr::FunApp(&fun, arg);
         assert_eval(
             expr,
             Err(Error::FunAppPlicityMismatch {
@@ -610,7 +540,7 @@ mod tests {
     fn eval_fun_app_head_not_fun() {
         let fun = Expr::Char('a');
         let arg = FunArg::explicit(&Expr::Int(10));
-        let expr = Expr::FunApp { fun: &fun, arg };
+        let expr = Expr::FunApp(&fun, arg);
         assert_eval(
             expr,
             Err(Error::FunAppHeadNotFun {
@@ -623,7 +553,7 @@ mod tests {
     fn eval_fun_app_error_head() {
         let fun = Expr::Error;
         let arg = FunArg::explicit(&Expr::Int(10));
-        let expr = Expr::FunApp { fun: &fun, arg };
+        let expr = Expr::FunApp(&fun, arg);
         assert_eval(expr, Ok(Value::Error));
     }
 
@@ -636,32 +566,32 @@ mod tests {
     #[test]
     fn quote_fun_lit() {
         let body = Expr::LocalVar(RelativeVar::new(0));
-        let fun = Value::FunLit {
-            param: FunParam::explicit(None, &Expr::Error),
-            body: Closure::empty(&body),
-        };
+        let fun = Value::FunLit(
+            FunParam::explicit(None, &Expr::Error),
+            Closure::empty(&body),
+        );
         assert_quote(
             fun,
-            Ok(Expr::FunLit {
-                param: FunParam::explicit(None, &Expr::Error),
-                body: &Expr::LocalVar(RelativeVar::new(0)),
-            }),
+            Ok(Expr::FunLit(
+                FunParam::explicit(None, &Expr::Error),
+                &Expr::LocalVar(RelativeVar::new(0)),
+            )),
         );
     }
 
     #[test]
     fn quote_fun_type() {
         let body = Expr::LocalVar(RelativeVar::new(0));
-        let fun = Value::FunType {
-            param: FunParam::explicit(None, &Expr::Error),
-            body: Closure::empty(&body),
-        };
+        let fun = Value::FunType(
+            FunParam::explicit(None, &Expr::Error),
+            Closure::empty(&body),
+        );
         assert_quote(
             fun,
-            Ok(Expr::FunType {
-                param: FunParam::explicit(None, &Expr::Error),
-                body: &Expr::LocalVar(RelativeVar::new(0)),
-            }),
+            Ok(Expr::FunType(
+                FunParam::explicit(None, &Expr::Error),
+                &Expr::LocalVar(RelativeVar::new(0)),
+            )),
         );
     }
 }

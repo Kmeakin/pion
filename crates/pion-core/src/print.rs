@@ -27,9 +27,9 @@ impl Prec {
             | Expr::PrimVar(_)
             | Expr::LocalVar(_)
             | Expr::MetaVar(_) => Self::Atom,
-            Expr::Let { .. } => Self::Let,
-            Expr::FunType { .. } | Expr::FunLit { .. } => Self::Fun,
-            Expr::FunApp { .. } => Self::Call,
+            Expr::Let(..) => Self::Let,
+            Expr::FunType(..) | Expr::FunLit(..) => Self::Fun,
+            Expr::FunApp(..) => Self::Call,
         }
     }
 
@@ -39,7 +39,7 @@ impl Prec {
                 Self::Atom
             }
             Value::Neutral(..) => Self::Call,
-            Value::FunType { .. } | Value::FunLit { .. } => Self::Fun,
+            Value::FunType(..) | Value::FunLit(..) => Self::Fun,
         }
     }
 }
@@ -66,25 +66,25 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
         Expr::PrimVar(var) => write!(out, "{var}")?,
         Expr::LocalVar(var) => write!(out, "_#{var}")?,
         Expr::MetaVar(var) => write!(out, "?{var}")?,
-        Expr::Let { binding, body } => {
+        Expr::Let(binding, body) => {
             write!(out, "let ")?;
             let_binding(out, binding)?;
             write!(out, "; ")?;
             expr_prec(out, body, Prec::MAX)?;
         }
-        Expr::FunType { param, body } => {
+        Expr::FunType(param, body) => {
             write!(out, "forall(")?;
             fun_param(out, param, |out, expr| expr_prec(out, expr, Prec::MAX))?;
             write!(out, ") -> ")?;
             expr_prec(out, body, Prec::MAX)?;
         }
-        Expr::FunLit { param, body } => {
+        Expr::FunLit(param, body) => {
             write!(out, "fun(")?;
             fun_param(out, param, |out, expr| expr_prec(out, expr, Prec::MAX))?;
             write!(out, ") =>")?;
             expr_prec(out, body, Prec::MAX)?;
         }
-        Expr::FunApp { fun, arg } => {
+        Expr::FunApp(fun, arg) => {
             expr_prec(out, fun, Prec::Call)?;
             write!(out, "(")?;
             fun_arg(out, arg, |out, expr| expr_prec(out, expr, Prec::MAX))?;
@@ -123,13 +123,13 @@ pub fn value_prec(out: &mut impl Write, value: &Value, prec: Prec) -> fmt::Resul
                 }
             }
         }
-        Value::FunType { param, body } => {
+        Value::FunType(param, body) => {
             write!(out, "forall(")?;
             fun_param(out, param, |out, expr| expr_prec(out, expr, Prec::MAX))?;
             write!(out, ") ")?;
             expr_prec(out, body.body, Prec::MAX)?;
         }
-        Value::FunLit { param, body } => {
+        Value::FunLit(param, body) => {
             write!(out, "fun(")?;
             fun_param(out, param, |out, expr| expr_prec(out, expr, Prec::MAX))?;
             write!(out, ") ")?;

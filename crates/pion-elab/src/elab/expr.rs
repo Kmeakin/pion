@@ -54,16 +54,16 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 Type::STRING,
             ),
             surface::Expr::Paren(expr) => self.synth_expr(*expr),
-            surface::Expr::TypeAnnotation { expr, r#type } => {
+            surface::Expr::TypeAnnotation(expr, r#type) => {
                 let r#type = self.check_expr(*r#type, &Type::TYPE);
                 let r#type_value = self.eval_expr(&r#type);
                 let expr = self.check_expr(*expr, &r#type_value);
                 (expr, r#type_value)
             }
-            surface::Expr::FunCall { callee, args } => self.synth_fun_call(*callee, args),
-            surface::Expr::FunExpr { params, body } => self.synth_fun_expr(params, *body),
-            surface::Expr::FunType { params, body } => self.synth_fun_type(params, *body),
-            surface::Expr::FunArrow { domain, codomain } => {
+            surface::Expr::FunCall(callee, args) => self.synth_fun_call(*callee, args),
+            surface::Expr::FunExpr(params, body) => self.synth_fun_expr(params, *body),
+            surface::Expr::FunType(params, body) => self.synth_fun_type(params, *body),
+            surface::Expr::FunArrow(domain, codomain) => {
                 let domain = self.check_expr(*domain, &Type::TYPE);
                 let codomain = {
                     let domain_value = self.eval_expr(&domain);
@@ -73,13 +73,10 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     codomain
                 };
                 let (domain, codomain) = self.bump.alloc((domain, codomain));
-                let expr = Expr::FunType {
-                    param: FunParam::explicit(None, domain),
-                    body: codomain,
-                };
+                let expr = Expr::FunType(FunParam::explicit(None, domain), codomain);
                 (expr, Type::TYPE)
             }
-            surface::Expr::Let { binding, body } => {
+            surface::Expr::Let(binding, body) => {
                 let (binding, r#type) = self.synth_let_binding(*binding);
 
                 let (body_expr, body_type) = {
@@ -90,14 +87,14 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     (body_expr, body_type)
                 };
 
-                let expr = Expr::Let {
-                    binding: LetBinding {
+                let expr = Expr::Let(
+                    LetBinding {
                         name: binding.name,
                         r#type: self.bump.alloc(binding.r#type),
                         rhs: self.bump.alloc(binding.rhs),
                     },
-                    body: self.bump.alloc(body_expr),
-                };
+                    self.bump.alloc(body_expr),
+                );
                 (expr, body_type)
             }
         }
@@ -116,12 +113,12 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             | surface::Expr::Char(_)
             | surface::Expr::String(_)
             | surface::Expr::Paren(_)
-            | surface::Expr::TypeAnnotation { .. }
-            | surface::Expr::FunCall { .. }
-            | surface::Expr::FunType { .. }
-            | surface::Expr::FunArrow { .. } => self.synth_and_coerce_expr(expr, expected),
-            surface::Expr::FunExpr { params, body } => self.check_fun_expr(params, *body, expected),
-            surface::Expr::Let { binding, body } => {
+            | surface::Expr::TypeAnnotation(..)
+            | surface::Expr::FunCall(..)
+            | surface::Expr::FunType(..)
+            | surface::Expr::FunArrow(..) => self.synth_and_coerce_expr(expr, expected),
+            surface::Expr::FunExpr(params, body) => self.check_fun_expr(params, *body, expected),
+            surface::Expr::Let(binding, body) => {
                 let (binding, r#type) = self.synth_let_binding(*binding);
 
                 let body_expr = {
@@ -132,14 +129,14 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     body_expr
                 };
 
-                let expr = Expr::Let {
-                    binding: LetBinding {
+                let expr = Expr::Let(
+                    LetBinding {
                         name: binding.name,
                         r#type: self.bump.alloc(binding.r#type),
                         rhs: self.bump.alloc(binding.rhs),
                     },
-                    body: self.bump.alloc(body_expr),
-                };
+                    self.bump.alloc(body_expr),
+                );
                 expr
             }
         }
@@ -230,14 +227,10 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     body_expr
                 };
 
-                let expr = Expr::FunType {
-                    param: FunParam {
-                        plicity: param.plicity,
-                        name: param.name,
-                        r#type: self.bump.alloc(param.r#type),
-                    },
-                    body: self.bump.alloc(body_expr),
-                };
+                let expr = Expr::FunType(
+                    FunParam::new(param.plicity, param.name, self.bump.alloc(param.r#type)),
+                    self.bump.alloc(body_expr),
+                );
                 (expr, Type::TYPE)
             }
         }
@@ -261,19 +254,13 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     (body_expr, body_type)
                 };
 
-                let param = FunParam {
-                    plicity: param.plicity,
-                    name: param.name,
-                    r#type: &*self.bump.alloc(param.r#type),
-                };
-                let expr = Expr::FunLit {
+                let param =
+                    FunParam::new(param.plicity, param.name, &*self.bump.alloc(param.r#type));
+                let expr = Expr::FunLit(param, self.bump.alloc(body_expr));
+                let r#type = Type::FunType(
                     param,
-                    body: self.bump.alloc(body_expr),
-                };
-                let r#type = Type::FunType {
-                    param,
-                    body: Closure::new(self.env.locals.values.clone(), self.bump.alloc(body_type)),
-                };
+                    Closure::new(self.env.locals.values.clone(), self.bump.alloc(body_type)),
+                );
                 (expr, r#type)
             }
         }
@@ -288,10 +275,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         match params {
             [] => self.check_expr(body, expected),
             [param, params @ ..] => match expected {
-                Value::FunType {
-                    param: expected_param,
-                    body: expected_body,
-                } => {
+                Value::FunType(expected_param, expected_body) => {
                     let expected_param_type = self.eval_expr(expected_param.r#type);
                     let param = self.check_fun_param(param.as_ref(), &expected_param_type);
                     let body_expr = {
@@ -303,14 +287,10 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                         self.env.locals.pop();
                         body_expr
                     };
-                    let expr = Expr::FunLit {
-                        param: FunParam::new(
-                            param.plicity,
-                            param.name,
-                            self.bump.alloc(param.r#type),
-                        ),
-                        body: self.bump.alloc(body_expr),
-                    };
+                    let expr = Expr::FunLit(
+                        FunParam::new(param.plicity, param.name, self.bump.alloc(param.r#type)),
+                        self.bump.alloc(body_expr),
+                    );
                     expr
                 }
                 _ => {
@@ -332,15 +312,12 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
 
         for (arity, arg) in args.iter().enumerate() {
             match result_type {
-                Value::FunType { param, body } => {
+                Value::FunType(param, body) => {
                     let param_type = self.eval_expr(param.r#type);
                     let arg_expr = self.check_expr(arg.data.expr.as_ref(), &param_type);
                     let arg_value = self.eval_expr(&arg_expr);
                     let (expr, arg_expr) = self.bump.alloc((result_expr, arg_expr));
-                    result_expr = Expr::FunApp {
-                        fun: &*expr,
-                        arg: FunArg::new(param.plicity, &*arg_expr),
-                    };
+                    result_expr = Expr::FunApp(&*expr, FunArg::new(param.plicity, &*arg_expr));
                     result_type = self.apply_closure(body, arg_value);
                 }
                 _ if arity == 0 => {
