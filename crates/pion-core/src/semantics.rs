@@ -89,7 +89,7 @@ pub enum Error<'core> {
         var: AbsoluteVar,
         len: EnvLen,
     },
-    EvalUnboundMetaVar {
+    UnboundMetaVar {
         var: AbsoluteVar,
         len: EnvLen,
     },
@@ -98,8 +98,8 @@ pub enum Error<'core> {
         param_plicity: Plicity,
         arg_plicity: Plicity,
     },
-    FunAppHeadNotFun {
-        head: Value<'core>,
+    CalleeNotFun {
+        callee: Value<'core>,
     },
 }
 
@@ -244,7 +244,7 @@ pub fn eval<'core, 'env>(
             Some(value) => Ok(value.clone()),
         },
         Expr::MetaVar(var) => match meta_values.get_absolute(*var) {
-            None => Err(Error::EvalUnboundMetaVar {
+            None => Err(Error::UnboundMetaVar {
                 var: *var,
                 len: meta_values.len(),
             }),
@@ -293,7 +293,7 @@ pub fn fun_app<'core>(
             })
         }
         Value::FunLit(_, body) => apply_closure(body, arg.expr, opts, meta_values),
-        _ => Err(Error::FunAppHeadNotFun { head: fun }),
+        _ => Err(Error::CalleeNotFun { callee: fun }),
     }
 }
 
@@ -322,18 +322,7 @@ pub fn quote<'core>(
         Value::Int(x) => Ok(Expr::Int(*x)),
         Value::Char(c) => Ok(Expr::Char(*c)),
         Value::String(s) => Ok(Expr::String(s)),
-
-        Value::Neutral(head, spine) => {
-            let head = quote_head(*head, bump, local_len, meta_values)?;
-            spine.iter().try_fold(head, |head, elim| match elim {
-                Elim::FunApp(arg) => {
-                    let arg_expr = quote(&arg.expr, bump, local_len, meta_values)?;
-                    let (fun, arg_expr) = bump.alloc((head, arg_expr));
-                    let arg = FunArg::new(arg.plicity, &*arg_expr);
-                    Ok(Expr::FunApp(fun, arg))
-                }
-            })
-        }
+        Value::Neutral(head, spine) => quote_neutral(*head, spine, bump, local_len, meta_values),
         Value::FunType(param, body) => {
             let body = quote_closure(body, bump, local_len, meta_values)?;
             Ok(Expr::FunType(*param, body))
@@ -363,13 +352,31 @@ fn quote_head<'core>(
         Head::MetaVar(var) => match meta_values.get_absolute(var) {
             Some(Some(value)) => quote(value, bump, local_len, meta_values),
             Some(None) => Ok(Expr::MetaVar(var)),
-            None => Err(Error::EvalUnboundMetaVar {
+            None => Err(Error::UnboundMetaVar {
                 var,
                 len: meta_values.len(),
             }),
         },
         Head::PrimVar(var) => Ok(Expr::PrimVar(var)),
     }
+}
+
+fn quote_neutral<'core>(
+    head: Head,
+    spine: &EcoVec<Elim<'core>>,
+    bump: &'core bumpalo::Bump,
+    local_len: EnvLen,
+    meta_values: &MetaValues<'core>,
+) -> Result<Expr<'core>, Error<'core>> {
+    let head = quote_head(head, bump, local_len, meta_values)?;
+    spine.iter().try_fold(head, |head, elim| match elim {
+        Elim::FunApp(arg) => {
+            let arg_expr = quote(&arg.expr, bump, local_len, meta_values)?;
+            let (fun, arg_expr) = bump.alloc((head, arg_expr));
+            let arg = FunArg::new(arg.plicity, &*arg_expr);
+            Ok(Expr::FunApp(fun, arg))
+        }
+    })
 }
 
 fn quote_closure<'core>(
@@ -393,7 +400,7 @@ pub fn update_metas<'core>(
     while let Value::Neutral(Head::MetaVar(var), spine) = value {
         match meta_values.get_absolute(var) {
             None => {
-                return Err(Error::EvalUnboundMetaVar {
+                return Err(Error::UnboundMetaVar {
                     var,
                     len: meta_values.len(),
                 })
@@ -493,7 +500,7 @@ mod tests {
     fn eval_unbound_meta_var() {
         assert_eval(
             Expr::MetaVar(AbsoluteVar::new(0)),
-            Err(Error::EvalUnboundMetaVar {
+            Err(Error::UnboundMetaVar {
                 var: AbsoluteVar::new(0),
                 len: EnvLen::new(0),
             }),
@@ -543,8 +550,8 @@ mod tests {
         let expr = Expr::FunApp(&fun, arg);
         assert_eval(
             expr,
-            Err(Error::FunAppHeadNotFun {
-                head: Value::Char('a'),
+            Err(Error::CalleeNotFun {
+                callee: Value::Char('a'),
             }),
         );
     }
