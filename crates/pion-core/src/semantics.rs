@@ -396,12 +396,18 @@ pub fn quote<'core>(
             })
         }
         Value::FunType { param, body } => {
-            let (param, body) = quote_fun(*param, body, bump, local_len, meta_values)?;
-            Ok(Expr::FunType { param, body })
+            let body = quote_closure(body, bump, local_len, meta_values)?;
+            Ok(Expr::FunType {
+                param: *param,
+                body,
+            })
         }
         Value::FunLit { param, body } => {
-            let (param, body) = quote_fun(*param, body, bump, local_len, meta_values)?;
-            Ok(Expr::FunLit { param, body })
+            let body = quote_closure(body, bump, local_len, meta_values)?;
+            Ok(Expr::FunLit {
+                param: *param,
+                body,
+            })
         }
     }
 }
@@ -432,18 +438,17 @@ fn quote_head<'core>(
     }
 }
 
-fn quote_fun<'core>(
-    param: FunParam<'core, &'core Expr<'core>>,
+fn quote_closure<'core>(
     closure: &Closure<'core>,
     bump: &'core bumpalo::Bump,
     local_len: EnvLen,
     meta_values: &MetaValues<'core>,
-) -> Result<(FunParam<'core, &'core Expr<'core>>, &'core Expr<'core>), Error<'core>> {
+) -> Result<&'core Expr<'core>, Error<'core>> {
     let arg = Value::local_var(local_len.to_absolute());
     let body = apply_closure(closure.clone(), arg, EvalOpts::for_quote(), meta_values)?;
     let body = quote(&body, bump, local_len.succ(), meta_values)?;
     let body = bump.alloc(body);
-    Ok((param, body))
+    Ok(body)
 }
 
 pub fn update_metas<'core>(
