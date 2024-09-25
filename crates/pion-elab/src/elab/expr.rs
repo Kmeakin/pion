@@ -21,7 +21,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         expr: Located<&surface::Expr<'text, 'surface>>,
     ) -> SynthExpr<'core> {
         match expr.data {
-            surface::Expr::Error => (Expr::Error, Type::Error),
+            surface::Expr::Error => (Expr::Error, Type::ERROR),
             surface::Expr::Var(name) => {
                 let name = self.bump.alloc_str(name);
                 let name = self.interner.intern(name);
@@ -40,7 +40,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     Diagnostic::error().with_message(format!("Unbound variable: `{name}`")),
                 );
 
-                (Expr::Error, Type::Error)
+                (Expr::Error, Type::ERROR)
             }
             surface::Expr::Bool(b) => (Expr::Bool(*b), Type::BOOL),
             surface::Expr::Number(text) => {
@@ -329,7 +329,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                                 "Help: the type of the callee is {callee_type:?}"
                             )]),
                     );
-                    return (Expr::Error, Type::Error);
+                    return (Expr::Error, Type::ERROR);
                 }
                 _ => {
                     self.diagnostic(
@@ -344,7 +344,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                                 format!("Help: the type of the callee is {callee_type:?}"),
                             ]),
                     );
-                    return (Expr::Error, Type::Error);
+                    return (Expr::Error, Type::ERROR);
                 }
             }
         }

@@ -29,13 +29,13 @@ impl<'core> Pat<'core> {
 impl<'text, 'surface, 'core> Elaborator<'core> {
     pub fn synth_pat(&mut self, pat: Located<&surface::Pat<'text, 'surface>>) -> SynthPat<'core> {
         match pat.data {
-            surface::Pat::Error => (Pat::Error, Type::Error),
+            surface::Pat::Error => (Pat::Error, Type::ERROR),
             // TODO: insert metavariables
-            surface::Pat::Underscore => (Pat::Wildcard, Type::Error),
+            surface::Pat::Underscore => (Pat::Wildcard, Type::ERROR),
             surface::Pat::Var(name) => {
                 let name = self.bump.alloc_str(name);
                 let name = self.interner.intern(name);
-                (Pat::Var(name), Type::Error)
+                (Pat::Var(name), Type::ERROR)
             }
             surface::Pat::Paren(pat) => self.synth_pat(*pat),
             surface::Pat::TypeAnnotation { pat, r#type } => {

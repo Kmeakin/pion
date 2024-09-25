@@ -11,8 +11,6 @@ pub type Type<'core> = Value<'core>;
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Value<'core> {
-    Error,
-
     Bool(bool),
     Int(u32),
     Char(char),
@@ -25,6 +23,8 @@ pub enum Value<'core> {
 }
 
 impl<'core> Value<'core> {
+    pub const ERROR: Self = Self::Neutral(Head::Error, EcoVec::new());
+
     pub const TYPE: Self = Self::prim_var(PrimVar::Type);
     pub const BOOL: Self = Self::prim_var(PrimVar::Bool);
     pub const INT: Self = Self::prim_var(PrimVar::Int);
@@ -44,6 +44,7 @@ impl<'core> Value<'core> {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Head {
+    Error,
     LocalVar(AbsoluteVar),
     MetaVar(AbsoluteVar),
     PrimVar(PrimVar),
@@ -122,7 +123,6 @@ pub mod equality {
             }
 
             match (lhs, rhs) {
-                (Value::Error, Value::Error) => true,
                 (Value::Bool(lhs), Value::Bool(rhs)) => lhs == rhs,
                 (Value::Int(lhs), Value::Int(rhs)) => lhs == rhs,
                 (Value::Char(lhs), Value::Char(rhs)) => lhs == rhs,
@@ -227,7 +227,7 @@ pub fn eval<'core, 'env>(
     meta_values: &'env MetaValues<'core>,
 ) -> Result<Value<'core>, Error<'core>> {
     match expr {
-        Expr::Error => Ok(Value::Error),
+        Expr::Error => Ok(Value::ERROR),
 
         Expr::Bool(b) => Ok(Value::Bool(*b)),
         Expr::Int(x) => Ok(Value::Int(*x)),
@@ -282,7 +282,6 @@ pub fn fun_app<'core>(
     meta_values: &MetaValues<'core>,
 ) -> Result<Value<'core>, Error<'core>> {
     match fun {
-        Value::Error => Ok(Value::Error),
         Value::Neutral(head, mut spine) => {
             spine.push(Elim::FunApp(arg));
             Ok(Value::Neutral(head, spine))
@@ -319,8 +318,6 @@ pub fn quote<'core>(
     meta_values: &MetaValues<'core>,
 ) -> Result<Expr<'core>, Error<'core>> {
     match value {
-        Value::Error => Ok(Expr::Error),
-
         Value::Bool(b) => Ok(Expr::Bool(*b)),
         Value::Int(x) => Ok(Expr::Int(*x)),
         Value::Char(c) => Ok(Expr::Char(*c)),
@@ -355,6 +352,7 @@ fn quote_head<'core>(
     meta_values: &MetaValues<'core>,
 ) -> Result<Expr<'core>, Error<'core>> {
     match head {
+        Head::Error => Ok(Expr::Error),
         Head::LocalVar(var) => match local_len.absolute_to_relative(var) {
             Some(var) => Ok(Expr::LocalVar(var)),
             None => Err(Error::QuoteUnboundLocalVar {
@@ -415,6 +413,8 @@ pub fn update_metas<'core>(
 
 #[cfg(test)]
 mod tests {
+    use ecow::eco_vec;
+
     use super::*;
     use crate::env::UniqueEnv;
     use crate::syntax::LetBinding;
@@ -440,7 +440,7 @@ mod tests {
     }
 
     #[test]
-    fn eval_error() { assert_eval(Expr::Error, Ok(Value::Error)); }
+    fn eval_error() { assert_eval(Expr::Error, Ok(Value::ERROR)); }
 
     #[test]
     fn eval_lit() {
@@ -554,11 +554,17 @@ mod tests {
         let fun = Expr::Error;
         let arg = FunArg::explicit(&Expr::Int(10));
         let expr = Expr::FunApp(&fun, arg);
-        assert_eval(expr, Ok(Value::Error));
+        assert_eval(
+            expr,
+            Ok(Value::Neutral(
+                Head::Error,
+                eco_vec![Elim::FunApp(FunArg::explicit(Value::Int(10)))],
+            )),
+        );
     }
 
     #[test]
-    fn quote_error() { assert_quote(Value::Error, Ok(Expr::Error)); }
+    fn quote_error() { assert_quote(Value::ERROR, Ok(Expr::Error)); }
 
     #[test]
     fn quote_lit() { assert_quote(Value::Int(10), Ok(Expr::Int(10))); }

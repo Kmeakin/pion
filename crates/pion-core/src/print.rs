@@ -35,9 +35,7 @@ impl Prec {
 
     pub fn of_value(value: &Value) -> Self {
         match value {
-            Value::Error | Value::Bool(_) | Value::Int(_) | Value::Char(_) | Value::String(_) => {
-                Self::Atom
-            }
+            Value::Bool(_) | Value::Int(_) | Value::Char(_) | Value::String(_) => Self::Atom,
             Value::Neutral(..) => Self::Call,
             Value::FunType(..) | Value::FunLit(..) => Self::Fun,
         }
@@ -103,7 +101,6 @@ pub fn value_prec(out: &mut impl Write, value: &Value, prec: Prec) -> fmt::Resul
         write!(out, "(")?;
     }
     match value {
-        Value::Error => write!(out, "#error")?,
         Value::Bool(true) => write!(out, "true")?,
         Value::Bool(false) => write!(out, "false")?,
         Value::Int(n) => write!(out, "{n}")?,
@@ -111,6 +108,7 @@ pub fn value_prec(out: &mut impl Write, value: &Value, prec: Prec) -> fmt::Resul
         Value::String(s) => write!(out, "{s:?}")?,
         Value::Neutral(head, spine) => {
             match head {
+                Head::Error => write!(out, "#error")?,
                 Head::LocalVar(var) => write!(out, "_#{var}")?,
                 Head::MetaVar(var) => write!(out, "?{var}")?,
                 Head::PrimVar(var) => write!(out, "{var}")?,
@@ -118,7 +116,9 @@ pub fn value_prec(out: &mut impl Write, value: &Value, prec: Prec) -> fmt::Resul
             for elim in spine {
                 match elim {
                     Elim::FunApp(arg) => {
+                        write!(out, "(")?;
                         fun_arg(out, arg, |out, value| value_prec(out, value, Prec::MAX))?;
+                        write!(out, ")")?;
                     }
                 }
             }
