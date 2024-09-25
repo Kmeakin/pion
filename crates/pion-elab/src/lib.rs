@@ -69,4 +69,8 @@ impl<'core> Elaborator<'core> {
         )
         .unwrap()
     }
+
+    fn convertible(&self, lhs: &Value<'core>, rhs: &Value<'core>) -> bool {
+        pion_core::semantics::convertible(lhs, rhs, self.env.locals.len(), &self.env.metas.values)
+    }
 }

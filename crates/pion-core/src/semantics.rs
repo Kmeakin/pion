@@ -9,6 +9,8 @@ pub type MetaValues<'core> = SliceEnv<Option<Value<'core>>>;
 
 pub type Type<'core> = Value<'core>;
 
+pub type Spine<'core> = EcoVec<Elim<'core>>;
+
 #[derive(Clone, PartialEq, Eq)]
 pub enum Value<'core> {
     Bool(bool),
@@ -16,7 +18,7 @@ pub enum Value<'core> {
     Char(char),
     String(&'core str),
 
-    Neutral(Head, EcoVec<Elim<'core>>),
+    Neutral(Head, Spine<'core>),
 
     FunType(FunParam<'core, &'core Expr<'core>>, Closure<'core>),
     FunLit(FunParam<'core, &'core Expr<'core>>, Closure<'core>),
@@ -101,123 +103,6 @@ pub enum Error<'core> {
     CalleeNotFun {
         callee: Value<'core>,
     },
-}
-
-pub mod equality {
-    use super::*;
-    use crate::syntax::LetBinding;
-
-    pub trait AlphaEq {
-        fn alpha_eq(&self, other: &Self) -> bool;
-    }
-
-    impl<'a, T: AlphaEq> AlphaEq for &'a T {
-        fn alpha_eq(&self, other: &Self) -> bool { T::alpha_eq(self, other) }
-    }
-
-    impl<'core> AlphaEq for Value<'core> {
-        fn alpha_eq(&self, other: &Self) -> bool {
-            let (lhs, rhs) = (self, other);
-            if std::ptr::eq(lhs, rhs) {
-                return true;
-            }
-
-            match (lhs, rhs) {
-                (Value::Bool(lhs), Value::Bool(rhs)) => lhs == rhs,
-                (Value::Int(lhs), Value::Int(rhs)) => lhs == rhs,
-                (Value::Char(lhs), Value::Char(rhs)) => lhs == rhs,
-                (Value::String(lhs), Value::String(rhs)) => lhs == rhs,
-                (Value::Neutral(lhs_head, lhs_spine), Value::Neutral(rhs_head, rhs_spine)) => {
-                    lhs_head == rhs_head
-                        && lhs_spine.len() == rhs_spine.len()
-                        && lhs_spine
-                            .iter()
-                            .zip(rhs_spine.iter())
-                            .all(|(lhs, rhs)| lhs.alpha_eq(rhs))
-                }
-                (Value::FunType(lhs_param, lhs_body), Value::FunType(rhs_param, rhs_body))
-                | (Value::FunLit(lhs_param, lhs_body), Value::FunLit(rhs_param, rhs_body)) => {
-                    lhs_param.r#type.alpha_eq(rhs_param.r#type) && lhs_body.alpha_eq(rhs_body)
-                }
-
-                _ => false,
-            }
-        }
-    }
-
-    impl<'core> AlphaEq for Expr<'core> {
-        fn alpha_eq(&self, other: &Self) -> bool {
-            let (lhs, rhs) = (self, other);
-            if std::ptr::eq(lhs, rhs) {
-                return true;
-            }
-
-            match (lhs, rhs) {
-                (Expr::Error, Expr::Error) => true,
-                (Expr::Bool(lhs), Expr::Bool(rhs)) => lhs == rhs,
-                (Expr::Int(lhs), Expr::Int(rhs)) => lhs == rhs,
-                (Expr::Char(lhs), Expr::Char(rhs)) => lhs == rhs,
-                (Expr::String(lhs), Expr::String(rhs)) => lhs == rhs,
-
-                (Expr::PrimVar(lhs), Expr::PrimVar(rhs)) => lhs == rhs,
-                (Expr::LocalVar(lhs), Expr::LocalVar(rhs)) => lhs == rhs,
-                (Expr::MetaVar(lhs), Expr::MetaVar(rhs)) => lhs == rhs,
-
-                (Expr::Let(lhs_binding, lhs_body), Expr::Let(rhs_binding, rhs_body)) => {
-                    lhs_binding.alpha_eq(rhs_binding) && lhs_body.alpha_eq(rhs_body)
-                }
-
-                (Expr::FunType(lhs_param, lhs_body), Expr::FunType(rhs_param, rhs_body))
-                | (Expr::FunLit(lhs_param, lhs_body), Expr::FunLit(rhs_param, rhs_body)) => {
-                    lhs_param.alpha_eq(rhs_param) && lhs_body.alpha_eq(rhs_body)
-                }
-
-                (Expr::FunApp(lhs_fun, lhs_arg), Expr::FunApp(rhs_fun, rhs_arg)) => {
-                    lhs_fun.alpha_eq(rhs_fun) && lhs_arg.alpha_eq(rhs_arg)
-                }
-
-                _ => false,
-            }
-        }
-    }
-
-    impl<'core, T: AlphaEq> AlphaEq for LetBinding<'core, T> {
-        fn alpha_eq(&self, other: &Self) -> bool {
-            self.r#type.alpha_eq(&other.r#type) && self.init.alpha_eq(&other.init)
-        }
-    }
-
-    impl<'core, T: AlphaEq> AlphaEq for FunParam<'core, T> {
-        fn alpha_eq(&self, other: &Self) -> bool {
-            let (lhs, rhs) = (self, other);
-            lhs.plicity == rhs.plicity && lhs.r#type.alpha_eq(&rhs.r#type)
-        }
-    }
-
-    impl<T: AlphaEq> AlphaEq for FunArg<T> {
-        fn alpha_eq(&self, other: &Self) -> bool {
-            let (lhs, rhs) = (self, other);
-            lhs.plicity == rhs.plicity && lhs.expr.alpha_eq(&rhs.expr)
-        }
-    }
-
-    impl<'core> AlphaEq for Closure<'core> {
-        // FIXME: is this correct?
-        fn alpha_eq(&self, other: &Self) -> bool { self.body.alpha_eq(other.body) }
-    }
-
-    impl AlphaEq for Head {
-        fn alpha_eq(&self, other: &Self) -> bool { self == other }
-    }
-
-    impl<'core> AlphaEq for Elim<'core> {
-        fn alpha_eq(&self, other: &Self) -> bool {
-            let (lhs, rhs) = (self, other);
-            match (lhs, rhs) {
-                (Elim::FunApp(lhs), Elim::FunApp(rhs)) => lhs.alpha_eq(rhs),
-            }
-        }
-    }
 }
 
 pub fn fun_app<'core>(
@@ -417,6 +302,100 @@ fn quote_closure<'core>(
     let body = quote(&body, bump, local_len.succ(), meta_values)?;
     let body = bump.alloc(body);
     Ok(body)
+}
+
+/// Beta-eta equality of values.
+pub fn convertible<'core>(
+    lhs: &Value<'core>,
+    rhs: &Value<'core>,
+    locals: EnvLen,
+    metas: &MetaValues<'core>,
+) -> bool {
+    match (lhs, rhs) {
+        (Value::Bool(lhs), Value::Bool(rhs)) => lhs == rhs,
+        (Value::Int(lhs), Value::Int(rhs)) => lhs == rhs,
+        (Value::Char(lhs), Value::Char(rhs)) => lhs == rhs,
+        (Value::String(lhs), Value::String(rhs)) => lhs == rhs,
+        (Value::Neutral(lhs_head, lhs_spine), Value::Neutral(rhs_head, rhs_spine)) => {
+            convertible_neutral(
+                (*lhs_head, lhs_spine),
+                (*rhs_head, rhs_spine),
+                locals,
+                metas,
+            )
+        }
+        (Value::FunType(lhs_param, lhs_body), Value::FunType(rhs_param, rhs_body))
+        | (Value::FunLit(lhs_param, lhs_body), Value::FunLit(rhs_param, rhs_body)) => {
+            convertible_fun(
+                &(*lhs_param, lhs_body),
+                &(*rhs_param, rhs_body),
+                locals,
+                metas,
+            )
+        }
+
+        _ => false,
+    }
+}
+
+fn convertible_neutral<'core>(
+    (lhs_head, lhs_spine): (Head, &EcoVec<Elim<'core>>),
+    (rhs_head, rhs_spine): (Head, &EcoVec<Elim<'core>>),
+    locals: EnvLen,
+    metas: &MetaValues<'core>,
+) -> bool {
+    lhs_head == rhs_head
+        && lhs_spine.len() == rhs_spine.len()
+        && lhs_spine
+            .iter()
+            .zip(rhs_spine.iter())
+            .all(|(lhs, rhs)| convertible_elim(lhs, rhs, locals, metas))
+}
+
+fn convertible_elim<'core>(
+    lhs: &Elim<'core>,
+    rhs: &Elim<'core>,
+    locals: EnvLen,
+    metas: &MetaValues<'core>,
+) -> bool {
+    match (lhs, rhs) {
+        (Elim::FunApp(lhs), Elim::FunApp(rhs)) => {
+            lhs.plicity == rhs.plicity && convertible(&lhs.expr, &rhs.expr, locals, metas)
+        }
+    }
+}
+
+fn convertible_fun<'core>(
+    (lhs_param, lhs_closure): &(FunParam<'core, &'core Expr<'core>>, &Closure<'core>),
+    (rhs_param, rhs_closure): &(FunParam<'core, &'core Expr<'core>>, &Closure<'core>),
+    locals: EnvLen,
+    metas: &MetaValues<'core>,
+) -> bool {
+    lhs_param.plicity == rhs_param.plicity
+        && convertible_closure(lhs_closure, rhs_closure, locals, metas)
+}
+
+fn convertible_closure<'core>(
+    lhs: &Closure<'core>,
+    rhs: &Closure<'core>,
+    locals: EnvLen,
+    metas: &MetaValues<'core>,
+) -> bool {
+    let lhs = apply_closure(
+        lhs.clone(),
+        Value::local_var(locals.to_absolute()),
+        EvalOpts::for_quote(),
+        metas,
+    )
+    .unwrap();
+    let rhs = apply_closure(
+        rhs.clone(),
+        Value::local_var(locals.to_absolute()),
+        EvalOpts::for_quote(),
+        metas,
+    )
+    .unwrap();
+    convertible(&lhs, &rhs, locals.succ(), metas)
 }
 
 #[cfg(test)]

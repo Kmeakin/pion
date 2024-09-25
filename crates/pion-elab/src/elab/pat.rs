@@ -1,5 +1,4 @@
 use codespan_reporting::diagnostic::Diagnostic;
-use pion_core::semantics::equality::AlphaEq;
 use pion_core::semantics::Type;
 use pion_interner::InternedStr;
 use pion_surface::syntax::{self as surface, Located};
@@ -81,7 +80,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         from: &Type<'core>,
         to: &Type<'core>,
     ) -> CheckPat<'core> {
-        match from.alpha_eq(to) {
+        match self.convertible(from, to) {
             true => pat.data,
             false => {
                 self.diagnostic(

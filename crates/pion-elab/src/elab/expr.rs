@@ -3,7 +3,6 @@ use std::str::FromStr;
 
 use codespan_reporting::diagnostic::Diagnostic;
 use pion_core::prim::PrimVar;
-use pion_core::semantics::equality::AlphaEq;
 use pion_core::semantics::{Closure, Type, Value};
 use pion_core::syntax::{Expr, FunArg, FunParam, LetBinding, Plicity};
 use pion_surface::syntax::{self as surface, Located};
@@ -143,7 +142,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         from: &Type<'core>,
         to: &Type<'core>,
     ) -> CheckExpr<'core> {
-        match from.alpha_eq(to) {
+        match self.convertible(from, to) {
             true => expr.data,
             false => {
                 self.diagnostic(
