@@ -1,12 +1,12 @@
 use super::*;
 
-/// Evaluate an expression to a value.
+/// Evaluate an `Expr` to a `Value`.
 /// Does not reduce under `fun` or `forall`
 pub fn eval<'core, 'env>(
     expr: &Expr<'core>,
     opts: UnfoldOpts,
-    local_values: &'env mut LocalValues<'core>,
-    meta_values: &'env MetaValues<'core>,
+    locals: &'env mut LocalValues<'core>,
+    metas: &'env MetaValues<'core>,
 ) -> Result<Value<'core>, Error<'core>> {
     match expr {
         Expr::Error => Ok(Value::ERROR),
@@ -16,43 +16,43 @@ pub fn eval<'core, 'env>(
         Expr::Char(c) => Ok(Value::Char(*c)),
         Expr::String(s) => Ok(Value::String(s)),
 
-        Expr::PrimVar(prim) => Ok(Value::Neutral(Head::PrimVar(*prim), EcoVec::new())),
+        Expr::PrimVar(var) => Ok(Value::prim_var(*var)),
 
-        Expr::LocalVar(var) => match local_values.get_relative(*var) {
+        Expr::LocalVar(var) => match locals.get_relative(*var) {
             None => Err(Error::EvalUnboundLocalVar {
                 var: *var,
-                len: local_values.len(),
+                len: locals.len(),
             }),
             Some(value) => Ok(value.clone()),
         },
-        Expr::MetaVar(var) => match meta_values.get_absolute(*var) {
+        Expr::MetaVar(var) => match metas.get_absolute(*var) {
             None => Err(Error::UnboundMetaVar {
                 var: *var,
-                len: meta_values.len(),
+                len: metas.len(),
             }),
             Some(Some(value)) => Ok(value.clone()),
             Some(None) => Ok(Value::meta_var(*var)),
         },
         Expr::Let(binding, body) => {
-            let rhs = eval(binding.init, opts, local_values, meta_values)?;
-            local_values.push(rhs);
-            let body = eval(body, opts, local_values, meta_values);
-            local_values.pop();
+            let rhs = eval(binding.init, opts, locals, metas)?;
+            locals.push(rhs);
+            let body = eval(body, opts, locals, metas);
+            locals.pop();
             body
         }
         Expr::FunType(param, body) => {
-            let body = Closure::new(local_values.clone(), body);
+            let body = Closure::new(locals.clone(), body);
             Ok(Value::FunType(*param, body))
         }
         Expr::FunLit(param, body) => {
-            let body = Closure::new(local_values.clone(), body);
+            let body = Closure::new(locals.clone(), body);
             Ok(Value::FunLit(*param, body))
         }
         Expr::FunApp(fun, arg) => {
-            let fun = eval(fun, opts, local_values, meta_values)?;
-            let arg_expr = eval(arg.expr, opts, local_values, meta_values)?;
+            let fun = eval(fun, opts, locals, metas)?;
+            let arg_expr = eval(arg.expr, opts, locals, metas)?;
             let arg = FunArg::new(arg.plicity, arg_expr);
-            elim::apply(fun, arg, opts, meta_values)
+            elim::apply(fun, arg, opts, metas)
         }
     }
 }

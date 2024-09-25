@@ -4,21 +4,21 @@ use super::*;
 pub fn quote<'core>(
     value: &Value<'core>,
     bump: &'core bumpalo::Bump,
-    local_len: EnvLen,
-    meta_values: &MetaValues<'core>,
+    locals: EnvLen,
+    metas: &MetaValues<'core>,
 ) -> Result<Expr<'core>, Error<'core>> {
     match value {
         Value::Bool(b) => Ok(Expr::Bool(*b)),
         Value::Int(x) => Ok(Expr::Int(*x)),
         Value::Char(c) => Ok(Expr::Char(*c)),
         Value::String(s) => Ok(Expr::String(s)),
-        Value::Neutral(head, spine) => quote_neutral(*head, spine, bump, local_len, meta_values),
+        Value::Neutral(head, spine) => quote_neutral(*head, spine, bump, locals, metas),
         Value::FunType(param, body) => {
-            let body = quote_closure(body, bump, local_len, meta_values)?;
+            let body = quote_closure(body, bump, locals, metas)?;
             Ok(Expr::FunType(*param, body))
         }
         Value::FunLit(param, body) => {
-            let body = quote_closure(body, bump, local_len, meta_values)?;
+            let body = quote_closure(body, bump, locals, metas)?;
             Ok(Expr::FunLit(*param, body))
         }
     }
@@ -27,24 +27,21 @@ pub fn quote<'core>(
 fn quote_head<'core>(
     head: Head,
     bump: &'core bumpalo::Bump,
-    local_len: EnvLen,
-    meta_values: &MetaValues<'core>,
+    locals: EnvLen,
+    metas: &MetaValues<'core>,
 ) -> Result<Expr<'core>, Error<'core>> {
     match head {
         Head::Error => Ok(Expr::Error),
-        Head::LocalVar(var) => match local_len.absolute_to_relative(var) {
+        Head::LocalVar(var) => match locals.absolute_to_relative(var) {
             Some(var) => Ok(Expr::LocalVar(var)),
-            None => Err(Error::QuoteUnboundLocalVar {
-                var,
-                len: local_len,
-            }),
+            None => Err(Error::QuoteUnboundLocalVar { var, len: locals }),
         },
-        Head::MetaVar(var) => match meta_values.get_absolute(var) {
-            Some(Some(value)) => quote(value, bump, local_len, meta_values),
+        Head::MetaVar(var) => match metas.get_absolute(var) {
+            Some(Some(value)) => quote(value, bump, locals, metas),
             Some(None) => Ok(Expr::MetaVar(var)),
             None => Err(Error::UnboundMetaVar {
                 var,
-                len: meta_values.len(),
+                len: metas.len(),
             }),
         },
         Head::PrimVar(var) => Ok(Expr::PrimVar(var)),
@@ -55,13 +52,13 @@ fn quote_neutral<'core>(
     head: Head,
     spine: &EcoVec<Elim<'core>>,
     bump: &'core bumpalo::Bump,
-    local_len: EnvLen,
-    meta_values: &MetaValues<'core>,
+    locals: EnvLen,
+    metas: &MetaValues<'core>,
 ) -> Result<Expr<'core>, Error<'core>> {
-    let head = quote_head(head, bump, local_len, meta_values)?;
+    let head = quote_head(head, bump, locals, metas)?;
     spine.iter().try_fold(head, |head, elim| match elim {
         Elim::FunApp(arg) => {
-            let arg_expr = quote(&arg.expr, bump, local_len, meta_values)?;
+            let arg_expr = quote(&arg.expr, bump, locals, metas)?;
             let (fun, arg_expr) = bump.alloc((head, arg_expr));
             let arg = FunArg::new(arg.plicity, &*arg_expr);
             Ok(Expr::FunApp(fun, arg))
@@ -72,12 +69,12 @@ fn quote_neutral<'core>(
 fn quote_closure<'core>(
     closure: &Closure<'core>,
     bump: &'core bumpalo::Bump,
-    local_len: EnvLen,
-    meta_values: &MetaValues<'core>,
+    locals: EnvLen,
+    metas: &MetaValues<'core>,
 ) -> Result<&'core Expr<'core>, Error<'core>> {
-    let arg = Value::local_var(local_len.to_absolute());
-    let body = elim::beta_reduce(closure.clone(), arg, UnfoldOpts::for_quote(), meta_values)?;
-    let body = quote(&body, bump, local_len.succ(), meta_values)?;
+    let arg = Value::local_var(locals.to_absolute());
+    let body = elim::beta_reduce(closure.clone(), arg, UnfoldOpts::for_quote(), metas)?;
+    let body = quote(&body, bump, locals.succ(), metas)?;
     let body = bump.alloc(body);
     Ok(body)
 }

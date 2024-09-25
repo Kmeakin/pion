@@ -1,7 +1,9 @@
+//! Elimination rules
+
 use super::*;
 
-/// Apply an argument to a function.
-/// Performs beta reduction if the callee is a `fun`.
+/// Apply `arg` to `callee`.
+/// Performs beta reduction if `callee` is a lambda.
 pub fn apply<'core>(
     callee: Value<'core>,
     arg: FunArg<Value<'core>>,
@@ -39,7 +41,8 @@ pub fn beta_reduce<'core>(
     eval::eval(body, opts, &mut local_values, meta_values)
 }
 
-/// Substitute meta variables in neutral spines with their values.
+/// Substitute meta variables in neutral spines with their values, and reduce
+/// further if possible.
 pub fn update_metas<'core>(
     value: &Value<'core>,
     meta_values: &MetaValues<'core>,
