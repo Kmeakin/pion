@@ -66,6 +66,12 @@ fn quote_neutral<'core>(
     })
 }
 
+/// Quote a `Closure` back to an `Expr`.
+///
+/// NOTE: We can't simply return `closure.expr`, because `closure.expr` could
+/// reference a local variable in `closure.env`. We *could* convert the closure
+/// environment back to series of nested `let`s, but that would produce very big
+/// terms!
 fn quote_closure<'core>(
     closure: &Closure<'core>,
     bump: &'core bumpalo::Bump,
@@ -82,25 +88,111 @@ fn quote_closure<'core>(
 #[cfg(test)]
 mod tests {
 
+    use ecow::eco_vec;
+
     use super::*;
     use crate::env::UniqueEnv;
 
     #[track_caller]
     #[allow(clippy::needless_pass_by_value, reason = "It's only a test")]
-    fn assert_quote(value: Value, expected: Result<Expr, Error>) {
+    fn assert_quote_in_env(
+        locals: EnvLen,
+        metas: &MetaValues,
+        value: Value,
+        expected: Result<Expr, Error>,
+    ) {
         let bump = bumpalo::Bump::default();
-        let local_len = EnvLen::default();
-        let meta_values = UniqueEnv::default();
-
-        let expr = quote(&value, &bump, local_len, &meta_values);
+        let expr = quote(&value, &bump, locals, metas);
         assert_eq!(expr, expected);
+    }
+
+    #[track_caller]
+    #[allow(clippy::needless_pass_by_value, reason = "It's only a test")]
+    fn assert_quote(value: Value, expected: Result<Expr, Error>) {
+        assert_quote_in_env(EnvLen::default(), &UniqueEnv::default(), value, expected);
     }
 
     #[test]
     fn quote_error() { assert_quote(Value::ERROR, Ok(Expr::Error)); }
 
     #[test]
-    fn quote_lit() { assert_quote(Value::Int(10), Ok(Expr::Int(10))); }
+    fn quote_bool() {
+        assert_quote(Value::Bool(true), Ok(Expr::Bool(true)));
+        assert_quote(Value::Bool(false), Ok(Expr::Bool(false)));
+    }
+
+    #[test]
+    fn quote_int() { assert_quote(Value::Int(10), Ok(Expr::Int(10))); }
+
+    #[test]
+    fn quote_char() { assert_quote(Value::Char('a'), Ok(Expr::Char('a'))); }
+
+    #[test]
+    fn quote_string() { assert_quote(Value::String("hello"), Ok(Expr::String("hello"))); }
+
+    #[test]
+    fn quote_unbound_local_var() {
+        let value = Value::local_var(AbsoluteVar::new(0));
+        assert_quote(
+            value,
+            Err(Error::QuoteUnboundLocalVar {
+                var: AbsoluteVar::new(0),
+                len: EnvLen::new(0),
+            }),
+        );
+    }
+
+    #[test]
+    fn quote_unbound_meta_var() {
+        let value = Value::meta_var(AbsoluteVar::new(0));
+        assert_quote(
+            value,
+            Err(Error::UnboundMetaVar {
+                var: AbsoluteVar::new(0),
+                len: EnvLen::new(0),
+            }),
+        );
+    }
+
+    #[test]
+    fn quote_bound_meta_var() {
+        let locals = EnvLen::default();
+        let mut metas = UniqueEnv::new();
+        metas.push(None);
+
+        let value = Value::meta_var(AbsoluteVar::new(0));
+        assert_quote_in_env(
+            locals,
+            &metas,
+            value,
+            Ok(Expr::MetaVar(AbsoluteVar::new(0))),
+        );
+
+        metas.push(Some(Value::Int(42)));
+        let value = Value::meta_var(AbsoluteVar::new(1));
+        assert_quote_in_env(locals, &metas, value, Ok(Expr::Int(42)));
+    }
+
+    #[test]
+    fn quote_neutral() {
+        let locals = EnvLen::default().succ();
+        let metas = UniqueEnv::new();
+
+        let value = Value::Neutral(
+            Head::LocalVar(AbsoluteVar::new(0)),
+            eco_vec![Elim::FunApp(FunArg::explicit(Value::Int(42)))],
+        );
+
+        assert_quote_in_env(
+            locals,
+            &metas,
+            value,
+            Ok(Expr::FunApp(
+                &Expr::LocalVar(RelativeVar::new(0)),
+                FunArg::explicit(&Expr::Int(42)),
+            )),
+        );
+    }
 
     #[test]
     fn quote_fun_lit() {

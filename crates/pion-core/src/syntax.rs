@@ -23,6 +23,14 @@ pub enum Expr<'core> {
     FunApp(&'core Self, FunArg<&'core Self>),
 }
 
+impl<'core> Expr<'core> {
+    pub const TYPE: Self = Self::PrimVar(PrimVar::Type);
+    pub const BOOL: Self = Self::PrimVar(PrimVar::Bool);
+    pub const INT: Self = Self::PrimVar(PrimVar::Int);
+    pub const STRING: Self = Self::PrimVar(PrimVar::String);
+    pub const CHAR: Self = Self::PrimVar(PrimVar::Char);
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct LetBinding<'core, T> {
     pub name: Option<InternedStr<'core>>,

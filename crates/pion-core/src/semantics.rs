@@ -101,11 +101,11 @@ pub enum Error<'core> {
         len: EnvLen,
     },
 
-    FunAppPlicityMismatch {
+    PlicityMismatch {
         param_plicity: Plicity,
         arg_plicity: Plicity,
     },
-    CalleeNotFun {
+    NotAFunction {
         callee: Value<'core>,
     },
 }
