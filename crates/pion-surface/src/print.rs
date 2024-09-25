@@ -152,7 +152,7 @@ impl<W: Write> Printer<W> {
         writeln!(self, "LetBinding")?;
         self.with_indent(|this| {
             this.pat(binding.data.pat.as_ref())?;
-            this.expr(binding.data.expr.as_ref())
+            this.expr(binding.data.init.as_ref())
         })
     }
 }

@@ -183,7 +183,7 @@ pub mod equality {
 
     impl<'core, T: AlphaEq> AlphaEq for LetBinding<'core, T> {
         fn alpha_eq(&self, other: &Self) -> bool {
-            self.r#type.alpha_eq(&other.r#type) && self.rhs.alpha_eq(&other.rhs)
+            self.r#type.alpha_eq(&other.r#type) && self.init.alpha_eq(&other.init)
         }
     }
 
@@ -315,7 +315,7 @@ pub fn eval<'core, 'env>(
             Some(None) => Ok(Value::meta_var(*var)),
         },
         Expr::Let(binding, body) => {
-            let rhs = eval(binding.rhs, opts, local_values, meta_values)?;
+            let rhs = eval(binding.init, opts, local_values, meta_values)?;
             local_values.push(rhs);
             let body = eval(body, opts, local_values, meta_values);
             local_values.pop();
@@ -463,7 +463,7 @@ mod tests {
                 LetBinding {
                     name: None,
                     r#type: &Expr::Error,
-                    rhs: &Expr::Int(10),
+                    init: &Expr::Int(10),
                 },
                 &Expr::LocalVar(RelativeVar::new(0)),
             ),
@@ -486,7 +486,7 @@ mod tests {
                 LetBinding {
                     name: None,
                     r#type: &Expr::Error,
-                    rhs: &Expr::Int(10),
+                    init: &Expr::Int(10),
                 },
                 &Expr::LocalVar(RelativeVar::new(1)),
             ),

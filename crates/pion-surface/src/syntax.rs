@@ -59,7 +59,7 @@ pub enum Expr<'text, 'surface> {
 #[derive(Copy, Clone)]
 pub struct LetBinding<'text, 'surface> {
     pub pat: Located<Pat<'text, 'surface>>,
-    pub expr: Located<Expr<'text, 'surface>>,
+    pub init: Located<Expr<'text, 'surface>>,
 }
 
 #[derive(Copy, Clone)]

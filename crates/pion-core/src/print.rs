@@ -186,12 +186,12 @@ fn pat(out: &mut impl Write, name: &Option<InternedStr>) -> fmt::Result {
 }
 
 fn let_binding(out: &mut impl Write, binding: &LetBinding<&Expr>) -> fmt::Result {
-    let LetBinding { name, r#type, rhs } = binding;
+    let LetBinding { name, r#type, init } = binding;
     pat(out, name)?;
     write!(out, " : ")?;
     expr_prec(out, r#type, Prec::MAX)?;
     write!(out, " = ")?;
-    expr_prec(out, rhs, Prec::MAX)?;
+    expr_prec(out, init, Prec::MAX)?;
     Ok(())
 }
 

@@ -80,21 +80,14 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let (binding, r#type) = self.synth_let_binding(*binding);
 
                 let (body_expr, body_type) = {
-                    let value = self.eval_expr(&binding.rhs);
+                    let value = self.eval_expr(binding.init);
                     self.env.locals.push_let(binding.name, r#type, value);
                     let (body_expr, body_type) = self.synth_expr(*body);
                     self.env.locals.pop();
                     (body_expr, body_type)
                 };
 
-                let expr = Expr::Let(
-                    LetBinding {
-                        name: binding.name,
-                        r#type: self.bump.alloc(binding.r#type),
-                        rhs: self.bump.alloc(binding.rhs),
-                    },
-                    self.bump.alloc(body_expr),
-                );
+                let expr = Expr::Let(binding, self.bump.alloc(body_expr));
                 (expr, body_type)
             }
         }
@@ -122,22 +115,14 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let (binding, r#type) = self.synth_let_binding(*binding);
 
                 let body_expr = {
-                    let value = self.eval_expr(&binding.rhs);
+                    let value = self.eval_expr(binding.init);
                     self.env.locals.push_let(binding.name, r#type, value);
                     let body_expr = self.check_expr(*body, expected);
                     self.env.locals.pop();
                     body_expr
                 };
 
-                let expr = Expr::Let(
-                    LetBinding {
-                        name: binding.name,
-                        r#type: self.bump.alloc(binding.r#type),
-                        rhs: self.bump.alloc(binding.rhs),
-                    },
-                    self.bump.alloc(body_expr),
-                );
-                expr
+                Expr::Let(binding, self.bump.alloc(body_expr))
             }
         }
     }
@@ -174,17 +159,14 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
     fn synth_let_binding(
         &mut self,
         binding: Located<&surface::LetBinding<'text, 'surface>>,
-    ) -> Synth<'core, LetBinding<'core, Expr<'core>>> {
-        let surface::LetBinding { pat, expr: rhs } = binding.data;
-        let (pat, r#type) = self.synth_pat(pat.as_ref());
-        let rhs = self.check_expr(rhs.as_ref(), &r#type);
-
-        let binding = LetBinding {
-            name: pat.name(),
-            r#type: self.quote_value(&r#type),
-            rhs,
-        };
-        (binding, r#type)
+    ) -> Synth<'core, LetBinding<'core, &'core Expr<'core>>> {
+        let surface::LetBinding { pat, init } = binding.data;
+        let (pat, r#type_value) = self.synth_pat(pat.as_ref());
+        let init = self.check_expr(init.as_ref(), &r#type_value);
+        let r#type = self.quote_value(&r#type_value);
+        let (r#type, init) = self.bump.alloc((r#type, init));
+        let binding = LetBinding::new(pat.name(), &*r#type, &*init);
+        (binding, r#type_value)
     }
 
     fn synth_fun_param(

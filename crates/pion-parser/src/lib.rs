@@ -307,7 +307,7 @@ where
             let end_range = self.range;
             Located::new(
                 TextRange::new(start_range.start(), end_range.end()),
-                LetBinding { pat, expr },
+                LetBinding { pat, init: expr },
             )
         };
 

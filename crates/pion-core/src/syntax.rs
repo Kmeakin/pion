@@ -27,7 +27,13 @@ pub enum Expr<'core> {
 pub struct LetBinding<'core, T> {
     pub name: Option<InternedStr<'core>>,
     pub r#type: T,
-    pub rhs: T,
+    pub init: T,
+}
+
+impl<'core, T> LetBinding<'core, T> {
+    pub const fn new(name: Option<InternedStr<'core>>, r#type: T, init: T) -> Self {
+        Self { name, r#type, init }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
