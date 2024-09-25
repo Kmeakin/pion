@@ -7,8 +7,8 @@
 //!     | ( <Expr> )
 //!     | <Expr> ( <FunArg>,* )
 //!     | <Expr> -> <Expr>
-//!     | forall ( <FunParam>,* ) <Expr>
-//!     | fun ( <FunParam>,* ) <Expr>
+//!     | forall ( <FunParam>,* ) -> <Expr>
+//!     | fun ( <FunParam>,* ) => <Expr>
 //!     | let <Pat> = <Expr> ; <Expr>
 //!     | <Expr> : <Expr>
 //!
@@ -48,7 +48,9 @@ fn infix_binding_power<'text, 'surface>(
     token: TokenKind,
 ) -> Option<(u8, u8, Binop<'text, 'surface>)> {
     match token {
-        TokenKind::Arrow => Some((3, 2, |domain, codomain| Expr::FunArrow { domain, codomain })),
+        TokenKind::SingleArrow => {
+            Some((3, 2, |domain, codomain| Expr::FunArrow { domain, codomain }))
+        }
         TokenKind::Punct(':') => Some((1, 2, |expr, r#type| Expr::TypeAnnotation { expr, r#type })),
         _ => None,
     }
@@ -331,6 +333,7 @@ where
         self.expect_token(TokenKind::LParen);
         let params = self.fun_params();
         self.expect_token(TokenKind::RParen);
+        self.expect_token(TokenKind::SingleArrow);
         let body = self.expr();
         let end_range = self.range;
         Located::new(
@@ -347,6 +350,7 @@ where
         self.expect_token(TokenKind::LParen);
         let params = self.fun_params();
         self.expect_token(TokenKind::RParen);
+        self.expect_token(TokenKind::DoubleArrow);
         let body = self.expr();
         let end_range = self.range;
         Located::new(
@@ -659,76 +663,76 @@ mod tests {
     #[test]
     fn fun_expr() {
         check_expr(
-            "fun() a",
+            "fun() => a",
             expect![[r#"
-                0..7 @ Expr::FunExpr
-                 6..7 @ Expr::Var("a")"#]],
+                0..10 @ Expr::FunExpr
+                 9..10 @ Expr::Var("a")"#]],
         );
         check_expr(
-            "fun(a) a",
-            expect![[r#"
-                0..8 @ Expr::FunExpr
-                 4..6 @ FunParam
-                  4..5 @ Pat::Var("a")
-                 7..8 @ Expr::Var("a")"#]],
-        );
-        check_expr(
-            "fun(a: A) a",
+            "fun(a) => a",
             expect![[r#"
                 0..11 @ Expr::FunExpr
+                 4..6 @ FunParam
+                  4..5 @ Pat::Var("a")
+                 10..11 @ Expr::Var("a")"#]],
+        );
+        check_expr(
+            "fun(a: A) => a",
+            expect![[r#"
+                0..14 @ Expr::FunExpr
                  4..9 @ FunParam
                   4..8 @ Pat::TypeAnnotation
                    4..5 @ Pat::Var("a")
                    7..8 @ Expr::Var("A")
-                 10..11 @ Expr::Var("a")"#]],
+                 13..14 @ Expr::Var("a")"#]],
         );
         check_expr(
-            "fun(a, b) a",
+            "fun(a, b) => a",
             expect![[r#"
-                0..11 @ Expr::FunExpr
+                0..14 @ Expr::FunExpr
                  4..6 @ FunParam
                   4..5 @ Pat::Var("a")
                  7..9 @ FunParam
                   7..8 @ Pat::Var("b")
-                 10..11 @ Expr::Var("a")"#]],
+                 13..14 @ Expr::Var("a")"#]],
         );
     }
 
     #[test]
     fn forall_expr() {
         check_expr(
-            "forall() a",
+            "forall() -> a",
             expect![[r#"
-                0..10 @ Expr::FunType
-                 9..10 @ Expr::Var("a")"#]],
+                0..13 @ Expr::FunType
+                 12..13 @ Expr::Var("a")"#]],
         );
         check_expr(
-            "forall(a) a",
-            expect![[r#"
-                0..11 @ Expr::FunType
-                 7..9 @ FunParam
-                  7..8 @ Pat::Var("a")
-                 10..11 @ Expr::Var("a")"#]],
-        );
-        check_expr(
-            "forall(a: A) a",
+            "forall(a) -> a",
             expect![[r#"
                 0..14 @ Expr::FunType
+                 7..9 @ FunParam
+                  7..8 @ Pat::Var("a")
+                 13..14 @ Expr::Var("a")"#]],
+        );
+        check_expr(
+            "forall(a: A) -> a",
+            expect![[r#"
+                0..17 @ Expr::FunType
                  7..12 @ FunParam
                   7..11 @ Pat::TypeAnnotation
                    7..8 @ Pat::Var("a")
                    10..11 @ Expr::Var("A")
-                 13..14 @ Expr::Var("a")"#]],
+                 16..17 @ Expr::Var("a")"#]],
         );
         check_expr(
-            "forall(a, b) a",
+            "forall(a, b) -> a",
             expect![[r#"
-                0..14 @ Expr::FunType
+                0..17 @ Expr::FunType
                  7..9 @ FunParam
                   7..8 @ Pat::Var("a")
                  10..12 @ FunParam
                   10..11 @ Pat::Var("b")
-                 13..14 @ Expr::Var("a")"#]],
+                 16..17 @ Expr::Var("a")"#]],
         );
     }
 

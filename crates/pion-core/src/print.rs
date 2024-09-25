@@ -75,13 +75,13 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
         Expr::FunType { param, body } => {
             write!(out, "forall(")?;
             fun_param(out, param, |out, expr| expr_prec(out, expr, Prec::MAX))?;
-            write!(out, ") ")?;
+            write!(out, ") -> ")?;
             expr_prec(out, body, Prec::MAX)?;
         }
         Expr::FunLit { param, body } => {
             write!(out, "fun(")?;
             fun_param(out, param, |out, expr| expr_prec(out, expr, Prec::MAX))?;
-            write!(out, ") ")?;
+            write!(out, ") =>")?;
             expr_prec(out, body, Prec::MAX)?;
         }
         Expr::FunApp { fun, arg } => {

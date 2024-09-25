@@ -67,7 +67,8 @@ pub enum TokenKind {
     RCurly,
 
     // Atoms
-    Arrow,
+    SingleArrow,
+    DoubleArrow,
     Ident,
     Reserved(ReservedIdent),
     Punct(char),
@@ -92,7 +93,8 @@ impl fmt::Display for TokenKind {
             Self::RSquare => write!(f, "`]`"),
             Self::LCurly => write!(f, "`{{`"),
             Self::RCurly => write!(f, "`}}`"),
-            Self::Arrow => write!(f, "`->`"),
+            Self::SingleArrow => write!(f, "`->`"),
+            Self::DoubleArrow => write!(f, "`=>`"),
             Self::Ident => write!(f, "identifier"),
             Self::Reserved(reserved) => write!(f, "{reserved}"),
             Self::Punct(c) => write!(f, "`{c}`"),
@@ -245,7 +247,11 @@ pub fn next_token(source: &str) -> Option<(&str, TokenKind, &str)> {
         }
         '-' if peek() == Some('>') => {
             chars.next();
-            TokenKind::Arrow
+            TokenKind::SingleArrow
+        }
+        '=' if peek() == Some('>') => {
+            chars.next();
+            TokenKind::DoubleArrow
         }
         '_' if peek() == Some('-') => TokenKind::Punct(c),
         '_' if peek().is_some_and(classify::ident_continue) => {
@@ -427,8 +433,7 @@ mod tests {
             Punct(':') 11..12 ":"
             Punct(';') 12..13 ";"
             Punct('<') 13..14 "<"
-            Punct('=') 14..15 "="
-            Punct('>') 15..16 ">"
+            DoubleArrow 14..16 "=>"
             Punct('?') 16..17 "?"
             Punct('@') 17..18 "@"
             Punct('\\') 18..19 "\\"
@@ -441,7 +446,8 @@ mod tests {
         assert_lex!("_-" => expect![[r#"
             Punct('_') 0..1 "_"
             Punct('-') 1..2 "-""#]]);
-        assert_lex!("->" => expect![[r#"Arrow 0..2 "->""#]]);
+        assert_lex!("->" => expect![[r#"SingleArrow 0..2 "->""#]]);
+        assert_lex!("=>" => expect![[r#"DoubleArrow 0..2 "=>""#]]);
     }
 
     #[test]
