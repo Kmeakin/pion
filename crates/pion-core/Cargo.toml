@@ -11,3 +11,6 @@ workspace = true
 bumpalo       = { workspace = true }
 ecow          = { workspace = true }
 pion-interner = { workspace = true }
+
+[dev-dependencies]
+expect-test = { workspace = true }

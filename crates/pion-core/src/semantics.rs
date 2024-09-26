@@ -16,7 +16,7 @@ pub type Type<'core> = Value<'core>;
 
 pub type Spine<'core> = EcoVec<Elim<'core>>;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value<'core> {
     Bool(bool),
     Int(u32),

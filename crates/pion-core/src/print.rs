@@ -189,16 +189,303 @@ fn let_binding(out: &mut impl Write, binding: &LetBinding<&Expr>) -> fmt::Result
     let LetBinding { name, r#type, init } = binding;
     pat(out, name)?;
     write!(out, " : ")?;
-    expr_prec(out, r#type, Prec::MAX)?;
+    expr_prec(out, r#type, Prec::Fun)?;
     write!(out, " = ")?;
-    expr_prec(out, init, Prec::MAX)?;
+    expr_prec(out, init, Prec::Fun)?;
     Ok(())
 }
 
-impl fmt::Debug for Expr<'_> {
+impl fmt::Display for Expr<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { expr_prec(f, self, Prec::MAX) }
 }
 
-impl fmt::Debug for Value<'_> {
+impl fmt::Display for Value<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { value_prec(f, self, Prec::MAX) }
+}
+
+#[cfg(test)]
+mod tests {
+    use ecow::eco_vec;
+    use expect_test::*;
+
+    use super::*;
+    use crate::env::{AbsoluteVar, RelativeVar};
+    use crate::semantics::Closure;
+
+    #[track_caller]
+    #[allow(clippy::needless_pass_by_value, reason = "It's only a test")]
+    fn assert_print_expr(expr: &Expr, expected: Expect) {
+        let mut actual = String::new();
+        expr_prec(&mut actual, expr, Prec::MAX).unwrap();
+        expected.assert_eq(&actual);
+    }
+
+    #[track_caller]
+    #[allow(clippy::needless_pass_by_value, reason = "It's only a test")]
+    fn assert_print_value(value: &Value, expected: Expect) {
+        let mut actual = String::new();
+        value_prec(&mut actual, value, Prec::MAX).unwrap();
+        expected.assert_eq(&actual);
+    }
+
+    #[test]
+    fn print_expr_bool() {
+        assert_print_expr(&Expr::Bool(true), expect!["true"]);
+        assert_print_expr(&Expr::Bool(false), expect!["false"]);
+    }
+
+    #[test]
+    fn print_expr_int() { assert_print_expr(&Expr::Int(42), expect!["42"]); }
+
+    #[test]
+    fn print_expr_char() { assert_print_expr(&Expr::Char('a'), expect!["'a'"]); }
+
+    #[test]
+    fn print_expr_string() { assert_print_expr(&Expr::String("hello"), expect![[r#""hello""#]]); }
+
+    #[test]
+    fn print_expr_prim_var() {
+        let expr = Expr::BOOL;
+        assert_print_expr(&expr, expect!["Bool"]);
+    }
+
+    #[test]
+    fn print_expr_local_var() {
+        let expr = Expr::LocalVar(RelativeVar::new(0));
+        assert_print_expr(&expr, expect!["_#0"]);
+    }
+
+    #[test]
+    fn print_expr_meta_var() {
+        let expr = Expr::MetaVar(AbsoluteVar::new(0));
+        assert_print_expr(&expr, expect!["?0"]);
+    }
+
+    #[test]
+    fn print_expr_let() {
+        let expr = Expr::Let(
+            LetBinding::new(None, &Expr::Int(0), &Expr::Int(1)),
+            &Expr::Int(2),
+        );
+        assert_print_expr(&expr, expect!["let _ : 0 = 1; 2"]);
+
+        let expr = Expr::Let(
+            LetBinding::new(None, &Expr::Int(0), &Expr::Int(1)),
+            &const {
+                Expr::Let(
+                    LetBinding::new(None, &Expr::Int(2), &Expr::Int(3)),
+                    &Expr::Int(4),
+                )
+            },
+        );
+        assert_print_expr(&expr, expect!["let _ : 0 = 1; let _ : 2 = 3; 4"]);
+
+        let expr = Expr::Let(
+            LetBinding::new(
+                None,
+                &Expr::Int(0),
+                &const {
+                    Expr::Let(
+                        LetBinding::new(None, &Expr::Int(2), &Expr::Int(3)),
+                        &Expr::Int(4),
+                    )
+                },
+            ),
+            &Expr::Bool(false),
+        );
+        assert_print_expr(&expr, expect!["let _ : 0 = (let _ : 2 = 3; 4); false"]);
+
+        let expr = Expr::Let(
+            LetBinding::new(
+                None,
+                &const {
+                    Expr::Let(
+                        LetBinding::new(None, &Expr::Int(2), &Expr::Int(3)),
+                        &Expr::Int(4),
+                    )
+                },
+                &Expr::Char('a'),
+            ),
+            &Expr::Bool(false),
+        );
+        assert_print_expr(&expr, expect!["let _ : (let _ : 2 = 3; 4) = 'a'; false"]);
+    }
+
+    #[test]
+    fn print_expr_fun_type() {
+        let expr = Expr::FunType(FunParam::explicit(None, &Expr::INT), &Expr::BOOL);
+        assert_print_expr(&expr, expect!["forall(_ : Int) -> Bool"]);
+
+        let expr = Expr::FunType(FunParam::implicit(None, &Expr::INT), &Expr::BOOL);
+        assert_print_expr(&expr, expect!["forall(@_ : Int) -> Bool"]);
+
+        let expr = Expr::FunType(
+            FunParam::explicit(None, &Expr::INT),
+            &const { Expr::FunType(FunParam::explicit(None, &Expr::BOOL), &Expr::CHAR) },
+        );
+        assert_print_expr(
+            &expr,
+            expect!["forall(_ : Int) -> forall(_ : Bool) -> Char"],
+        );
+
+        let expr = Expr::FunType(
+            FunParam::explicit(
+                None,
+                &const { Expr::FunType(FunParam::explicit(None, &Expr::INT), &Expr::BOOL) },
+            ),
+            &Expr::CHAR,
+        );
+        assert_print_expr(
+            &expr,
+            expect!["forall(_ : forall(_ : Int) -> Bool) -> Char"],
+        );
+    }
+
+    #[test]
+    fn print_expr_fun_lit() {
+        let expr = Expr::FunLit(FunParam::explicit(None, &Expr::INT), &Expr::Int(5));
+        assert_print_expr(&expr, expect!["fun(_ : Int) => 5"]);
+
+        let expr = Expr::FunLit(FunParam::implicit(None, &Expr::INT), &Expr::Int(5));
+        assert_print_expr(&expr, expect!["fun(@_ : Int) => 5"]);
+
+        let expr = Expr::FunLit(
+            FunParam::explicit(None, &Expr::INT),
+            &const {
+                Expr::FunLit(
+                    FunParam::explicit(None, &Expr::BOOL),
+                    &const { Expr::LocalVar(RelativeVar::new(0)) },
+                )
+            },
+        );
+        assert_print_expr(&expr, expect!["fun(_ : Int) => fun(_ : Bool) => _#0"]);
+
+        let expr = Expr::FunLit(
+            FunParam::explicit(None, &Expr::INT),
+            &const {
+                Expr::Let(
+                    LetBinding::new(
+                        None,
+                        &Expr::BOOL,
+                        &const { Expr::LocalVar(RelativeVar::new(0)) },
+                    ),
+                    &const { Expr::LocalVar(RelativeVar::new(0)) },
+                )
+            },
+        );
+        assert_print_expr(&expr, expect!["fun(_ : Int) => let _ : Bool = _#0; _#0"]);
+    }
+
+    #[test]
+    fn print_expr_fun_app() {
+        let expr = Expr::FunApp(&Expr::INT, FunArg::explicit(&Expr::Int(1)));
+        assert_print_expr(&expr, expect!["Int(1)"]);
+
+        let expr = Expr::FunApp(&Expr::INT, FunArg::implicit(&Expr::Int(1)));
+        assert_print_expr(&expr, expect!["Int(@1)"]);
+
+        let fun = Expr::FunApp(&Expr::BOOL, FunArg::explicit(&Expr::Bool(true)));
+        let expr = Expr::FunApp(&fun, FunArg::explicit(&Expr::Int(1)));
+        assert_print_expr(&expr, expect!["Bool(true)(1)"]);
+
+        let expr = Expr::FunApp(
+            &const {
+                Expr::FunLit(
+                    FunParam::explicit(None, &Expr::INT),
+                    &const { Expr::LocalVar(RelativeVar::new(0)) },
+                )
+            },
+            FunArg::explicit(&Expr::Int(1)),
+        );
+        assert_print_expr(&expr, expect!["(fun(_ : Int) => _#0)(1)"]);
+
+        let expr = Expr::FunApp(
+            &const {
+                Expr::Let(
+                    LetBinding::new(None, &Expr::Int(0), &Expr::Int(5)),
+                    &const { Expr::LocalVar(RelativeVar::new(0)) },
+                )
+            },
+            FunArg::explicit(&Expr::Int(1)),
+        );
+        assert_print_expr(&expr, expect!["(let _ : 0 = 5; _#0)(1)"]);
+    }
+
+    #[test]
+    fn print_value_bool() {
+        assert_print_value(&Value::Bool(true), expect!["true"]);
+        assert_print_value(&Value::Bool(false), expect!["false"]);
+    }
+
+    #[test]
+    fn print_value_int() { assert_print_value(&Value::Int(42), expect!["42"]); }
+
+    #[test]
+    fn print_value_char() { assert_print_value(&Value::Char('a'), expect!["'a'"]); }
+
+    #[test]
+    fn print_value_string() { assert_print_value(&Value::String("hello"), expect!["\"hello\""]); }
+
+    #[test]
+    fn print_value_local_var() {
+        let value = Value::local_var(AbsoluteVar::new(0));
+        assert_print_value(&value, expect!["_#0"]);
+    }
+
+    #[test]
+    fn print_value_meta_var() {
+        let value = Value::meta_var(AbsoluteVar::new(0));
+        assert_print_value(&value, expect!["?0"]);
+    }
+
+    #[test]
+    fn print_value_prim_var() {
+        let value = Value::BOOL;
+        assert_print_value(&value, expect!["Bool"]);
+    }
+
+    #[test]
+    fn print_value_neutral() {
+        let value = Value::Neutral(
+            Head::LocalVar(AbsoluteVar::new(0)),
+            eco_vec![Elim::FunApp(FunArg::explicit(Value::Int(1)))],
+        );
+        assert_print_value(&value, expect!["_#0(1)"]);
+
+        let value = Value::Neutral(
+            Head::LocalVar(AbsoluteVar::new(0)),
+            eco_vec![Elim::FunApp(FunArg::implicit(Value::Int(1)))],
+        );
+        assert_print_value(&value, expect!["_#0(@1)"]);
+    }
+
+    #[test]
+    fn print_value_fun_type() {
+        let value = Value::FunType(
+            FunParam::explicit(None, &Expr::Int(1)),
+            Closure::empty(&Expr::Bool(true)),
+        );
+        assert_print_value(&value, expect!["forall(_ : 1) -> true"]);
+
+        let value = Value::FunType(
+            FunParam::implicit(None, &Expr::Int(1)),
+            Closure::empty(&Expr::Bool(true)),
+        );
+        assert_print_value(&value, expect!["forall(@_ : 1) -> true"]);
+    }
+
+    #[test]
+    fn print_value_fun_lit() {
+        let value = Value::FunLit(
+            FunParam::explicit(None, &Expr::Int(1)),
+            Closure::empty(&Expr::Bool(true)),
+        );
+        assert_print_value(&value, expect!["fun(_ : 1) => true"]);
+
+        let value = Value::FunLit(
+            FunParam::implicit(None, &Expr::Int(1)),
+            Closure::empty(&Expr::Bool(true)),
+        );
+        assert_print_value(&value, expect!["fun(@_ : 1) => true"]);
+    }
 }

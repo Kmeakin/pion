@@ -3,7 +3,7 @@ use pion_interner::InternedStr;
 use crate::env::{AbsoluteVar, RelativeVar};
 use crate::prim::PrimVar;
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Expr<'core> {
     Error,
 

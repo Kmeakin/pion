@@ -148,7 +148,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 self.diagnostic(
                     expr.range,
                     Diagnostic::error()
-                        .with_message(format!("Type mismatch: expected `{to:?}`, found {from:?}")),
+                        .with_message(format!("Type mismatch: expected `{to}`, found {from}")),
                 );
                 Expr::Error
             }
@@ -307,7 +307,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                         Diagnostic::error()
                             .with_message("Expected a function")
                             .with_notes(vec![format!(
-                                "Help: the type of the callee is {callee_type:?}"
+                                "Help: the type of the callee is {callee_type}"
                             )]),
                     );
                     return (Expr::Error, Type::ERROR);
@@ -322,7 +322,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                                     "Help: the function expects {arity} arguments, but received {}",
                                     args.len()
                                 ),
-                                format!("Help: the type of the callee is {callee_type:?}"),
+                                format!("Help: the type of the callee is {callee_type}"),
                             ]),
                     );
                     return (Expr::Error, Type::ERROR);

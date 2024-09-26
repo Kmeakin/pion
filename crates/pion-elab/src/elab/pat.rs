@@ -86,7 +86,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 self.diagnostic(
                     pat.range,
                     Diagnostic::error()
-                        .with_message(format!("Type mismatch: expected `{to:?}`, found {from:?}")),
+                        .with_message(format!("Type mismatch: expected `{to}`, found {from}")),
                 );
                 Pat::Error
             }
