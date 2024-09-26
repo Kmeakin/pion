@@ -1,26 +1,6 @@
-#![feature(allocator_api)]
+//! See `context-free-syntax.md`
 
-//! ```text
-//! <Expr> ::=
-//!     | Ident
-//!     | Literal
-//!     | ( <Expr> )
-//!     | <Expr> ( <FunArg>,* )
-//!     | <Expr> -> <Expr>
-//!     | forall ( <FunParam>,* ) -> <Expr>
-//!     | fun ( <FunParam>,* ) => <Expr>
-//!     | let <Pat> = <Expr> ; <Expr>
-//!     | <Expr> : <Expr>
-//!
-//! <Pat> ::=
-//!     | _
-//!     | Ident
-//!     | ( <Pat> )
-//!     | <Pat> : <Expr>
-//!
-//! <FunArg> ::= <Expr>
-//! <FunParam> ::= <Pat>
-//! ```
+#![feature(allocator_api)]
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 pub use pion_lexer::lex;
