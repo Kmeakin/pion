@@ -88,15 +88,13 @@ fn fun_eta_convertible<'core>(
         var.clone(),
         UnfoldOpts::for_quote(),
         metas,
-    )
-    .unwrap();
+    );
     let rhs = elim::apply_arg(
         rhs_value.clone(),
         FunArg::new(lhs_param.plicity, var),
         UnfoldOpts::for_quote(),
         metas,
-    )
-    .unwrap();
+    );
 
     convertible(&lhs, &rhs, locals.succ(), metas)
 }
@@ -112,22 +110,21 @@ fn convertible_closure<'core>(
         Value::local_var(locals.to_absolute()),
         UnfoldOpts::for_quote(),
         metas,
-    )
-    .unwrap();
+    );
+
     let rhs = elim::beta_reduce(
         rhs.clone(),
         Value::local_var(locals.to_absolute()),
         UnfoldOpts::for_quote(),
         metas,
-    )
-    .unwrap();
+    );
     convertible(&lhs, &rhs, locals.succ(), metas)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::env::UniqueEnv;
+    use crate::env::{RelativeVar, UniqueEnv};
 
     #[track_caller]
     fn assert_convertible<'core>(lhs: &Value<'core>, rhs: &Value<'core>) {

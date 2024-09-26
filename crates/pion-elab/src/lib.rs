@@ -47,7 +47,6 @@ impl<'core> Elaborator<'core> {
             &mut self.env.locals.values,
             &self.env.metas.values,
         )
-        .unwrap()
     }
 
     fn quote_value(&self, value: &Value<'core>) -> Expr<'core> {
@@ -57,7 +56,6 @@ impl<'core> Elaborator<'core> {
             self.env.locals.len(),
             &self.env.metas.values,
         )
-        .unwrap()
     }
 
     fn apply_closure(&self, closure: Closure<'core>, arg: Value<'core>) -> Value<'core> {
@@ -67,7 +65,6 @@ impl<'core> Elaborator<'core> {
             UnfoldOpts::for_eval(),
             &self.env.metas.values,
         )
-        .unwrap()
     }
 
     fn convertible(&self, lhs: &Value<'core>, rhs: &Value<'core>) -> bool {

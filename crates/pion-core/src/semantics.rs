@@ -1,8 +1,8 @@
 use ecow::EcoVec;
 
-use crate::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, SliceEnv};
+use crate::env::{AbsoluteVar, EnvLen, SharedEnv, SliceEnv};
 use crate::prim::PrimVar;
-use crate::syntax::{Expr, FunArg, FunParam, Plicity};
+use crate::syntax::{Expr, FunArg, FunParam};
 
 pub mod convertible;
 pub mod elim;
@@ -84,28 +84,4 @@ pub struct UnfoldOpts {
 impl UnfoldOpts {
     pub const fn for_eval() -> Self { Self { unfold_fix: true } }
     pub const fn for_quote() -> Self { Self { unfold_fix: false } }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Error<'core> {
-    EvalUnboundLocalVar {
-        var: RelativeVar,
-        len: EnvLen,
-    },
-    QuoteUnboundLocalVar {
-        var: AbsoluteVar,
-        len: EnvLen,
-    },
-    UnboundMetaVar {
-        var: AbsoluteVar,
-        len: EnvLen,
-    },
-
-    PlicityMismatch {
-        param_plicity: Plicity,
-        arg_plicity: Plicity,
-    },
-    NotAFunction {
-        callee: Value<'core>,
-    },
 }

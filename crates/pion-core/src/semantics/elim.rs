@@ -7,7 +7,7 @@ pub fn apply_eliminator<'core>(
     elim: Elim<'core>,
     opts: UnfoldOpts,
     metas: &MetaValues<'core>,
-) -> Result<Value<'core>, Error<'core>> {
+) -> Value<'core> {
     match elim {
         Elim::FunApp(arg) => apply_arg(head, arg, opts, metas),
     }
@@ -18,10 +18,10 @@ pub fn apply_spine<'core>(
     spine: Spine<'core>,
     opts: UnfoldOpts,
     metas: &MetaValues<'core>,
-) -> Result<Value<'core>, Error<'core>> {
+) -> Value<'core> {
     spine
         .into_iter()
-        .try_fold(head, |head, elim| apply_eliminator(head, elim, opts, metas))
+        .fold(head, |head, elim| apply_eliminator(head, elim, opts, metas))
 }
 
 /// Apply `arg` to `callee`.
@@ -31,20 +31,16 @@ pub fn apply_arg<'core>(
     arg: FunArg<Value<'core>>,
     opts: UnfoldOpts,
     metas: &MetaValues<'core>,
-) -> Result<Value<'core>, Error<'core>> {
+) -> Value<'core> {
     match callee {
         Value::Neutral(head, mut spine) => {
             spine.push(Elim::FunApp(arg));
-            Ok(Value::Neutral(head, spine))
+            Value::Neutral(head, spine)
         }
         Value::FunLit(param, body) if param.plicity == arg.plicity => {
             beta_reduce(body, arg.expr, opts, metas)
         }
-        Value::FunLit(param, _) => Err(Error::PlicityMismatch {
-            param_plicity: param.plicity,
-            arg_plicity: arg.plicity,
-        }),
-        _ => Err(Error::NotAFunction { callee }),
+        _ => Value::ERROR,
     }
 }
 
@@ -54,7 +50,7 @@ pub fn beta_reduce<'core>(
     arg: Value<'core>,
     opts: UnfoldOpts,
     metas: &MetaValues<'core>,
-) -> Result<Value<'core>, Error<'core>> {
+) -> Value<'core> {
     let Closure {
         mut local_values,
         body,
@@ -65,26 +61,18 @@ pub fn beta_reduce<'core>(
 
 /// Substitute meta variables in neutral spines with their values, and reduce
 /// further if possible.
-pub fn subst_metas<'core>(
-    value: &Value<'core>,
-    metas: &MetaValues<'core>,
-) -> Result<Value<'core>, Error<'core>> {
+pub fn subst_metas<'core>(value: &Value<'core>, metas: &MetaValues<'core>) -> Value<'core> {
     let mut value = value.clone();
     while let Value::Neutral(Head::MetaVar(var), spine) = value {
         match metas.get_absolute(var) {
-            None => {
-                return Err(Error::UnboundMetaVar {
-                    var,
-                    len: metas.len(),
-                })
-            }
-            Some(None) => return Ok(Value::Neutral(Head::MetaVar(var), spine)),
+            None => return Value::ERROR,
+            Some(None) => return Value::Neutral(Head::MetaVar(var), spine),
             Some(Some(head)) => {
-                value = apply_spine(head.clone(), spine, UnfoldOpts::for_quote(), metas)?;
+                value = apply_spine(head.clone(), spine, UnfoldOpts::for_quote(), metas);
             }
         }
     }
-    Ok(value)
+    value
 }
 
 #[cfg(test)]
@@ -107,10 +95,7 @@ mod tests {
 
         assert_eq!(
             result,
-            Ok(Value::Neutral(
-                Head::LocalVar(var),
-                eco_vec![Elim::FunApp(arg)]
-            ))
+            Value::Neutral(Head::LocalVar(var), eco_vec![Elim::FunApp(arg)])
         );
     }
 
@@ -120,13 +105,7 @@ mod tests {
         let value = Value::meta_var(var);
         let metas = UniqueEnv::default();
         let result = subst_metas(&value, &metas);
-        assert_eq!(
-            result,
-            Err(Error::UnboundMetaVar {
-                var,
-                len: EnvLen::new(0)
-            })
-        );
+        assert_eq!(result, Value::ERROR);
     }
 
     #[test]
@@ -144,13 +123,13 @@ mod tests {
         );
 
         let result = subst_metas(&value, &metas);
-        assert_eq!(result, Ok(Value::Int(42)));
+        assert_eq!(result, (Value::Int(42)));
 
         // `?0(24)` in `[None]`
         metas.clear();
         metas.push(None);
         let result = subst_metas(&value, &metas);
-        assert_eq!(result, Ok(value));
+        assert_eq!(result, value);
     }
 
     #[test]
@@ -167,6 +146,6 @@ mod tests {
             Closure::empty(&Expr::Int(42)),
         )));
         let result = subst_metas(&value, &metas);
-        assert_eq!(result, Ok(Value::Int(42)));
+        assert_eq!(result, Value::Int(42));
     }
 }
