@@ -158,16 +158,16 @@ mod tests {
         expr("fun() => 5", expect!["5 : Int"]);
         expr(
             "fun(_: Int) => 5",
-            expect!["(fun(_ : Int) =>5) : forall(_ : Int) Int"],
+            expect!["(fun(_ : Int) => 5) : forall(_ : Int) -> Int"],
         );
         expr(
             "fun(x: Int) => x",
-            expect!["(fun(x : Int) =>_#0) : forall(x : Int) Int"],
+            expect!["(fun(x : Int) => _#0) : forall(x : Int) -> Int"],
         );
         expr(
             "fun(x: Int, _: Bool) => x",
             expect![
-                "(fun(x : Int) =>fun(_ : Bool) =>_#1) : forall(x : Int) forall(_ : Bool) -> Int"
+                "(fun(x : Int) => fun(_ : Bool) => _#1) : forall(x : Int) -> forall(_ : Bool) -> Int"
             ],
         );
     }
@@ -194,7 +194,7 @@ mod tests {
     fn fun_call() {
         expr(
             "let f: Int -> Int = fun(x: Int) => x; f(1)",
-            expect!["(let f : forall(_ : Int) -> Int = fun(x : Int) =>_#0; _#0) : Int"],
+            expect!["(let f : forall(_ : Int) -> Int = fun(x : Int) => _#0; _#0) : Int"],
         );
         expr(
             "let f: Int = 5; f(1)",
@@ -206,8 +206,8 @@ mod tests {
         expr(
             "let f: Int -> Int = fun(x) => x; f(1, 2)",
             expect![[r#"
-                (let f : forall(_ : Int) -> Int = fun(x : Int) =>_#0; #error) : #error
-                Diagnostic { severity: Error, code: None, message: "Called function with too many arguments", labels: [Label { style: Primary, file_id: 0, range: 33..34, message: "" }], notes: ["Help: the function expects 1 arguments, but received 2", "Help: the type of the callee is forall(_ : Int) Int"] }
+                (let f : forall(_ : Int) -> Int = fun(x : Int) => _#0; #error) : #error
+                Diagnostic { severity: Error, code: None, message: "Called function with too many arguments", labels: [Label { style: Primary, file_id: 0, range: 33..34, message: "" }], notes: ["Help: the function expects 1 arguments, but received 2", "Help: the type of the callee is forall(_ : Int) -> Int"] }
             "#]],
         );
     }
