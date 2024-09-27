@@ -5,7 +5,7 @@ use crate::semantics::Type;
 macro_rules! define_prims {
     ($name:ident { $($variant:ident = $value:literal $(,)?),* }) => {
         #[derive(Copy, Clone, PartialEq, Eq)]
-        #[allow(non_camel_case_types)]
+        #[allow(non_camel_case_types,reason = "for consistency with the surface syntax")]
         pub enum $name {
             $($variant),*
         }
