@@ -37,6 +37,8 @@ impl<'core> Value<'core> {
     pub const INT: Self = Self::prim_var(PrimVar::Int);
     pub const STRING: Self = Self::prim_var(PrimVar::String);
     pub const CHAR: Self = Self::prim_var(PrimVar::Char);
+    pub const UNIT_TYPE: Self = Self::prim_var(PrimVar::Unit);
+    pub const UNIT_VALUE: Self = Self::prim_var(PrimVar::unit);
 
     pub const fn local_var(var: AbsoluteVar) -> Self {
         Self::Neutral(Head::LocalVar(var), EcoVec::new())

@@ -5,6 +5,7 @@ use crate::semantics::Type;
 macro_rules! define_prims {
     ($name:ident { $($variant:ident = $value:literal $(,)?),* }) => {
         #[derive(Copy, Clone, PartialEq, Eq)]
+        #[allow(non_camel_case_types)]
         pub enum $name {
             $($variant),*
         }
@@ -36,6 +37,8 @@ define_prims!(PrimVar {
     Int = "Int",
     Char = "Char",
     String = "String",
+    Unit = "Unit",
+    unit = "unit",
 });
 
 impl fmt::Debug for PrimVar {
@@ -49,7 +52,10 @@ impl fmt::Display for PrimVar {
 impl PrimVar {
     pub const fn r#type(&self) -> Type<'static> {
         match self {
-            Self::Type | Self::Bool | Self::Int | Self::Char | Self::String => Type::TYPE,
+            Self::Type | Self::Bool | Self::Int | Self::Char | Self::String | Self::Unit => {
+                Type::TYPE
+            }
+            Self::unit => Type::UNIT_TYPE,
         }
     }
 }

@@ -137,6 +137,8 @@ mod tests {
         expr("Int", expect!["Int : Type"]);
         expr("Char", expect!["Char : Type"]);
         expr("String", expect!["String : Type"]);
+        expr("Unit", expect!["Unit : Type"]);
+        expr("unit", expect!["unit : Unit"]);
     }
 
     #[test]
@@ -167,7 +169,8 @@ mod tests {
         expr(
             "fun(x: Int, _: Bool) => x",
             expect![
-                "(fun(x : Int) => fun(_ : Bool) => _#1) : forall(x : Int) -> forall(_ : Bool) -> Int"
+                "(fun(x : Int) => fun(_ : Bool) => _#1) : forall(x : Int) -> forall(_ : Bool) -> \
+                 Int"
             ],
         );
     }

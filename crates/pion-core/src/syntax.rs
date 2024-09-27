@@ -29,6 +29,8 @@ impl<'core> Expr<'core> {
     pub const INT: Self = Self::PrimVar(PrimVar::Int);
     pub const STRING: Self = Self::PrimVar(PrimVar::String);
     pub const CHAR: Self = Self::PrimVar(PrimVar::Char);
+    pub const UNIT_TYPE: Self = Self::PrimVar(PrimVar::Unit);
+    pub const UNIT_VALUE: Self = Self::PrimVar(PrimVar::unit);
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
