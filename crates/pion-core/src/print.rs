@@ -11,11 +11,10 @@ pub enum Prec {
     Atom,
     Call,
     Fun,
-    Let,
 }
 
 impl Prec {
-    pub const MAX: Self = Self::Let;
+    pub const MAX: Self = Self::Fun;
 
     pub fn of_expr(expr: &Expr) -> Self {
         match expr {
@@ -26,11 +25,10 @@ impl Prec {
             | Expr::String(_)
             | Expr::PrimVar(_)
             | Expr::LocalVar(_)
-            | Expr::MetaVar(_) => Self::Atom,
-            Expr::Let(..) => Self::Let,
+            | Expr::MetaVar(_)
+            | Expr::Do(..) => Self::Atom,
             Expr::FunType(..) | Expr::FunLit(..) => Self::Fun,
             Expr::FunApp(..) => Self::Call,
-            Expr::Do(..) => Self::Atom,
         }
     }
 
@@ -65,12 +63,6 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
         Expr::PrimVar(var) => write!(out, "{var}")?,
         Expr::LocalVar(var) => write!(out, "_#{var}")?,
         Expr::MetaVar(var) => write!(out, "?{var}")?,
-        Expr::Let(binding, body) => {
-            write!(out, "let ")?;
-            let_binding_ref(out, binding)?;
-            write!(out, " ")?;
-            expr_prec(out, body, Prec::MAX)?;
-        }
         Expr::FunType(param, body) => {
             write!(out, "forall(")?;
             fun_param(out, param, |out, expr| expr_prec(out, expr, Prec::MAX))?;
@@ -208,17 +200,6 @@ fn pat(out: &mut impl Write, name: &Option<InternedStr>) -> fmt::Result {
     }
 }
 
-fn let_binding_ref(out: &mut impl Write, binding: &LetBinding<&Expr>) -> fmt::Result {
-    let LetBinding { name, r#type, init } = binding;
-    pat(out, name)?;
-    write!(out, " : ")?;
-    expr_prec(out, r#type, Prec::Fun)?;
-    write!(out, " = ")?;
-    expr_prec(out, init, Prec::Fun)?;
-    write!(out, ";")?;
-    Ok(())
-}
-
 fn let_binding(out: &mut impl Write, binding: &LetBinding<Expr>) -> fmt::Result {
     let LetBinding { name, r#type, init } = binding;
     pat(out, name)?;
@@ -297,56 +278,6 @@ mod tests {
     }
 
     #[test]
-    fn print_expr_let() {
-        let expr = Expr::Let(
-            LetBinding::new(None, &Expr::Int(0), &Expr::Int(1)),
-            &Expr::Int(2),
-        );
-        assert_print_expr(&expr, expect!["let _ : 0 = 1; 2"]);
-
-        let expr = Expr::Let(
-            LetBinding::new(None, &Expr::Int(0), &Expr::Int(1)),
-            &const {
-                Expr::Let(
-                    LetBinding::new(None, &Expr::Int(2), &Expr::Int(3)),
-                    &Expr::Int(4),
-                )
-            },
-        );
-        assert_print_expr(&expr, expect!["let _ : 0 = 1; let _ : 2 = 3; 4"]);
-
-        let expr = Expr::Let(
-            LetBinding::new(
-                None,
-                &Expr::Int(0),
-                &const {
-                    Expr::Let(
-                        LetBinding::new(None, &Expr::Int(2), &Expr::Int(3)),
-                        &Expr::Int(4),
-                    )
-                },
-            ),
-            &Expr::Bool(false),
-        );
-        assert_print_expr(&expr, expect!["let _ : 0 = (let _ : 2 = 3; 4); false"]);
-
-        let expr = Expr::Let(
-            LetBinding::new(
-                None,
-                &const {
-                    Expr::Let(
-                        LetBinding::new(None, &Expr::Int(2), &Expr::Int(3)),
-                        &Expr::Int(4),
-                    )
-                },
-                &Expr::Char('a'),
-            ),
-            &Expr::Bool(false),
-        );
-        assert_print_expr(&expr, expect!["let _ : (let _ : 2 = 3; 4) = 'a'; false"]);
-    }
-
-    #[test]
     fn print_expr_fun_type() {
         let expr = Expr::FunType(FunParam::explicit(None, &Expr::INT), &Expr::BOOL);
         assert_print_expr(&expr, expect!["forall(_ : Int) -> Bool"]);
@@ -394,21 +325,6 @@ mod tests {
             },
         );
         assert_print_expr(&expr, expect!["fun(_ : Int) => fun(_ : Bool) => _#0"]);
-
-        let expr = Expr::FunLit(
-            FunParam::explicit(None, &Expr::INT),
-            &const {
-                Expr::Let(
-                    LetBinding::new(
-                        None,
-                        &Expr::BOOL,
-                        &const { Expr::LocalVar(RelativeVar::new(0)) },
-                    ),
-                    &const { Expr::LocalVar(RelativeVar::new(0)) },
-                )
-            },
-        );
-        assert_print_expr(&expr, expect!["fun(_ : Int) => let _ : Bool = _#0; _#0"]);
     }
 
     #[test]
@@ -433,17 +349,6 @@ mod tests {
             FunArg::explicit(&Expr::Int(1)),
         );
         assert_print_expr(&expr, expect!["(fun(_ : Int) => _#0)(1)"]);
-
-        let expr = Expr::FunApp(
-            &const {
-                Expr::Let(
-                    LetBinding::new(None, &Expr::Int(0), &Expr::Int(5)),
-                    &const { Expr::LocalVar(RelativeVar::new(0)) },
-                )
-            },
-            FunArg::explicit(&Expr::Int(1)),
-        );
-        assert_print_expr(&expr, expect!["(let _ : 0 = 5; _#0)(1)"]);
     }
 
     #[test]

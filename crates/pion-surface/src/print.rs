@@ -101,13 +101,6 @@ impl<W: Write> Printer<W> {
                     this.expr(*codomain)
                 })
             }
-            Expr::Let(binding, body) => {
-                writeln!(self, "Expr::Let")?;
-                self.with_indent(|this| {
-                    this.let_binding(*binding)?;
-                    this.expr(*body)
-                })
-            }
             Expr::Do(stmts, expr) => {
                 writeln!(self, "Expr::Do")?;
                 self.with_indent(|this| {

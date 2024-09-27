@@ -50,10 +50,6 @@ pub enum Expr<'text, 'surface> {
         Located<&'surface Self>,
     ),
     FunArrow(Located<&'surface Self>, Located<&'surface Self>),
-    Let(
-        Located<&'surface LetBinding<'text, 'surface>>,
-        Located<&'surface Self>,
-    ),
     Do(
         &'surface [Stmt<'text, 'surface>],
         Option<Located<&'surface Expr<'text, 'surface>>>,

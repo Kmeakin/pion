@@ -81,13 +81,13 @@ mod tests {
         );
 
         expr(
-            r#"let s: String = "the famous \"hello world\" string"; s "#,
-            expect![[r#"(let s : String = "the famous \"hello world\" string"; _#0) : String"#]],
+            r#"do { let s: String = "the famous \"hello world\" string"; s }"#,
+            expect![[r#"do {s : String = "the famous \"hello world\" string"; _#0} : String"#]],
         );
 
         expr(
-            r#"let ugly-regex: String = "\\\\."; ugly-regex "#,
-            expect![[r#"(let ugly-regex : String = "\\\\."; _#0) : String"#]],
+            r#"do { let ugly-regex: String = "\\\\."; ugly-regex }"#,
+            expect![[r#"do {ugly-regex : String = "\\\\."; _#0} : String"#]],
         );
 
         expr(
@@ -154,9 +154,6 @@ mod tests {
     }
 
     #[test]
-    fn let_expr() { expr("let x: Int = 5; x", expect!["(let x : Int = 5; _#0) : Int"]); }
-
-    #[test]
     fn fun_expr() {
         expr("fun() => 5", expect!["5 : Int"]);
         expr(
@@ -197,21 +194,21 @@ mod tests {
     #[test]
     fn fun_call() {
         expr(
-            "let f: Int -> Int = fun(x: Int) => x; f(1)",
-            expect!["(let f : forall(_ : Int) -> Int = fun(x : Int) => _#0; _#0) : Int"],
+            "do { let f: Int -> Int = fun(x: Int) => x; f(1) }",
+            expect!["do {f : forall(_ : Int) -> Int = fun(x : Int) => _#0; _#0} : Int"],
         );
         expr(
-            "let f: Int = 5; f(1)",
+            "do { let f: Int = 5; f(1) }",
             expect![[r#"
-                (let f : Int = 5; #error) : #error
-                Diagnostic { severity: Error, code: None, message: "Expected a function", labels: [Label { style: Primary, file_id: 0, range: 16..17, message: "" }], notes: ["Help: the type of the callee is Int"] }
+                do {f : Int = 5; #error} : #error
+                Diagnostic { severity: Error, code: None, message: "Expected a function", labels: [Label { style: Primary, file_id: 0, range: 21..22, message: "" }], notes: ["Help: the type of the callee is Int"] }
             "#]],
         );
         expr(
-            "let f: Int -> Int = fun(x) => x; f(1, 2)",
+            "do { let f: Int -> Int = fun(x) => x; f(1, 2) }",
             expect![[r#"
-                (let f : forall(_ : Int) -> Int = fun(x : Int) => _#0; #error) : #error
-                Diagnostic { severity: Error, code: None, message: "Called function with too many arguments", labels: [Label { style: Primary, file_id: 0, range: 33..34, message: "" }], notes: ["Help: the function expects 1 arguments, but received 2", "Help: the type of the callee is forall(_ : Int) -> Int"] }
+                do {f : forall(_ : Int) -> Int = fun(x : Int) => _#0; #error} : #error
+                Diagnostic { severity: Error, code: None, message: "Called function with too many arguments", labels: [Label { style: Primary, file_id: 0, range: 38..39, message: "" }], notes: ["Help: the function expects 1 arguments, but received 2", "Help: the type of the callee is forall(_ : Int) -> Int"] }
             "#]],
         );
     }
