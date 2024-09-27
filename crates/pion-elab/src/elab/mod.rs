@@ -2,6 +2,7 @@ use pion_core::semantics::Type;
 
 mod expr;
 mod pat;
+mod stmt;
 
 pub type Synth<'core, T> = (T, Type<'core>);
 pub type Check<T> = T;
@@ -211,6 +212,35 @@ mod tests {
             expect![[r#"
                 (let f : forall(_ : Int) -> Int = fun(x : Int) => _#0; #error) : #error
                 Diagnostic { severity: Error, code: None, message: "Called function with too many arguments", labels: [Label { style: Primary, file_id: 0, range: 33..34, message: "" }], notes: ["Help: the function expects 1 arguments, but received 2", "Help: the type of the callee is forall(_ : Int) -> Int"] }
+            "#]],
+        );
+    }
+
+    #[test]
+    fn synth_do_expr() {
+        expr("do {}", expect!["do {} : Unit"]);
+        expr("do {5}", expect!["do {5} : Int"]);
+        expr("do {5;}", expect!["do {let 5; } : Unit"]);
+        expr(
+            "do {let x: Int = 5; x}",
+            expect!["do {x : Int = 5; _#0} : Int"],
+        );
+    }
+
+    #[test]
+    fn check_do_expr() {
+        expr(
+            "do {} : Int",
+            expect![[r#"
+                do {} : Int
+                Diagnostic { severity: Error, code: None, message: "Type mismatch: expected `Int`, found `Unit`", labels: [Label { style: Primary, file_id: 0, range: 0..5, message: "" }], notes: [] }
+            "#]],
+        );
+        expr(
+            "do { false } : Int",
+            expect![[r#"
+                do {#error} : Int
+                Diagnostic { severity: Error, code: None, message: "Type mismatch: expected `Int`, found Bool", labels: [Label { style: Primary, file_id: 0, range: 5..10, message: "" }], notes: [] }
             "#]],
         );
     }

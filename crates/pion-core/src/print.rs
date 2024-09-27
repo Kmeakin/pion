@@ -30,6 +30,7 @@ impl Prec {
             Expr::Let(..) => Self::Let,
             Expr::FunType(..) | Expr::FunLit(..) => Self::Fun,
             Expr::FunApp(..) => Self::Call,
+            Expr::Do(..) => Self::Atom,
         }
     }
 
@@ -66,8 +67,8 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
         Expr::MetaVar(var) => write!(out, "?{var}")?,
         Expr::Let(binding, body) => {
             write!(out, "let ")?;
-            let_binding(out, binding)?;
-            write!(out, "; ")?;
+            let_binding_ref(out, binding)?;
+            write!(out, " ")?;
             expr_prec(out, body, Prec::MAX)?;
         }
         Expr::FunType(param, body) => {
@@ -88,11 +89,33 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
             fun_arg(out, arg, |out, expr| expr_prec(out, expr, Prec::MAX))?;
             write!(out, ")")?;
         }
+        Expr::Do(stmts, trailing_expr) => {
+            write!(out, "do {{")?;
+            for s in *stmts {
+                stmt(out, s)?;
+                write!(out, " ")?;
+            }
+            if let Some(expr) = trailing_expr {
+                expr_prec(out, expr, prec)?;
+            }
+            write!(out, "}}")?;
+        }
     }
     if parens {
         write!(out, ")")?;
     }
     Ok(())
+}
+
+pub fn stmt(out: &mut impl Write, stmt: &Stmt) -> fmt::Result {
+    match stmt {
+        Stmt::Let(binding) => let_binding(out, binding),
+        Stmt::Expr(expr) => {
+            write!(out, "let ")?;
+            expr_prec(out, expr, Prec::MAX)?;
+            write!(out, ";")
+        }
+    }
 }
 
 pub fn value_prec(out: &mut impl Write, value: &Value, prec: Prec) -> fmt::Result {
@@ -185,13 +208,25 @@ fn pat(out: &mut impl Write, name: &Option<InternedStr>) -> fmt::Result {
     }
 }
 
-fn let_binding(out: &mut impl Write, binding: &LetBinding<&Expr>) -> fmt::Result {
+fn let_binding_ref(out: &mut impl Write, binding: &LetBinding<&Expr>) -> fmt::Result {
     let LetBinding { name, r#type, init } = binding;
     pat(out, name)?;
     write!(out, " : ")?;
     expr_prec(out, r#type, Prec::Fun)?;
     write!(out, " = ")?;
     expr_prec(out, init, Prec::Fun)?;
+    write!(out, ";")?;
+    Ok(())
+}
+
+fn let_binding(out: &mut impl Write, binding: &LetBinding<Expr>) -> fmt::Result {
+    let LetBinding { name, r#type, init } = binding;
+    pat(out, name)?;
+    write!(out, " : ")?;
+    expr_prec(out, r#type, Prec::Fun)?;
+    write!(out, " = ")?;
+    expr_prec(out, init, Prec::Fun)?;
+    write!(out, ";")?;
     Ok(())
 }
 

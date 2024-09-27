@@ -89,7 +89,20 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let expr = Expr::Let(binding, self.bump.alloc(body_expr));
                 (expr, body_type)
             }
-            surface::Expr::Do(..) => todo!(),
+            surface::Expr::Do(stmts, expr) => {
+                let len = self.env.locals.len();
+                let stmts = self.stmts(stmts);
+                let expr = expr.map(|expr| self.synth_expr(expr));
+                self.env.locals.truncate(len);
+
+                match expr {
+                    Some((trailing_expr, r#type)) => (
+                        Expr::Do(stmts, Some(self.bump.alloc(trailing_expr))),
+                        r#type,
+                    ),
+                    None => (Expr::Do(stmts, None), Type::UNIT_TYPE),
+                }
+            }
         }
     }
 
@@ -124,7 +137,31 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
 
                 Expr::Let(binding, self.bump.alloc(body_expr))
             }
-            surface::Expr::Do(..) => todo!(),
+            surface::Expr::Do(stmts, trailing_expr) => {
+                let len = self.env.locals.len();
+                let stmts = self.stmts(stmts);
+
+                let trailing_expr = match trailing_expr {
+                    Some(expr) => {
+                        let expr = self.check_expr(*expr, expected);
+                        Some(&*self.bump.alloc(expr))
+                    }
+                    None => {
+                        if !self.convertible(expected, &Type::UNIT_TYPE) {
+                            self.diagnostic(
+                                expr.range,
+                                Diagnostic::error().with_message(format!(
+                                    "Type mismatch: expected `{expected}`, found `Unit`"
+                                )),
+                            );
+                        }
+                        None
+                    }
+                };
+                self.env.locals.truncate(len);
+
+                Expr::Do(stmts, trailing_expr)
+            }
         }
     }
 
