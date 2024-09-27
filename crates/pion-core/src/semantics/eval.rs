@@ -1,4 +1,5 @@
 use super::*;
+use crate::syntax::Stmt;
 
 /// Evaluate an `Expr` to a `Value`.
 /// Does not reduce under `fun` or `forall`
@@ -47,6 +48,38 @@ pub fn eval<'core, 'env>(
             let arg_expr = eval(arg.expr, opts, locals, metas);
             let arg = FunArg::new(arg.plicity, arg_expr);
             elim::apply_arg(fun, arg, opts, metas)
+        }
+        Expr::Do(stmts, trailing_expr) => {
+            let len = locals.len();
+            for stmt in *stmts {
+                eval_stmt(stmt, opts, locals, metas);
+            }
+            let result = match trailing_expr {
+                None => Value::UNIT_VALUE,
+                Some(expr) => eval(expr, opts, locals, metas),
+            };
+            locals.truncate(len);
+            result
+        }
+    }
+}
+
+/// Evaluate an `Stmt` for side effects.
+/// NOTE: may add bindings to `locals`.
+/// Don't forget to reset in the caller!
+pub fn eval_stmt<'core, 'env>(
+    stmt: &Stmt<'core>,
+    opts: UnfoldOpts,
+    locals: &'env mut LocalValues<'core>,
+    metas: &'env MetaValues<'core>,
+) {
+    match stmt {
+        Stmt::Expr(expr) => {
+            eval(expr, opts, locals, metas);
+        }
+        Stmt::Let(binding) => {
+            let rhs = eval(&binding.init, opts, locals, metas);
+            locals.push(rhs);
         }
     }
 }

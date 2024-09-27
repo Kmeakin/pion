@@ -17,6 +17,7 @@ pub enum Expr<'core> {
     MetaVar(AbsoluteVar),
 
     Let(LetBinding<'core, &'core Self>, &'core Self),
+    Do(&'core [Stmt<'core>], Option<&'core Self>),
 
     FunType(FunParam<'core, &'core Self>, &'core Self),
     FunLit(FunParam<'core, &'core Self>, &'core Self),
@@ -31,6 +32,12 @@ impl<'core> Expr<'core> {
     pub const CHAR: Self = Self::PrimVar(PrimVar::Char);
     pub const UNIT_TYPE: Self = Self::PrimVar(PrimVar::Unit);
     pub const UNIT_VALUE: Self = Self::PrimVar(PrimVar::unit);
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Stmt<'core> {
+    Let(LetBinding<'core, Expr<'core>>),
+    Expr(Expr<'core>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

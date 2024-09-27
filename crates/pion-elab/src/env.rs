@@ -56,6 +56,12 @@ impl<'core> LocalEnv<'core> {
         self.types.pop();
         self.values.pop();
     }
+
+    pub fn truncate(&mut self, len: EnvLen) {
+        self.names.truncate(len);
+        self.types.truncate(len);
+        self.values.truncate(len);
+    }
 }
 
 #[derive(Default)]

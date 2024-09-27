@@ -1,3 +1,5 @@
+#![feature(allocator_api)]
+
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use env::ElabEnv;
 use pion_core::semantics::{Closure, UnfoldOpts, Value};
