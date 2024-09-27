@@ -12,8 +12,12 @@
     | <Expr> "->" <Expr>
     | "forall" ( <FunParam>","* ")" "->" <Expr>
     | "fun" "(" <FunParam>","* ")" "=>" <Expr>
-    | "let" <Pat> "=" <Expr> ";" <Expr>
+    | "do" "{" <Stmt>* <Expr>? "}"
     | <Expr> ":" <Expr>
+
+<Stmt> ::=
+    | "let" <Pat> "=" <Expr> ";"
+    | <Expr> ";"
 
 <Pat> ::=
     | "_"

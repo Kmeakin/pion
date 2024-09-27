@@ -60,6 +60,7 @@ impl fmt::Display for TokenKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReservedIdent {
+    Do,
     False,
     Forall,
     Fun,
@@ -71,6 +72,7 @@ impl FromStr for ReservedIdent {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
+            "do" => Ok(Self::Do),
             "false" => Ok(Self::False),
             "forall" => Ok(Self::Forall),
             "fun" => Ok(Self::Fun),
@@ -84,6 +86,7 @@ impl FromStr for ReservedIdent {
 impl fmt::Display for ReservedIdent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Do => write!(f, "`do`"),
             Self::False => write!(f, "`false`"),
             Self::Forall => write!(f, "`forall`"),
             Self::Fun => write!(f, "`fun`"),
@@ -436,16 +439,18 @@ mod tests {
 
     #[test]
     fn reserved_ident() {
-        assert_lex!("false forall fun let true" => expect![[r#"
-            Reserved(False) 0..5 "false"
-            Whitespace 5..6 " "
-            Reserved(Forall) 6..12 "forall"
-            Whitespace 12..13 " "
-            Reserved(Fun) 13..16 "fun"
-            Whitespace 16..17 " "
-            Reserved(Let) 17..20 "let"
-            Whitespace 20..21 " "
-            Reserved(True) 21..25 "true""#]]);
+        assert_lex!("do false forall fun let true" => expect![[r#"
+            Reserved(Do) 0..2 "do"
+            Whitespace 2..3 " "
+            Reserved(False) 3..8 "false"
+            Whitespace 8..9 " "
+            Reserved(Forall) 9..15 "forall"
+            Whitespace 15..16 " "
+            Reserved(Fun) 16..19 "fun"
+            Whitespace 19..20 " "
+            Reserved(Let) 20..23 "let"
+            Whitespace 23..24 " "
+            Reserved(True) 24..28 "true""#]]);
     }
 
     #[test]

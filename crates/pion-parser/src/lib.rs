@@ -213,6 +213,7 @@ where
                 Located::new(token.range, Expr::String(token.text))
             }
             TokenKind::Ident => Located::new(token.range, Expr::Var(token.text)),
+            TokenKind::Reserved(ReservedIdent::Do) => self.do_expr(),
             TokenKind::Reserved(ReservedIdent::Forall) => self.forall_expr(),
             TokenKind::Reserved(ReservedIdent::Fun) => self.fun_expr(),
             TokenKind::Reserved(ReservedIdent::Let) => self.let_expr(),
@@ -278,30 +279,73 @@ where
 
     fn let_expr(&mut self) -> Located<Expr<'text, 'surface>> {
         let start_range = self.range;
-
-        let binding = {
-            let start_range = self.range;
-            let pat = self.pat();
-            self.expect_token(TokenKind::Punct('='));
-            let expr = self.expr();
-            let end_range = self.range;
-            Located::new(
-                TextRange::new(start_range.start(), end_range.end()),
-                LetBinding { pat, init: expr },
-            )
-        };
-
-        self.expect_token(TokenKind::Punct(';'));
+        let binding = self.let_binding();
         let body = self.expr();
         let end_range = self.range;
-
         let binding = self.bump.alloc(binding);
-
         Located::new(
             TextRange::new(start_range.start(), end_range.end()),
             Expr::Let(
                 binding.map(|binding| &*self.bump.alloc(binding)),
                 body.map(|expr| &*self.bump.alloc(expr)),
+            ),
+        )
+    }
+
+    fn let_binding(&mut self) -> Located<LetBinding<'text, 'surface>> {
+        let start_range = self.range;
+        let pat = self.pat();
+        self.expect_token(TokenKind::Punct('='));
+        let expr = self.expr();
+        self.expect_token(TokenKind::Punct(';'));
+        let end_range = self.range;
+        Located::new(
+            TextRange::new(start_range.start(), end_range.end()),
+            LetBinding { pat, init: expr },
+        )
+    }
+
+    fn do_expr(&mut self) -> Located<Expr<'text, 'surface>> {
+        let start_range = self.range;
+        self.expect_token(TokenKind::LCurly);
+
+        let mut stmts = Vec::new_in(self.bump);
+        let mut tail_expr = None;
+
+        while let Some(token) = self.peek_token() {
+            if token.kind == TokenKind::RCurly {
+                break;
+            }
+            tail_expr = None;
+
+            match token.kind {
+                TokenKind::Reserved(ReservedIdent::Let) => {
+                    self.next_token();
+                    let binding = self.let_binding();
+                    stmts.push(Stmt::Let(binding));
+                }
+                _ => {
+                    let expr = self.expr();
+                    match self.peek_token() {
+                        Some(token) if token.kind == TokenKind::Punct(';') => {
+                            self.next_token();
+                            stmts.push(Stmt::Expr(expr.map(|expr| &*self.bump.alloc(expr))));
+                        }
+                        _ => tail_expr = Some(expr),
+                    }
+                }
+            }
+        }
+
+        self.expect_token(TokenKind::RCurly);
+
+        let end_range = self.range;
+
+        Located::new(
+            TextRange::new(start_range.start(), end_range.end()),
+            Expr::Do(
+                stmts.leak(),
+                tail_expr.map(|loc| loc.map(|expr| &*self.bump.alloc(expr))),
             ),
         )
     }
@@ -726,4 +770,34 @@ mod tests {
 
     #[test]
     fn string_expr() { check_expr(r#""a""#, expect![[r#"0..3 @ Expr::String("\"a\"")"#]]); }
+
+    #[test]
+    fn do_expr() {
+        check_expr("do {}", expect!["0..5 @ Expr::Do"]);
+        check_expr(
+            "do { let x = 5; }",
+            expect![[r#"
+                0..17 @ Expr::Do
+                 Stmt::Let
+                  5..15 @ LetBinding
+                   9..10 @ Pat::Var("x")
+                   13..14 @ Expr::Number("5")"#]],
+        );
+        check_expr(
+            "do { let x = 5; x }",
+            expect![[r#"
+                0..19 @ Expr::Do
+                 Stmt::Let
+                  5..15 @ LetBinding
+                   9..10 @ Pat::Var("x")
+                   13..14 @ Expr::Number("5")
+                 16..17 @ Expr::Var("x")"#]],
+        );
+        check_expr(
+            "do { x }",
+            expect![[r#"
+                0..8 @ Expr::Do
+                 5..6 @ Expr::Var("x")"#]],
+        );
+    }
 }
