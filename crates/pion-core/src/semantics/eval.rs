@@ -28,13 +28,6 @@ pub fn eval<'core, 'env>(
             Some(Some(value)) => value.clone(),
             Some(None) => Value::meta_var(*var),
         },
-        Expr::Let(binding, body) => {
-            let rhs = eval(binding.init, opts, locals, metas);
-            locals.push(rhs);
-            let body = eval(body, opts, locals, metas);
-            locals.pop();
-            body
-        }
         Expr::FunType(param, body) => {
             let body = Closure::new(locals.clone(), body);
             Value::FunType(*param, body)
@@ -168,13 +161,15 @@ mod tests {
     }
 
     #[test]
-    fn eval_let() {
-        // `let x = 42; x`
-        let expr = Expr::Let(
-            LetBinding::new(None, &Expr::INT, &Expr::Int(42)),
-            &const { Expr::LocalVar(RelativeVar::new(0)) },
+    fn eval_do() {
+        // `do { let _ = 5; y }`
+        let expr = Expr::Do(
+            &const { [Stmt::Let(LetBinding::new(None, Expr::INT, Expr::Int(5)))] },
+            Some(&const { Expr::LocalVar(RelativeVar::new(0)) }),
         );
-        assert_eval(expr, Value::Int(42));
+
+        let expected = Value::Int(5);
+        assert_eval(expr, expected);
     }
 
     #[test]
@@ -244,20 +239,22 @@ mod tests {
 
     #[test]
     fn eval_fun_app_closure() {
-        // `let y = 5; (fun _ => y)(42)`
-        let expr = Expr::Let(
-            LetBinding::new(None, &Expr::INT, &Expr::Int(5)),
-            &const {
-                Expr::FunApp(
-                    &const {
-                        Expr::FunLit(
-                            FunParam::explicit(None, &Expr::INT),
-                            &const { Expr::LocalVar(RelativeVar::new(1)) },
-                        )
-                    },
-                    FunArg::explicit(&Expr::Int(42)),
-                )
-            },
+        // `do { let y = 5; (fun _ => y)(42) }`
+        let expr = Expr::Do(
+            &const { [Stmt::Let(LetBinding::new(None, Expr::INT, Expr::Int(5)))] },
+            Some(
+                &const {
+                    Expr::FunApp(
+                        &const {
+                            Expr::FunLit(
+                                FunParam::explicit(None, &Expr::INT),
+                                &const { Expr::LocalVar(RelativeVar::new(1)) },
+                            )
+                        },
+                        FunArg::explicit(&Expr::Int(42)),
+                    )
+                },
+            ),
         );
 
         let expected = Value::Int(5);

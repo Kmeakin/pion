@@ -216,7 +216,6 @@ where
             TokenKind::Reserved(ReservedIdent::Do) => self.do_expr(),
             TokenKind::Reserved(ReservedIdent::Forall) => self.forall_expr(),
             TokenKind::Reserved(ReservedIdent::Fun) => self.fun_expr(),
-            TokenKind::Reserved(ReservedIdent::Let) => self.let_expr(),
             got => {
                 self.diagnostic(
                     token.range,
@@ -275,21 +274,6 @@ where
         }
 
         expr
-    }
-
-    fn let_expr(&mut self) -> Located<Expr<'text, 'surface>> {
-        let start_range = self.range;
-        let binding = self.let_binding();
-        let body = self.expr();
-        let end_range = self.range;
-        let binding = self.bump.alloc(binding);
-        Located::new(
-            TextRange::new(start_range.start(), end_range.end()),
-            Expr::Let(
-                binding.map(|binding| &*self.bump.alloc(binding)),
-                body.map(|expr| &*self.bump.alloc(expr)),
-            ),
-        )
     }
 
     fn let_binding(&mut self) -> Located<LetBinding<'text, 'surface>> {
@@ -556,56 +540,6 @@ mod tests {
                 0..7 @ Expr::Paren
                  1..6 @ Expr::Paren
                   2..5 @ Expr::Var("abc")"#]],
-        );
-    }
-
-    #[test]
-    fn let_expr() {
-        check_expr(
-            "let x = y; z",
-            expect![[r#"
-                0..12 @ Expr::Let
-                 0..10 @ LetBinding
-                  4..5 @ Pat::Var("x")
-                  8..9 @ Expr::Var("y")
-                 11..12 @ Expr::Var("z")"#]],
-        );
-        check_expr(
-            "let x: T = y; z",
-            expect![[r#"
-                0..15 @ Expr::Let
-                 0..13 @ LetBinding
-                  4..8 @ Pat::TypeAnnotation
-                   4..5 @ Pat::Var("x")
-                   7..8 @ Expr::Var("T")
-                  11..12 @ Expr::Var("y")
-                 14..15 @ Expr::Var("z")"#]],
-        );
-        check_expr(
-            "let x: T: V = y; z",
-            expect![[r#"
-                0..18 @ Expr::Let
-                 0..16 @ LetBinding
-                  4..11 @ Pat::TypeAnnotation
-                   4..8 @ Pat::TypeAnnotation
-                    4..5 @ Pat::Var("x")
-                    7..8 @ Expr::Var("T")
-                   10..11 @ Expr::Var("V")
-                  14..15 @ Expr::Var("y")
-                 17..18 @ Expr::Var("z")"#]],
-        );
-        check_expr(
-            "let x = y; let y = z; w",
-            expect![[r#"
-                0..23 @ Expr::Let
-                 0..10 @ LetBinding
-                  4..5 @ Pat::Var("x")
-                  8..9 @ Expr::Var("y")
-                 11..23 @ Expr::Let
-                  11..21 @ LetBinding
-                   15..16 @ Pat::Var("y")
-                   19..20 @ Expr::Var("z")
-                  22..23 @ Expr::Var("w")"#]],
         );
     }
 

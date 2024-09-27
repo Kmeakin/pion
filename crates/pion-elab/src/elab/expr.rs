@@ -4,7 +4,7 @@ use std::str::FromStr;
 use codespan_reporting::diagnostic::Diagnostic;
 use pion_core::prim::PrimVar;
 use pion_core::semantics::{Closure, Type, Value};
-use pion_core::syntax::{Expr, FunArg, FunParam, LetBinding, Plicity};
+use pion_core::syntax::{Expr, FunArg, FunParam, Plicity};
 use pion_surface::syntax::{self as surface, Located};
 use text_size::{TextRange, TextSize};
 
@@ -75,20 +75,6 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let expr = Expr::FunType(FunParam::explicit(None, domain), codomain);
                 (expr, Type::TYPE)
             }
-            surface::Expr::Let(binding, body) => {
-                let (binding, r#type) = self.synth_let_binding(*binding);
-
-                let (body_expr, body_type) = {
-                    let value = self.eval_expr(binding.init);
-                    self.env.locals.push_let(binding.name, r#type, value);
-                    let (body_expr, body_type) = self.synth_expr(*body);
-                    self.env.locals.pop();
-                    (body_expr, body_type)
-                };
-
-                let expr = Expr::Let(binding, self.bump.alloc(body_expr));
-                (expr, body_type)
-            }
             surface::Expr::Do(stmts, expr) => {
                 let len = self.env.locals.len();
                 let stmts = self.stmts(stmts);
@@ -124,19 +110,6 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             | surface::Expr::FunType(..)
             | surface::Expr::FunArrow(..) => self.synth_and_coerce_expr(expr, expected),
             surface::Expr::FunExpr(params, body) => self.check_fun_expr(params, *body, expected),
-            surface::Expr::Let(binding, body) => {
-                let (binding, r#type) = self.synth_let_binding(*binding);
-
-                let body_expr = {
-                    let value = self.eval_expr(binding.init);
-                    self.env.locals.push_let(binding.name, r#type, value);
-                    let body_expr = self.check_expr(*body, expected);
-                    self.env.locals.pop();
-                    body_expr
-                };
-
-                Expr::Let(binding, self.bump.alloc(body_expr))
-            }
             surface::Expr::Do(stmts, trailing_expr) => {
                 let len = self.env.locals.len();
                 let stmts = self.stmts(stmts);
@@ -192,19 +165,6 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 Expr::Error
             }
         }
-    }
-
-    fn synth_let_binding(
-        &mut self,
-        binding: Located<&surface::LetBinding<'text, 'surface>>,
-    ) -> Synth<'core, LetBinding<'core, &'core Expr<'core>>> {
-        let surface::LetBinding { pat, init } = binding.data;
-        let (pat, r#type_value) = self.synth_pat(pat.as_ref());
-        let init = self.check_expr(init.as_ref(), &r#type_value);
-        let r#type = self.quote_value(&r#type_value);
-        let (r#type, init) = self.bump.alloc((r#type, init));
-        let binding = LetBinding::new(pat.name(), &*r#type, &*init);
-        (binding, r#type_value)
     }
 
     fn synth_fun_param(

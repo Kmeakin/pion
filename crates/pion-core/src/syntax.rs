@@ -16,12 +16,11 @@ pub enum Expr<'core> {
     LocalVar(RelativeVar),
     MetaVar(AbsoluteVar),
 
-    Let(LetBinding<'core, &'core Self>, &'core Self),
-    Do(&'core [Stmt<'core>], Option<&'core Self>),
-
     FunType(FunParam<'core, &'core Self>, &'core Self),
     FunLit(FunParam<'core, &'core Self>, &'core Self),
     FunApp(&'core Self, FunArg<&'core Self>),
+
+    Do(&'core [Stmt<'core>], Option<&'core Self>),
 }
 
 impl<'core> Expr<'core> {
