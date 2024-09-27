@@ -439,7 +439,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             return Expr::Error;
         }
 
-        return Expr::String(self.bump.alloc_str(&text));
+        Expr::String(self.bump.alloc_str(&text))
     }
 
     #[allow(
