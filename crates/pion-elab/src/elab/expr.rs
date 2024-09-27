@@ -89,6 +89,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let expr = Expr::Let(binding, self.bump.alloc(body_expr));
                 (expr, body_type)
             }
+            surface::Expr::Do(..) => todo!(),
         }
     }
 
@@ -123,6 +124,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
 
                 Expr::Let(binding, self.bump.alloc(body_expr))
             }
+            surface::Expr::Do(..) => todo!(),
         }
     }
 

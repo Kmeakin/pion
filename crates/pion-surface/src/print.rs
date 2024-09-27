@@ -108,6 +108,31 @@ impl<W: Write> Printer<W> {
                     this.expr(*body)
                 })
             }
+            Expr::Do(stmts, expr) => {
+                writeln!(self, "Expr::Do")?;
+                self.with_indent(|this| {
+                    for stmt in *stmts {
+                        this.stmt(stmt)?;
+                    }
+                    if let Some(expr) = expr {
+                        this.expr(*expr)?;
+                    }
+                    Ok(())
+                })
+            }
+        }
+    }
+
+    pub fn stmt(&mut self, stmt: &Stmt) -> fmt::Result {
+        match stmt {
+            Stmt::Let(binding) => {
+                writeln!(self, "Stmt::Let")?;
+                self.with_indent(|this| this.let_binding(binding.as_ref()))
+            }
+            Stmt::Expr(expr) => {
+                writeln!(self, "Stmt::Expr")?;
+                self.with_indent(|this| this.expr(*expr))
+            }
         }
     }
 
