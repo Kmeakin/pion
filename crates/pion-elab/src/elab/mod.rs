@@ -82,12 +82,12 @@ mod tests {
 
         expr(
             r#"do { let s: String = "the famous \"hello world\" string"; s }"#,
-            expect![[r#"do {s : String = "the famous \"hello world\" string"; _#0} : String"#]],
+            expect![[r#"do {let s : String = "the famous \"hello world\" string"; _#0} : String"#]],
         );
 
         expr(
             r#"do { let ugly-regex: String = "\\\\."; ugly-regex }"#,
-            expect![[r#"do {ugly-regex : String = "\\\\."; _#0} : String"#]],
+            expect![[r#"do {let ugly-regex : String = "\\\\."; _#0} : String"#]],
         );
 
         expr(
@@ -195,19 +195,19 @@ mod tests {
     fn fun_call() {
         expr(
             "do { let f: Int -> Int = fun(x: Int) => x; f(1) }",
-            expect!["do {f : forall(_ : Int) -> Int = fun(x : Int) => _#0; _#0} : Int"],
+            expect!["do {let f : forall(_ : Int) -> Int = fun(x : Int) => _#0; _#0} : Int"],
         );
         expr(
             "do { let f: Int = 5; f(1) }",
             expect![[r#"
-                do {f : Int = 5; #error} : #error
+                do {let f : Int = 5; #error} : #error
                 Diagnostic { severity: Error, code: None, message: "Expected a function", labels: [Label { style: Primary, file_id: 0, range: 21..22, message: "" }], notes: ["Help: the type of the callee is Int"] }
             "#]],
         );
         expr(
             "do { let f: Int -> Int = fun(x) => x; f(1, 2) }",
             expect![[r#"
-                do {f : forall(_ : Int) -> Int = fun(x : Int) => _#0; #error} : #error
+                do {let f : forall(_ : Int) -> Int = fun(x : Int) => _#0; #error} : #error
                 Diagnostic { severity: Error, code: None, message: "Called function with too many arguments", labels: [Label { style: Primary, file_id: 0, range: 38..39, message: "" }], notes: ["Help: the function expects 1 arguments, but received 2", "Help: the type of the callee is forall(_ : Int) -> Int"] }
             "#]],
         );
@@ -217,10 +217,10 @@ mod tests {
     fn synth_do_expr() {
         expr("do {}", expect!["do {} : Unit"]);
         expr("do {5}", expect!["do {5} : Int"]);
-        expr("do {5;}", expect!["do {let 5; } : Unit"]);
+        expr("do {5;}", expect!["do {5; } : Unit"]);
         expr(
             "do {let x: Int = 5; x}",
-            expect!["do {x : Int = 5; _#0} : Int"],
+            expect!["do {let x : Int = 5; _#0} : Int"],
         );
     }
 

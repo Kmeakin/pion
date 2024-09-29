@@ -101,9 +101,11 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
 
 pub fn stmt(out: &mut impl Write, stmt: &Stmt) -> fmt::Result {
     match stmt {
-        Stmt::Let(binding) => let_binding(out, binding),
-        Stmt::Expr(expr) => {
+        Stmt::Let(binding) => {
             write!(out, "let ")?;
+            let_binding(out, binding)
+        }
+        Stmt::Expr(expr) => {
             expr_prec(out, expr, Prec::MAX)?;
             write!(out, ";")
         }
@@ -349,6 +351,23 @@ mod tests {
             FunArg::explicit(&Expr::Int(1)),
         );
         assert_print_expr(&expr, expect!["(fun(_ : Int) => _#0)(1)"]);
+    }
+
+    #[test]
+    fn print_expr_do() {
+        let expr = Expr::Do(
+            &const {
+                [
+                    Stmt::Let(LetBinding::new(None, Expr::INT, Expr::Int(1))),
+                    Stmt::Let(LetBinding::new(None, Expr::BOOL, Expr::Bool(true))),
+                ]
+            },
+            Some(&const { Expr::LocalVar(RelativeVar::new(0)) }),
+        );
+        assert_print_expr(
+            &expr,
+            expect!["do {let _ : Int = 1; let _ : Bool = true; _#0}"],
+        );
     }
 
     #[test]
