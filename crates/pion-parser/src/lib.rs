@@ -308,6 +308,55 @@ where
                     let binding = self.let_binding();
                     stmts.push(Stmt::Let(binding));
                 }
+                TokenKind::Punct('#') => {
+                    self.next_token();
+                    match self.peek_token() {
+                        None => {
+                            self.diagnostic(
+                                token.range,
+                                Diagnostic::error()
+                                    .with_message(
+                                        "Syntax error: expected name of command after `#`",
+                                    )
+                                    .with_notes(vec![String::from(
+                                        "Help: supported commands are `check` or `eval`",
+                                    )]),
+                            );
+                        }
+                        Some(token) => match token.kind {
+                            TokenKind::Ident if token.text == "check" => {
+                                self.next_token();
+                                let expr = self.expr();
+                                self.expect_token(TokenKind::Punct(';'));
+                                stmts.push(Stmt::Command(Command::Check(
+                                    expr.map(|expr| &*self.bump.alloc(expr)),
+                                )));
+                            }
+                            TokenKind::Ident if token.text == "eval" => {
+                                self.next_token();
+                                let expr = self.expr();
+                                self.expect_token(TokenKind::Punct(';'));
+                                stmts.push(Stmt::Command(Command::Eval(
+                                    expr.map(|expr| &*self.bump.alloc(expr)),
+                                )));
+                            }
+                            _ => {
+                                self.diagnostic(
+                                    token.range,
+                                    Diagnostic::error()
+                                        .with_message(
+                                            "Syntax error: expected name of command after `#`",
+                                        )
+                                        .with_notes(vec![String::from(
+                                            "Help: supported commands are `check` or `eval`",
+                                        )]),
+                                );
+                                self.next_token();
+                                continue;
+                            }
+                        },
+                    }
+                }
                 _ => {
                     let expr = self.expr();
                     match self.peek_token() {
@@ -732,6 +781,26 @@ mod tests {
             expect![[r#"
                 0..8 @ Expr::Do
                  5..6 @ Expr::Var("x")"#]],
+        );
+    }
+
+    #[test]
+    fn commands() {
+        check_expr(
+            "do { #check 1; }",
+            expect![[r#"
+                0..16 @ Expr::Do
+                 Stmt::Command
+                  Stmt::Check
+                   12..13 @ Expr::Number("1")"#]],
+        );
+        check_expr(
+            "do { #eval 1; }",
+            expect![[r#"
+                0..15 @ Expr::Do
+                 Stmt::Command
+                  Stmt::Eval
+                   11..12 @ Expr::Number("1")"#]],
         );
     }
 }

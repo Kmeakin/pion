@@ -18,6 +18,11 @@
 <Stmt> ::=
     | "let" <Pat> "=" <Expr> ";"
     | <Expr> ";"
+    | <Command> ";"
+
+<Command> ::=
+    | "#check" <Expr>
+    | "#eval" <Expr>
 
 <Pat> ::=
     | "_"

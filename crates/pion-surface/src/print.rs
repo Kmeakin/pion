@@ -126,6 +126,23 @@ impl<W: Write> Printer<W> {
                 writeln!(self, "Stmt::Expr")?;
                 self.with_indent(|this| this.expr(*expr))
             }
+            Stmt::Command(command) => {
+                writeln!(self, "Stmt::Command")?;
+                self.with_indent(|this| this.command(*command))
+            }
+        }
+    }
+
+    pub fn command(&mut self, command: Command) -> fmt::Result {
+        match command {
+            Command::Check(expr) => {
+                writeln!(self, "Stmt::Check")?;
+                self.with_indent(|this| this.expr(expr))
+            }
+            Command::Eval(expr) => {
+                writeln!(self, "Stmt::Eval")?;
+                self.with_indent(|this| this.expr(expr))
+            }
         }
     }
 

@@ -58,8 +58,15 @@ pub enum Expr<'text, 'surface> {
 
 #[derive(Copy, Clone)]
 pub enum Stmt<'text, 'surface> {
+    Command(Command<'text, 'surface>),
     Let(Located<LetBinding<'text, 'surface>>),
     Expr(Located<&'surface Expr<'text, 'surface>>),
+}
+
+#[derive(Copy, Clone)]
+pub enum Command<'text, 'surface> {
+    Check(Located<&'surface Expr<'text, 'surface>>),
+    Eval(Located<&'surface Expr<'text, 'surface>>),
 }
 
 #[derive(Copy, Clone)]

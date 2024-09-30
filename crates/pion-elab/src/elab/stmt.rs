@@ -36,6 +36,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 self.env.locals.push_let(binding.name, r#type, value);
                 Stmt::Let(binding)
             }
+            surface::Stmt::Command(_) => todo!(),
         }
     }
 
