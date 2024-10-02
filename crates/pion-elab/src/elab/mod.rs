@@ -218,7 +218,7 @@ mod tests {
     #[test]
     fn synth_do_expr() {
         expr("do {}", expect!["do {} : Unit"]);
-        expr("do {5}", expect!["do {5} : Int"]);
+        expr("do {5}", expect!["do { 5 } : Int"]);
         expr("do {5;}", expect!["do {5; } : Unit"]);
         expr(
             "do {let x: Int = 5; x}",
@@ -238,7 +238,7 @@ mod tests {
         expr(
             "do { false } : Int",
             expect![[r#"
-                do {#error} : Int
+                do { #error } : Int
                 Diagnostic { severity: Error, code: None, message: "Type mismatch: expected `Int`, found Bool", labels: [Label { style: Primary, file_id: 0, range: 5..10, message: "" }], notes: [] }
             "#]],
         );

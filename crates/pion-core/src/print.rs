@@ -81,6 +81,12 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
             fun_arg(out, arg, |out, expr| expr_prec(out, expr, Prec::MAX))?;
             write!(out, ")")?;
         }
+        Expr::Do([], None) => write!(out, "do {{}}")?,
+        Expr::Do([], Some(trailing_expr)) => {
+            write!(out, "do {{ ")?;
+            expr_prec(out, trailing_expr, prec)?;
+            write!(out, " }}")?;
+        }
         Expr::Do(stmts, trailing_expr) => {
             write!(out, "do {{")?;
             for s in *stmts {
