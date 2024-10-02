@@ -61,7 +61,7 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
         Expr::Char(c) => write!(out, "{c:?}")?,
         Expr::String(s) => write!(out, "{s:?}")?,
         Expr::PrimVar(var) => write!(out, "{var}")?,
-        Expr::LocalVar(var) => write!(out, "_#{var}")?,
+        Expr::LocalVar(var) => write!(out, "#var({var})")?,
         Expr::MetaVar(var) => write!(out, "?{var}")?,
         Expr::FunType(param, body) => {
             write!(out, "forall(")?;
@@ -270,7 +270,7 @@ mod tests {
     #[test]
     fn print_expr_local_var() {
         let expr = Expr::LocalVar(RelativeVar::new(0));
-        assert_print_expr(&expr, expect!["_#0"]);
+        assert_print_expr(&expr, expect!["#var(0)"]);
     }
 
     #[test]
@@ -326,7 +326,7 @@ mod tests {
                 )
             },
         );
-        assert_print_expr(&expr, expect!["fun(_ : Int) => fun(_ : Bool) => _#0"]);
+        assert_print_expr(&expr, expect!["fun(_ : Int) => fun(_ : Bool) => #var(0)"]);
     }
 
     #[test]
@@ -350,7 +350,7 @@ mod tests {
             },
             FunArg::explicit(&Expr::Int(1)),
         );
-        assert_print_expr(&expr, expect!["(fun(_ : Int) => _#0)(1)"]);
+        assert_print_expr(&expr, expect!["(fun(_ : Int) => #var(0))(1)"]);
     }
 
     #[test]
@@ -366,7 +366,7 @@ mod tests {
         );
         assert_print_expr(
             &expr,
-            expect!["do {let _ : Int = 1; let _ : Bool = true; _#0}"],
+            expect!["do {let _ : Int = 1; let _ : Bool = true; #var(0)}"],
         );
     }
 

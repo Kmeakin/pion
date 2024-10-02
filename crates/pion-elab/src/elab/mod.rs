@@ -82,12 +82,14 @@ mod tests {
 
         expr(
             r#"do { let s: String = "the famous \"hello world\" string"; s }"#,
-            expect![[r#"do {let s : String = "the famous \"hello world\" string"; _#0} : String"#]],
+            expect![[
+                r#"do {let s : String = "the famous \"hello world\" string"; #var(0)} : String"#
+            ]],
         );
 
         expr(
             r#"do { let ugly-regex: String = "\\\\."; ugly-regex }"#,
-            expect![[r#"do {let ugly-regex : String = "\\\\."; _#0} : String"#]],
+            expect![[r#"do {let ugly-regex : String = "\\\\."; #var(0)} : String"#]],
         );
 
         expr(
@@ -162,13 +164,13 @@ mod tests {
         );
         expr(
             "fun(x: Int) => x",
-            expect!["(fun(x : Int) => _#0) : forall(x : Int) -> Int"],
+            expect!["(fun(x : Int) => #var(0)) : forall(x : Int) -> Int"],
         );
         expr(
             "fun(x: Int, _: Bool) => x",
             expect![
-                "(fun(x : Int) => fun(_ : Bool) => _#1) : forall(x : Int) -> forall(_ : Bool) -> \
-                 Int"
+                "(fun(x : Int) => fun(_ : Bool) => #var(1)) : forall(x : Int) -> forall(_ : Bool) \
+                 -> Int"
             ],
         );
     }
@@ -178,7 +180,7 @@ mod tests {
         expr("forall() -> Type", expect!["Type : Type"]);
         expr(
             "forall(A: Type, a: A) -> A",
-            expect!["(forall(A : Type) -> forall(a : _#0) -> _#1) : Type"],
+            expect!["(forall(A : Type) -> forall(a : #var(0)) -> #var(1)) : Type"],
         );
     }
 
@@ -195,7 +197,7 @@ mod tests {
     fn fun_call() {
         expr(
             "do { let f: Int -> Int = fun(x: Int) => x; f(1) }",
-            expect!["do {let f : forall(_ : Int) -> Int = fun(x : Int) => _#0; _#0} : Int"],
+            expect!["do {let f : forall(_ : Int) -> Int = fun(x : Int) => #var(0); #var(0)} : Int"],
         );
         expr(
             "do { let f: Int = 5; f(1) }",
@@ -207,7 +209,7 @@ mod tests {
         expr(
             "do { let f: Int -> Int = fun(x) => x; f(1, 2) }",
             expect![[r#"
-                do {let f : forall(_ : Int) -> Int = fun(x : Int) => _#0; #error} : #error
+                do {let f : forall(_ : Int) -> Int = fun(x : Int) => #var(0); #error} : #error
                 Diagnostic { severity: Error, code: None, message: "Called function with too many arguments", labels: [Label { style: Primary, file_id: 0, range: 38..39, message: "" }], notes: ["Help: the function expects 1 arguments, but received 2", "Help: the type of the callee is forall(_ : Int) -> Int"] }
             "#]],
         );
@@ -220,7 +222,7 @@ mod tests {
         expr("do {5;}", expect!["do {5; } : Unit"]);
         expr(
             "do {let x: Int = 5; x}",
-            expect!["do {let x : Int = 5; _#0} : Int"],
+            expect!["do {let x : Int = 5; #var(0)} : Int"],
         );
     }
 
