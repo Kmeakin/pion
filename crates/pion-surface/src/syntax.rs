@@ -28,6 +28,11 @@ impl<T> Located<T> {
 }
 
 #[derive(Copy, Clone)]
+pub struct File<'text, 'surface> {
+    pub stmts: &'surface [Stmt<'text, 'surface>],
+}
+
+#[derive(Copy, Clone)]
 pub enum Expr<'text, 'surface> {
     Error,
     Var(&'text str),
@@ -58,8 +63,15 @@ pub enum Expr<'text, 'surface> {
 
 #[derive(Copy, Clone)]
 pub enum Stmt<'text, 'surface> {
+    Command(Command<'text, 'surface>),
     Let(Located<LetBinding<'text, 'surface>>),
     Expr(Located<&'surface Expr<'text, 'surface>>),
+}
+
+#[derive(Copy, Clone)]
+pub enum Command<'text, 'surface> {
+    Check(Located<&'surface Expr<'text, 'surface>>),
+    Eval(Located<&'surface Expr<'text, 'surface>>),
 }
 
 #[derive(Copy, Clone)]

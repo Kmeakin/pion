@@ -1,6 +1,8 @@
 ## Context free syntax
 
 ```text
+<File> ::= <Stmt>*
+
 <Expr> ::=
     | <Ident>
     | "true" | "false"
@@ -18,6 +20,11 @@
 <Stmt> ::=
     | "let" <Pat> "=" <Expr> ";"
     | <Expr> ";"
+    | <Command> ";"
+
+<Command> ::=
+    | "#check" <Expr>
+    | "#eval" <Expr>
 
 <Pat> ::=
     | "_"

@@ -93,15 +93,15 @@ fn check(path: &PathOrStdin) {
     let mut interner = pion_interner::Interner::default();
     let mut elab = pion_elab::Elaborator::new(&bump, &mut interner, file_id);
     let (expr, r#type) = elab.synth_expr(expr.as_ref());
-    let diagnostics = elab.finish();
+    let (diagnostics, command_output) = elab.finish();
 
     for diagnostic in diagnostics {
         emit(diagnostic);
     }
 
-    let mut out = String::new();
-    pion_core::print::type_ann_expr(&mut out, &expr, &r#type).unwrap();
-    println!("{out}");
+    if !command_output.is_empty() {
+        println!("{command_output}");
+    }
 }
 
 fn main() {

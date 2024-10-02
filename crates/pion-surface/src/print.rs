@@ -126,6 +126,23 @@ impl<W: Write> Printer<W> {
                 writeln!(self, "Stmt::Expr")?;
                 self.with_indent(|this| this.expr(*expr))
             }
+            Stmt::Command(command) => {
+                writeln!(self, "Stmt::Command")?;
+                self.with_indent(|this| this.command(*command))
+            }
+        }
+    }
+
+    pub fn command(&mut self, command: Command) -> fmt::Result {
+        match command {
+            Command::Check(expr) => {
+                writeln!(self, "Stmt::Check")?;
+                self.with_indent(|this| this.expr(expr))
+            }
+            Command::Eval(expr) => {
+                writeln!(self, "Stmt::Eval")?;
+                self.with_indent(|this| this.expr(expr))
+            }
         }
     }
 
@@ -173,6 +190,18 @@ impl<W: Write> Printer<W> {
             this.expr(binding.data.init.as_ref())
         })
     }
+
+    fn file(&mut self, file: &File) -> fmt::Result {
+        writeln!(self, "File")?;
+        for stmt in file.stmts {
+            self.stmt(stmt)?;
+        }
+        Ok(())
+    }
+}
+
+impl<'text, 'surface> fmt::Debug for File<'text, 'surface> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).file(self) }
 }
 
 impl<'text, 'surface> fmt::Debug for Located<Expr<'text, 'surface>> {

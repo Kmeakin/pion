@@ -27,7 +27,7 @@ mod tests {
         let (surface, _diagnostics) = pion_parser::parse_expr(file_id, tokens, &bump);
         let mut elaborator = Elaborator::new(&bump, &mut interner, file_id);
         let (expr, r#type) = elaborator.synth_expr(surface.as_ref());
-        let diagnostics = elaborator.finish();
+        let (diagnostics, _command_output) = elaborator.finish();
 
         let mut got = String::new();
         pion_core::print::type_ann_expr(&mut got, &expr, &r#type).unwrap();
