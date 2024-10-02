@@ -28,6 +28,11 @@ impl<T> Located<T> {
 }
 
 #[derive(Copy, Clone)]
+pub struct File<'text, 'surface> {
+    pub stmts: &'surface [Stmt<'text, 'surface>],
+}
+
+#[derive(Copy, Clone)]
 pub enum Expr<'text, 'surface> {
     Error,
     Var(&'text str),

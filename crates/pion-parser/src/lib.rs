@@ -152,7 +152,7 @@ where
         }
     }
 
-    pub fn pat(&mut self) -> Located<Pat<'text, 'surface>> {
+    fn pat(&mut self) -> Located<Pat<'text, 'surface>> {
         let mut pat = self.atom_pat();
 
         loop {
@@ -287,6 +287,82 @@ where
             TextRange::new(start_range.start(), end_range.end()),
             LetBinding { pat, init: expr },
         )
+    }
+
+    fn file(&mut self) -> File<'text, 'surface> {
+        let mut stmts = Vec::new_in(self.bump);
+
+        while let Some(token) = self.peek_token() {
+            match token.kind {
+                TokenKind::Reserved(ReservedIdent::Let) => {
+                    self.next_token();
+                    let binding = self.let_binding();
+                    stmts.push(Stmt::Let(binding));
+                }
+                TokenKind::Punct('#') => {
+                    self.next_token();
+                    match self.peek_token() {
+                        None => {
+                            self.diagnostic(
+                                token.range,
+                                Diagnostic::error()
+                                    .with_message(
+                                        "Syntax error: expected name of command after `#`",
+                                    )
+                                    .with_notes(vec![String::from(
+                                        "Help: supported commands are `check` or `eval`",
+                                    )]),
+                            );
+                        }
+                        Some(token) => match token.kind {
+                            TokenKind::Ident if token.text == "check" => {
+                                self.next_token();
+                                let expr = self.expr();
+                                self.expect_token(TokenKind::Punct(';'));
+                                stmts.push(Stmt::Command(Command::Check(
+                                    expr.map(|expr| &*self.bump.alloc(expr)),
+                                )));
+                            }
+                            TokenKind::Ident if token.text == "eval" => {
+                                self.next_token();
+                                let expr = self.expr();
+                                self.expect_token(TokenKind::Punct(';'));
+                                stmts.push(Stmt::Command(Command::Eval(
+                                    expr.map(|expr| &*self.bump.alloc(expr)),
+                                )));
+                            }
+                            _ => {
+                                self.diagnostic(
+                                    token.range,
+                                    Diagnostic::error()
+                                        .with_message(
+                                            "Syntax error: expected name of command after `#`",
+                                        )
+                                        .with_notes(vec![String::from(
+                                            "Help: supported commands are `check` or `eval`",
+                                        )]),
+                                );
+                                self.next_token();
+                                continue;
+                            }
+                        },
+                    }
+                }
+                _ => {
+                    let expr = self.expr();
+                    match self.peek_token() {
+                        Some(token) if token.kind == TokenKind::Punct(';') => {
+                            self.next_token();
+                            stmts.push(Stmt::Expr(expr.map(|expr| &*self.bump.alloc(expr))));
+                        }
+                        _ => continue,
+                    }
+                }
+            }
+        }
+
+        let stmts = stmts.leak();
+        File { stmts }
     }
 
     fn do_expr(&mut self) -> Located<Expr<'text, 'surface>> {
@@ -478,6 +554,17 @@ where
     }
 }
 
+pub fn parse_file<'text, 'surface>(
+    file: usize,
+    tokens: impl Clone + Iterator<Item = Token<'text>>,
+    bump: &'surface bumpalo::Bump,
+) -> (File<'text, 'surface>, Vec<Diagnostic<usize>>) {
+    let mut parser = Parser::new(file, tokens, bump);
+    let expr = parser.file();
+    let diagnostics = parser.finish();
+    (expr, diagnostics)
+}
+
 pub fn parse_expr<'text, 'surface>(
     file: usize,
     tokens: impl Clone + Iterator<Item = Token<'text>>,
@@ -537,6 +624,26 @@ mod tests {
 
         let mut got = String::new();
         write!(got, "{expr:?}").unwrap();
+        let mut got = String::from(got.trim_end());
+
+        if !diagnostics.is_empty() {
+            got.push('\n');
+            for diagnostic in diagnostics {
+                writeln!(got, "{diagnostic:?}").unwrap();
+            }
+        }
+        expected.assert_eq(&got);
+    }
+
+    #[track_caller]
+    #[allow(clippy::needless_pass_by_value, reason = "It's just a test")]
+    fn check_file(text: &str, expected: Expect) {
+        let tokens = lex(text);
+        let bump = bumpalo::Bump::new();
+        let (file, diagnostics) = parse_file(0, tokens, &bump);
+
+        let mut got = String::new();
+        write!(got, "{file:?}").unwrap();
         let mut got = String::from(got.trim_end());
 
         if !diagnostics.is_empty() {
@@ -801,6 +908,37 @@ mod tests {
                  Stmt::Command
                   Stmt::Eval
                    11..12 @ Expr::Number("1")"#]],
+        );
+    }
+
+    #[test]
+    fn file() {
+        check_file("", expect!["File"]);
+        check_file(
+            "let x = 5;",
+            expect![[r#"
+            File
+            Stmt::Let
+             0..10 @ LetBinding
+              4..5 @ Pat::Var("x")
+              8..9 @ Expr::Number("5")"#]],
+        );
+        check_file(
+            "10;",
+            expect![[r#"
+            File
+            Stmt::Expr
+             0..2 @ Expr::Number("10")"#]],
+        );
+        check_file(
+            "#check 10; 45;",
+            expect![[r#"
+                File
+                Stmt::Command
+                 Stmt::Check
+                  7..9 @ Expr::Number("10")
+                Stmt::Expr
+                 11..13 @ Expr::Number("45")"#]],
         );
     }
 }

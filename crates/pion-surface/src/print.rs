@@ -190,6 +190,18 @@ impl<W: Write> Printer<W> {
             this.expr(binding.data.init.as_ref())
         })
     }
+
+    fn file(&mut self, file: &File) -> fmt::Result {
+        writeln!(self, "File")?;
+        for stmt in file.stmts {
+            self.stmt(stmt)?;
+        }
+        Ok(())
+    }
+}
+
+impl<'text, 'surface> fmt::Debug for File<'text, 'surface> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).file(self) }
 }
 
 impl<'text, 'surface> fmt::Debug for Located<Expr<'text, 'surface>> {

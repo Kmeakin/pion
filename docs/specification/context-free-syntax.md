@@ -1,6 +1,8 @@
 ## Context free syntax
 
 ```text
+<File> ::= <Stmt>*
+
 <Expr> ::=
     | <Ident>
     | "true" | "false"
