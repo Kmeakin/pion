@@ -1,0 +1,7 @@
+#check "hello world";
+#check "hello \t world\n";
+#check "the famous \"hello world\" string";
+
+#check "\a";
+#check "\🦀";
+#check "\🇬🇧";

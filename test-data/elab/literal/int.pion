@@ -1,0 +1,14 @@
+#check 123_456;
+#check 0b101_010;
+#check 0o123_765;
+#check 0x123_abc;
+
+// overflow
+#check 99999999999999999999;
+
+// invalid digits
+#check 99999999-;
+#check 123abc;
+#check 0b123;
+#check 0o1239;
+#check 0x1239g;

@@ -1,0 +1,2 @@
+#check (fun(x) => x) : Int -> Int;
+#check (fun(x) => x) : (Bool -> Int) -> (Bool -> Int);

@@ -104,11 +104,11 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             | surface::Expr::Number(_)
             | surface::Expr::Char(_)
             | surface::Expr::String(_)
-            | surface::Expr::Paren(_)
             | surface::Expr::TypeAnnotation(..)
             | surface::Expr::FunCall(..)
             | surface::Expr::FunType(..)
             | surface::Expr::FunArrow(..) => self.synth_and_coerce_expr(expr, expected),
+            surface::Expr::Paren(expr) => self.check_expr(*expr, expected),
             surface::Expr::FunExpr(params, body) => self.check_fun_expr(params, *body, expected),
             surface::Expr::Do(stmts, trailing_expr) => {
                 let len = self.env.locals.len();
@@ -274,6 +274,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     expr
                 }
                 _ => {
+                    // FIXME: this span is misleading
                     let (expr, r#type) = self.synth_fun_expr(params, body);
                     self.coerce_expr(Located::new(body.range, expr), &r#type, expected)
                 }
@@ -284,7 +285,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
     fn synth_fun_call(
         &mut self,
         callee: Located<&surface::Expr<'text, 'surface>>,
-        args: &&[Located<surface::FunArg<'text, 'surface>>],
+        args: &[Located<surface::FunArg<'text, 'surface>>],
     ) -> (Expr<'core>, Value<'core>) {
         let (callee_expr, callee_type) = self.synth_expr(callee);
         let mut result_expr = callee_expr;

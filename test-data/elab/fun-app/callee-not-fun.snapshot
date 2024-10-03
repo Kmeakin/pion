@@ -1,0 +1,18 @@
+exit status: 0
+
+stdout = """
+#error : #error
+
+"""
+
+stderr = """
+error: Expected a function
+  ┌─ test-data/elab/fun-app/callee-not-fun.pion:1:8
+  │
+1 │ #check Int(5);
+  │        ^^^
+  │
+  = Help: the type of the callee is Type
+
+
+"""

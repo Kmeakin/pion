@@ -19,3 +19,12 @@ pion-elab          = { workspace = true }
 pion-interner      = { workspace = true }
 pion-lexer         = { workspace = true }
 pion-parser        = { workspace = true }
+
+[dev-dependencies]
+libtest-mimic   = { workspace = true }
+similar-asserts = { workspace = true }
+walkdir         = { workspace = true }
+
+[[test]]
+harness = false
+name    = "integration_tests"

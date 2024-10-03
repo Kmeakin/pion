@@ -27,12 +27,12 @@ impl<T> Located<T> {
     pub fn as_ref(&self) -> Located<&T> { Located::new(self.range, &self.data) }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct File<'text, 'surface> {
     pub stmts: &'surface [Stmt<'text, 'surface>],
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum Expr<'text, 'surface> {
     Error,
     Var(&'text str),
@@ -61,26 +61,26 @@ pub enum Expr<'text, 'surface> {
     ),
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum Stmt<'text, 'surface> {
     Command(Command<'text, 'surface>),
     Let(Located<LetBinding<'text, 'surface>>),
     Expr(Located<&'surface Expr<'text, 'surface>>),
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum Command<'text, 'surface> {
     Check(Located<&'surface Expr<'text, 'surface>>),
     Eval(Located<&'surface Expr<'text, 'surface>>),
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct LetBinding<'text, 'surface> {
     pub pat: Located<Pat<'text, 'surface>>,
     pub init: Located<Expr<'text, 'surface>>,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum Pat<'text, 'surface> {
     Error,
     Underscore,
@@ -92,12 +92,12 @@ pub enum Pat<'text, 'surface> {
     },
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct FunArg<'text, 'surface> {
     pub expr: Located<Expr<'text, 'surface>>,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct FunParam<'text, 'surface> {
     pub pat: Located<Pat<'text, 'surface>>,
 }

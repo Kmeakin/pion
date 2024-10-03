@@ -1,0 +1,2 @@
+// Expected type flowing into args:
+#check (fun(f: Int -> Bool) => f)(fun(a) => false);

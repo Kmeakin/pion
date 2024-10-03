@@ -1,0 +1,3 @@
+#check fun() => false;
+#check fun(x: Int) => x;
+#check fun(x: Int, y: Bool) => x;

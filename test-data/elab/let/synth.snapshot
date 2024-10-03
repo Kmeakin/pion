@@ -1,0 +1,15 @@
+exit status: 0
+
+stdout = """
+
+"""
+
+stderr = """
+error: Type mismatch: expected `#error`, found Int
+  ┌─ test-data/elab/let/synth.pion:1:9
+  │
+1 │ let x = 5;
+  │         ^
+
+
+"""

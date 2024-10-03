@@ -1,0 +1,29 @@
+exit status: 0
+
+stdout = """
+#error : #error
+#error : #error
+
+"""
+
+stderr = """
+error: Called function with too many arguments
+  ┌─ test-data/elab/fun-app/too-many-args.pion:1:8
+  │
+1 │ #check (fun(x: Int) => x)(1, 2, 3);
+  │        ^^^^^^^^^^^^^^^^^^
+  │
+  = Help: the function expects 1 arguments, but received 3
+  = Help: the type of the callee is forall(x : Int) -> Int
+
+error: Called function with too many arguments
+  ┌─ test-data/elab/fun-app/too-many-args.pion:2:8
+  │
+2 │ #check (fun(x: Int, y: Int) => x)(1, 2, 3);
+  │        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  │
+  = Help: the function expects 2 arguments, but received 3
+  = Help: the type of the callee is forall(x : Int) -> forall(y : Int) -> Int
+
+
+"""

@@ -1,0 +1,10 @@
+exit status: 0
+
+stdout = """
+(fun(f : forall(_ : Int) -> Bool) => #var(0))(fun(a : Int) => false) : forall(_ : Int) -> Bool
+
+"""
+
+stderr = """
+
+"""

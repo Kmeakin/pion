@@ -1,0 +1,30 @@
+exit status: 0
+
+stdout = """
+do { (fun(x : Int) => #var(0)) } : forall(_ : Int) -> Int
+do { #error } : Int
+do {} : Int
+
+"""
+
+stderr = """
+error: Unbound variable: `x`
+  ┌─ test-data/elab/do/check.pion:2:24
+  │
+2 │ #check (do { fun(x) => x }) : Int;
+  │                        ^
+
+error: Type mismatch: expected `Int`, found #error
+  ┌─ test-data/elab/do/check.pion:2:24
+  │
+2 │ #check (do { fun(x) => x }) : Int;
+  │                        ^
+
+error: Type mismatch: expected `Int`, found `Unit`
+  ┌─ test-data/elab/do/check.pion:3:9
+  │
+3 │ #check (do {}) : Int;
+  │         ^^^^^
+
+
+"""

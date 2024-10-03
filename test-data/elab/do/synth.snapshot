@@ -1,0 +1,11 @@
+exit status: 0
+
+stdout = """
+do {} : Unit
+do { false } : Bool
+
+"""
+
+stderr = """
+
+"""

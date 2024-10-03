@@ -1,0 +1,3 @@
+#check (do { fun(x) => x }) : Int -> Int;
+#check (do { false }) : Int;
+#check (do {}) : Int;

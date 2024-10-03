@@ -1,0 +1,43 @@
+exit status: 0
+
+stdout = """
+123456 : Int
+1052688 : Int
+1193829 : Int
+1194684 : Int
+#error : Int
+#error : Int
+#error : Int
+291 : Int
+4665 : Int
+#error : Int
+
+"""
+
+stderr = """
+error: Invalid integer literal: number too large to fit in target type
+  ┌─ test-data/elab/literal/int.pion:7:8
+  │
+7 │ #check 99999999999999999999;
+  │        ^^^^^^^^^^^^^^^^^^^^
+
+error: Invalid integer literal: invalid digit found in string
+   ┌─ test-data/elab/literal/int.pion:10:8
+   │
+10 │ #check 99999999-;
+   │        ^^^^^^^^^
+
+error: Invalid integer literal: invalid digit found in string
+   ┌─ test-data/elab/literal/int.pion:11:8
+   │
+11 │ #check 123abc;
+   │        ^^^^^^
+
+error: Invalid integer literal: invalid digit found in string
+   ┌─ test-data/elab/literal/int.pion:14:8
+   │
+14 │ #check 0x1239g;
+   │        ^^^^^^^
+
+
+"""

@@ -17,7 +17,7 @@ pub struct Elaborator<'core> {
 
     file_id: usize,
     diagnostics: Vec<Diagnostic<usize>>,
-    command_output: String,
+    command_output: Vec<String>,
 }
 
 impl<'core> Elaborator<'core> {
@@ -33,7 +33,7 @@ impl<'core> Elaborator<'core> {
 
             file_id,
             diagnostics: Vec::new(),
-            command_output: String::new(),
+            command_output: Vec::new(),
         }
     }
 
@@ -42,7 +42,7 @@ impl<'core> Elaborator<'core> {
             .push(diagnostic.with_labels(vec![Label::primary(self.file_id, range)]));
     }
 
-    pub fn finish(self) -> (Vec<Diagnostic<usize>>, String) {
+    pub fn finish(self) -> (Vec<Diagnostic<usize>>, Vec<String>) {
         (self.diagnostics, self.command_output)
     }
 

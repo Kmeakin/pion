@@ -1,0 +1,2 @@
+#check Int -> Bool;
+#check Int -> Bool -> Char;

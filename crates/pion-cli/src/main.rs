@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::io::{IsTerminal, Read};
 use std::str::FromStr;
 
 use camino::Utf8PathBuf;
@@ -62,9 +62,15 @@ impl FromStr for PathOrStdin {
 }
 
 fn check(path: &PathOrStdin) {
-    let mut stderr = codespan_reporting::term::termcolor::StandardStream::stderr(
-        codespan_reporting::term::termcolor::ColorChoice::Auto,
-    );
+    let stderr = std::io::stderr();
+
+    let color = match stderr.is_terminal() {
+        true => codespan_reporting::term::termcolor::ColorChoice::Auto,
+        false => codespan_reporting::term::termcolor::ColorChoice::Never,
+    };
+
+    let mut stderr = codespan_reporting::term::termcolor::StandardStream::stderr(color);
+
     let mut files = codespan_reporting::files::SimpleFiles::new();
     let config = codespan_reporting::term::Config::default();
 
@@ -84,7 +90,7 @@ fn check(path: &PathOrStdin) {
     let bump = bumpalo::Bump::new();
     let text = files.source(file_id).unwrap();
     let tokens = pion_lexer::lex(text);
-    let (expr, diagnostics) = pion_parser::parse_expr(file_id, tokens, &bump);
+    let (file, diagnostics) = pion_parser::parse_file(file_id, tokens, &bump);
 
     for diagnostic in diagnostics {
         emit(diagnostic);
@@ -92,14 +98,14 @@ fn check(path: &PathOrStdin) {
 
     let mut interner = pion_interner::Interner::default();
     let mut elab = pion_elab::Elaborator::new(&bump, &mut interner, file_id);
-    let (expr, r#type) = elab.synth_expr(expr.as_ref());
+    elab.stmts(file.stmts);
     let (diagnostics, command_output) = elab.finish();
 
     for diagnostic in diagnostics {
         emit(diagnostic);
     }
 
-    if !command_output.is_empty() {
+    for command_output in command_output {
         println!("{command_output}");
     }
 }

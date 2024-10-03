@@ -1,0 +1,7 @@
+#check Type;
+#check Bool;
+#check Int;
+#check String;
+#check Char;
+#check Unit;
+#check unit;

@@ -1,0 +1,11 @@
+exit status: 0
+
+stdout = """
+(forall(A : Type) -> forall(_ : #var(0)) -> #var(1)) : Type
+(forall(A : Type) -> forall(a : #var(0)) -> #var(1)) : Type
+
+"""
+
+stderr = """
+
+"""

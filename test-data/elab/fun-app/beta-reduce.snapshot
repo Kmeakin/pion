@@ -1,0 +1,10 @@
+exit status: 0
+
+stdout = """
+(fun(x : Int) => #var(0))(1) ⇝ 1
+
+"""
+
+stderr = """
+
+"""

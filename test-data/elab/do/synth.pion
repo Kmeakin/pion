@@ -1,0 +1,2 @@
+#check do {};
+#check do { false };

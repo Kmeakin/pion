@@ -1,0 +1,33 @@
+exit status: 0
+
+stdout = """
+"hello world" : String
+"hello \t world\n" : String
+"the famous \"hello world\" string" : String
+#error : String
+#error : String
+#error : String
+
+"""
+
+stderr = """
+error: Unknown escape character: `a`
+  ┌─ test-data/elab/literal/string.pion:5:9
+  │
+5 │ #check "\a";
+  │         ^^
+
+error: Unknown escape character: `🦀`
+  ┌─ test-data/elab/literal/string.pion:6:9
+  │
+6 │ #check "\🦀";
+  │         ^^^
+
+error: Unknown escape character: `🇬`
+  ┌─ test-data/elab/literal/string.pion:7:9
+  │
+7 │ #check "\🇬🇧";
+  │         ^^
+
+
+"""
