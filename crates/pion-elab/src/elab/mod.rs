@@ -197,7 +197,7 @@ mod tests {
     fn fun_call() {
         expr(
             "do { let f: Int -> Int = fun(x: Int) => x; f(1) }",
-            expect!["do {let f : forall(_ : Int) -> Int = fun(x : Int) => #var(0); #var(0)} : Int"],
+            expect!["do {let f : forall(_ : Int) -> Int = fun(x : Int) => #var(0); #var(0)(1)} : Int"],
         );
         expr(
             "do { let f: Int = 5; f(1) }",

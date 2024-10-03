@@ -329,7 +329,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             }
         }
 
-        (callee_expr, result_type)
+        (result_expr, result_type)
     }
 
     fn synth_number(&mut self, text: Located<&str>) -> Expr<'core> {
