@@ -8,17 +8,11 @@ do {} : Int
 """
 
 stderr = """
-error: Unbound variable: `x`
-  ┌─ test-data/elab/do/check.pion:2:24
+error: Type mismatch: expected `Int`, found Bool
+  ┌─ test-data/elab/do/check.pion:2:14
   │
-2 │ #check (do { fun(x) => x }) : Int;
-  │                        ^
-
-error: Type mismatch: expected `Int`, found #error
-  ┌─ test-data/elab/do/check.pion:2:24
-  │
-2 │ #check (do { fun(x) => x }) : Int;
-  │                        ^
+2 │ #check (do { false }) : Int;
+  │              ^^^^^
 
 error: Type mismatch: expected `Int`, found `Unit`
   ┌─ test-data/elab/do/check.pion:3:9

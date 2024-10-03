@@ -6,7 +6,7 @@ stdout = """
 """
 
 stderr = """
-error: Type mismatch: expected `Bool`, found forall(z : Char) -> Char
+error: Type mismatch: expected `Bool`, found forall(y : Bool) -> forall(z : Char) -> Char
   ┌─ test-data/elab/fun-expr/too-many-params.pion:1:43
   │
 1 │ #check (fun(x : Int, y: Bool, z: Char) => z) : Int -> Bool;

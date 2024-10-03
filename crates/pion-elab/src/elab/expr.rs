@@ -254,7 +254,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
     ) -> CheckExpr<'core> {
         match params {
             [] => self.check_expr(body, expected),
-            [param, params @ ..] => match expected {
+            [param, rest @ ..] => match expected {
                 Value::FunType(expected_param, expected_body) => {
                     let expected_param_type = self.eval_expr(expected_param.r#type);
                     let param = self.check_fun_param(param.as_ref(), &expected_param_type);
@@ -263,7 +263,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                             Value::local_var(self.env.locals.values.len().to_absolute());
                         self.env.locals.push_param(param.name, expected_param_type);
                         let expected = self.apply_closure(expected_body.clone(), arg_value);
-                        let body_expr = self.check_fun_expr(params, body, &expected);
+                        let body_expr = self.check_fun_expr(rest, body, &expected);
                         self.env.locals.pop();
                         body_expr
                     };
