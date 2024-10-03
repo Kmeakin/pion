@@ -304,8 +304,7 @@ dependencies = [
  "pion-core",
  "pion-elab",
  "pion-interner",
- "pion-lexer",
- "pion-parser",
+ "pion-surface",
  "similar-asserts",
  "walkdir",
 ]
@@ -340,8 +339,7 @@ dependencies = [
  "libfuzzer-sys",
  "pion-elab",
  "pion-interner",
- "pion-lexer",
- "pion-parser",
+ "pion-surface",
 ]
 
 [[package]]
@@ -352,29 +350,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "pion-lexer"
-version = "0.1.0"
-dependencies = [
- "expect-test",
- "text-size",
-]
-
-[[package]]
-name = "pion-parser"
+name = "pion-surface"
 version = "0.1.0"
 dependencies = [
  "bumpalo",
  "codespan-reporting",
  "expect-test",
- "pion-lexer",
- "pion-surface",
- "text-size",
-]
-
-[[package]]
-name = "pion-surface"
-version = "0.1.0"
-dependencies = [
  "text-size",
 ]
 

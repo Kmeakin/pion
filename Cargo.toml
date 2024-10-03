@@ -35,8 +35,6 @@ clippy.wildcard_imports        = { level = "allow", priority = 100 }
 pion-core     = { path = "crates/pion-core" }
 pion-elab     = { path = "crates/pion-elab" }
 pion-interner = { path = "crates/pion-interner" }
-pion-lexer    = { path = "crates/pion-lexer" }
-pion-parser   = { path = "crates/pion-parser" }
 pion-surface  = { path = "crates/pion-surface" }
 
 bumpalo            = { version = "3.16.0", features = ["allocator_api"] }

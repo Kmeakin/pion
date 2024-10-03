@@ -8,8 +8,8 @@ fuzz_target!(|text: &str| {
     let bump = bumpalo::Bump::new();
     let mut interner = pion_interner::Interner::default();
 
-    let tokens = pion_lexer::lex(text);
-    let (expr, _diagnostics) = pion_parser::parse_expr(file_id, tokens, &bump);
+    let tokens = pion_surface::lex::lex(text);
+    let (expr, _diagnostics) = pion_surface::parse::parse_expr(file_id, tokens, &bump);
 
     let mut elaborator = Elaborator::new(&bump, &mut interner, file_id);
     let (expr, r#type) = elaborator.synth_expr(expr.as_ref());

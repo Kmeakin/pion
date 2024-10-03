@@ -17,8 +17,7 @@ codespan-reporting = { workspace = true }
 pion-core          = { workspace = true }
 pion-elab          = { workspace = true }
 pion-interner      = { workspace = true }
-pion-lexer         = { workspace = true }
-pion-parser        = { workspace = true }
+pion-surface       = { workspace = true }
 
 [dev-dependencies]
 libtest-mimic   = { workspace = true }

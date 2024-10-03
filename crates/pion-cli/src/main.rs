@@ -89,8 +89,8 @@ fn check(path: &PathOrStdin) {
 
     let bump = bumpalo::Bump::new();
     let text = files.source(file_id).unwrap();
-    let tokens = pion_lexer::lex(text);
-    let (file, diagnostics) = pion_parser::parse_file(file_id, tokens, &bump);
+    let tokens = pion_surface::lex::lex(text);
+    let (file, diagnostics) = pion_surface::parse::parse_file(file_id, tokens, &bump);
 
     for diagnostic in diagnostics {
         emit(diagnostic);
