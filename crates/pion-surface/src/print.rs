@@ -1,5 +1,4 @@
-use std::fmt;
-use std::fmt::Write;
+use std::fmt::{self, Display, Write};
 
 use crate::syntax::*;
 
@@ -44,9 +43,12 @@ impl<W: Write> Printer<W> {
         Ok(())
     }
 
-    pub fn expr(&mut self, expr: Located<&Expr>) -> fmt::Result {
-        write!(self, "{:?} @ ", expr.range)?;
-        match expr.data {
+    fn located<T: Display>(&mut self, it: &Located<T>) -> fmt::Result {
+        write!(self, "{:?} @ {}", it.range, it.data)
+    }
+
+    fn expr(&mut self, expr: &Expr) -> fmt::Result {
+        match expr {
             Expr::Error => writeln!(self, "Expr::Error"),
             Expr::Var(name) => writeln!(self, "Expr::Var({name:?})"),
             Expr::Bool(b) => writeln!(self, "Expr::Bool({b:?})"),
@@ -55,21 +57,21 @@ impl<W: Write> Printer<W> {
             Expr::String(s) => writeln!(self, "Expr::String({s:?})"),
             Expr::Paren(expr) => {
                 writeln!(self, "Expr::Paren")?;
-                self.with_indent(|this| this.expr(*expr))
+                self.with_indent(|this| this.located(expr))
             }
             Expr::TypeAnnotation(expr, r#type) => {
                 writeln!(self, "Expr::TypeAnnotation")?;
                 self.with_indent(|this| {
-                    this.expr(*expr)?;
-                    this.expr(*r#type)
+                    this.located(expr)?;
+                    this.located(r#type)
                 })
             }
             Expr::FunCall(callee, args) => {
                 writeln!(self, "Expr::FunCall")?;
                 self.with_indent(|this| {
-                    this.expr(*callee)?;
+                    this.located(callee)?;
                     for arg in *args {
-                        this.fun_arg(arg.as_ref())?;
+                        this.located(arg)?;
                     }
                     Ok(())
                 })
@@ -78,9 +80,9 @@ impl<W: Write> Printer<W> {
                 writeln!(self, "Expr::FunExpr")?;
                 self.with_indent(|this| {
                     for param in *params {
-                        this.fun_param(param.as_ref())?;
+                        this.located(param)?;
                     }
-                    this.expr(*body)?;
+                    this.located(body)?;
                     Ok(())
                 })
             }
@@ -88,17 +90,17 @@ impl<W: Write> Printer<W> {
                 writeln!(self, "Expr::FunType")?;
                 self.with_indent(|this| {
                     for param in *params {
-                        this.fun_param(param.as_ref())?;
+                        this.located(param)?;
                     }
-                    this.expr(*body)?;
+                    this.located(body)?;
                     Ok(())
                 })
             }
             Expr::FunArrow(domain, codomain) => {
                 writeln!(self, "Expr::FunArrow")?;
                 self.with_indent(|this| {
-                    this.expr(*domain)?;
-                    this.expr(*codomain)
+                    this.located(domain)?;
+                    this.located(codomain)
                 })
             }
             Expr::Do(stmts, expr) => {
@@ -108,7 +110,7 @@ impl<W: Write> Printer<W> {
                         this.stmt(stmt)?;
                     }
                     if let Some(expr) = expr {
-                        this.expr(*expr)?;
+                        this.located(expr)?;
                     }
                     Ok(())
                 })
@@ -116,98 +118,121 @@ impl<W: Write> Printer<W> {
         }
     }
 
-    pub fn stmt(&mut self, stmt: &Stmt) -> fmt::Result {
+    fn stmt(&mut self, stmt: &Stmt) -> fmt::Result {
         match stmt {
             Stmt::Let(binding) => {
                 writeln!(self, "Stmt::Let")?;
-                self.with_indent(|this| this.let_binding(binding.as_ref()))
+                self.with_indent(|this| this.located(binding))
             }
             Stmt::Expr(expr) => {
                 writeln!(self, "Stmt::Expr")?;
-                self.with_indent(|this| this.expr(*expr))
+                self.with_indent(|this| this.located(expr))
             }
             Stmt::Command(command) => {
                 writeln!(self, "Stmt::Command")?;
-                self.with_indent(|this| this.command(*command))
+                self.with_indent(|this| this.command(command))
             }
         }
     }
 
-    pub fn command(&mut self, command: Command) -> fmt::Result {
+    fn command(&mut self, command: &Command) -> fmt::Result {
         match command {
             Command::Check(expr) => {
                 writeln!(self, "Stmt::Check")?;
-                self.with_indent(|this| this.expr(expr))
+                self.with_indent(|this| this.located(expr))
             }
             Command::Eval(expr) => {
                 writeln!(self, "Stmt::Eval")?;
-                self.with_indent(|this| this.expr(expr))
+                self.with_indent(|this| this.located(expr))
             }
         }
     }
 
-    pub fn pat(&mut self, pat: Located<&Pat>) -> fmt::Result {
-        write!(self, "{:?} @ ", pat.range)?;
-        match pat.data {
+    fn pat(&mut self, pat: &Pat) -> fmt::Result {
+        match pat {
             Pat::Error => writeln!(self, "Pat::Error"),
             Pat::Underscore => writeln!(self, "Pat::Underscore"),
             Pat::Var(name) => writeln!(self, "Pat::Var({name:?})"),
             Pat::Paren(pat) => {
                 writeln!(self, "Pat::Paren")?;
-                self.with_indent(|this| this.pat(*pat))
+                self.with_indent(|this| this.located(pat))
             }
             Pat::TypeAnnotation { pat: expr, r#type } => {
                 writeln!(self, "Pat::TypeAnnotation")?;
                 self.with_indent(|this| {
-                    this.pat(*expr)?;
-                    this.expr(*r#type)
+                    this.located(expr)?;
+                    this.located(r#type)
                 })
             }
         }
     }
 
-    fn fun_param(&mut self, param: Located<&FunParam>) -> fmt::Result {
-        write!(self, "{:?} @ ", param.range)?;
+    fn fun_param(&mut self, param: &FunParam) -> fmt::Result {
         writeln!(self, "FunParam")?;
-        self.with_indent(|this| {
-            this.pat(param.data.pat.as_ref())?;
-            Ok(())
-        })
+        let FunParam { pat } = param;
+        self.with_indent(|this| this.located(pat))
     }
 
-    fn fun_arg(&mut self, arg: Located<&FunArg>) -> fmt::Result {
-        write!(self, "{:?} @ ", arg.range)?;
+    fn fun_arg(&mut self, arg: &FunArg) -> fmt::Result {
         writeln!(self, "FunArg")?;
-        self.with_indent(|this| this.expr(arg.data.expr.as_ref()))?;
-        Ok(())
+        let FunArg { expr } = arg;
+        self.with_indent(|this| this.located(expr))
     }
 
-    fn let_binding(&mut self, binding: Located<&LetBinding>) -> fmt::Result {
-        write!(self, "{:?} @ ", binding.range)?;
+    fn let_binding(&mut self, binding: &LetBinding) -> fmt::Result {
         writeln!(self, "LetBinding")?;
+        let LetBinding { pat, init } = binding;
         self.with_indent(|this| {
-            this.pat(binding.data.pat.as_ref())?;
-            this.expr(binding.data.init.as_ref())
+            this.located(pat)?;
+            this.located(init)
         })
     }
 
     fn file(&mut self, file: &File) -> fmt::Result {
         writeln!(self, "File")?;
-        for stmt in file.stmts {
-            self.stmt(stmt)?;
-        }
-        Ok(())
+        self.with_indent(|this| {
+            for stmt in file.stmts {
+                this.stmt(stmt)?;
+            }
+            Ok(())
+        })
     }
 }
 
-impl<'text, 'surface> fmt::Debug for File<'text, 'surface> {
+impl<T: Display> Display for Located<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?} @ {}", self.range, self.data)
+    }
+}
+
+impl<'text, 'surface> Display for File<'text, 'surface> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).file(self) }
 }
 
-impl<'text, 'surface> fmt::Debug for Located<Expr<'text, 'surface>> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).expr(self.as_ref()) }
+impl<'text, 'surface> Display for Expr<'text, 'surface> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).expr(self) }
 }
 
-impl<'text, 'surface> fmt::Debug for Located<Pat<'text, 'surface>> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).pat(self.as_ref()) }
+impl<'text, 'surface> Display for Stmt<'text, 'surface> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).stmt(self) }
+}
+
+impl<'text, 'surface> Display for Command<'text, 'surface> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).command(self) }
+}
+
+impl<'text, 'surface> Display for LetBinding<'text, 'surface> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).let_binding(self) }
+}
+
+impl<'text, 'surface> Display for Pat<'text, 'surface> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).pat(self) }
+}
+
+impl<'text, 'surface> Display for FunArg<'text, 'surface> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).fun_arg(self) }
+}
+
+impl<'text, 'surface> Display for FunParam<'text, 'surface> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).fun_param(self) }
 }

@@ -597,13 +597,13 @@ mod tests {
 
     #[track_caller]
     #[allow(clippy::needless_pass_by_value, reason = "It's just a test")]
-    fn check_pat(text: &str, expected: Expect) {
+    fn assert_parse_pat(text: &str, expected: Expect) {
         let tokens = lex(text);
         let bump = bumpalo::Bump::new();
         let (pat, diagnostics) = parse_pat(0, tokens, &bump);
 
         let mut got = String::new();
-        write!(got, "{pat:?}").unwrap();
+        write!(got, "{pat}").unwrap();
 
         if !diagnostics.is_empty() {
             writeln!(got).unwrap();
@@ -617,13 +617,13 @@ mod tests {
 
     #[track_caller]
     #[allow(clippy::needless_pass_by_value, reason = "It's just a test")]
-    fn check_expr(text: &str, expected: Expect) {
+    fn assert_parse_expr(text: &str, expected: Expect) {
         let tokens = lex(text);
         let bump = bumpalo::Bump::new();
         let (expr, diagnostics) = parse_expr(0, tokens, &bump);
 
         let mut got = String::new();
-        write!(got, "{expr:?}").unwrap();
+        write!(got, "{expr}").unwrap();
         let mut got = String::from(got.trim_end());
 
         if !diagnostics.is_empty() {
@@ -637,13 +637,13 @@ mod tests {
 
     #[track_caller]
     #[allow(clippy::needless_pass_by_value, reason = "It's just a test")]
-    fn check_file(text: &str, expected: Expect) {
+    fn assert_parse_file(text: &str, expected: Expect) {
         let tokens = lex(text);
         let bump = bumpalo::Bump::new();
         let (file, diagnostics) = parse_file(0, tokens, &bump);
 
         let mut got = String::new();
-        write!(got, "{file:?}").unwrap();
+        write!(got, "{file}").unwrap();
         let mut got = String::from(got.trim_end());
 
         if !diagnostics.is_empty() {
@@ -657,7 +657,7 @@ mod tests {
 
     #[test]
     fn wildcard_pat() {
-        check_pat(
+        assert_parse_pat(
             "_",
             expect![[r"
         0..1 @ Pat::Underscore
@@ -666,11 +666,11 @@ mod tests {
     }
 
     #[test]
-    fn var_pat() { check_expr("abc", expect![[r#"0..3 @ Expr::Var("abc")"#]]); }
+    fn var_pat() { assert_parse_expr("abc", expect![[r#"0..3 @ Expr::Var("abc")"#]]); }
 
     #[test]
     fn paren_pat() {
-        check_pat(
+        assert_parse_pat(
             "(_)",
             expect![[r"
                 0..3 @ Pat::Paren
@@ -680,17 +680,17 @@ mod tests {
     }
 
     #[test]
-    fn var_expr() { check_expr("abc", expect![[r#"0..3 @ Expr::Var("abc")"#]]); }
+    fn var_expr() { assert_parse_expr("abc", expect![[r#"0..3 @ Expr::Var("abc")"#]]); }
 
     #[test]
     fn paren_expr() {
-        check_expr(
+        assert_parse_expr(
             "(abc)",
             expect![[r#"
                 0..5 @ Expr::Paren
                  1..4 @ Expr::Var("abc")"#]],
         );
-        check_expr(
+        assert_parse_expr(
             "((abc))",
             expect![[r#"
                 0..7 @ Expr::Paren
@@ -701,13 +701,13 @@ mod tests {
 
     #[test]
     fn call_expr() {
-        check_expr(
+        assert_parse_expr(
             "f()",
             expect![[r#"
                 0..3 @ Expr::FunCall
                  0..1 @ Expr::Var("f")"#]],
         );
-        check_expr(
+        assert_parse_expr(
             "f(a)",
             expect![[r#"
                 0..4 @ Expr::FunCall
@@ -715,7 +715,7 @@ mod tests {
                  2..4 @ FunArg
                   2..3 @ Expr::Var("a")"#]],
         );
-        check_expr(
+        assert_parse_expr(
             "f(a,)",
             expect![[r#"
                 0..5 @ Expr::FunCall
@@ -723,7 +723,7 @@ mod tests {
                  2..4 @ FunArg
                   2..3 @ Expr::Var("a")"#]],
         );
-        check_expr(
+        assert_parse_expr(
             "f(a, b)",
             expect![[r#"
                 0..7 @ Expr::FunCall
@@ -733,7 +733,7 @@ mod tests {
                  5..7 @ FunArg
                   5..6 @ Expr::Var("b")"#]],
         );
-        check_expr(
+        assert_parse_expr(
             "f(a)(b)",
             expect![[r#"
                 0..7 @ Expr::FunCall
@@ -748,14 +748,14 @@ mod tests {
 
     #[test]
     fn arrow_expr() {
-        check_expr(
+        assert_parse_expr(
             "a -> b",
             expect![[r#"
                 0..6 @ Expr::FunArrow
                  0..1 @ Expr::Var("a")
                  5..6 @ Expr::Var("b")"#]],
         );
-        check_expr(
+        assert_parse_expr(
             "a -> b -> c",
             expect![[r#"
                 0..11 @ Expr::FunArrow
@@ -768,13 +768,13 @@ mod tests {
 
     #[test]
     fn fun_expr() {
-        check_expr(
+        assert_parse_expr(
             "fun() => a",
             expect![[r#"
                 0..10 @ Expr::FunExpr
                  9..10 @ Expr::Var("a")"#]],
         );
-        check_expr(
+        assert_parse_expr(
             "fun(a) => a",
             expect![[r#"
                 0..11 @ Expr::FunExpr
@@ -782,7 +782,7 @@ mod tests {
                   4..5 @ Pat::Var("a")
                  10..11 @ Expr::Var("a")"#]],
         );
-        check_expr(
+        assert_parse_expr(
             "fun(a: A) => a",
             expect![[r#"
                 0..14 @ Expr::FunExpr
@@ -792,7 +792,7 @@ mod tests {
                    7..8 @ Expr::Var("A")
                  13..14 @ Expr::Var("a")"#]],
         );
-        check_expr(
+        assert_parse_expr(
             "fun(a, b) => a",
             expect![[r#"
                 0..14 @ Expr::FunExpr
@@ -806,13 +806,13 @@ mod tests {
 
     #[test]
     fn forall_expr() {
-        check_expr(
+        assert_parse_expr(
             "forall() -> a",
             expect![[r#"
                 0..13 @ Expr::FunType
                  12..13 @ Expr::Var("a")"#]],
         );
-        check_expr(
+        assert_parse_expr(
             "forall(a) -> a",
             expect![[r#"
                 0..14 @ Expr::FunType
@@ -820,7 +820,7 @@ mod tests {
                   7..8 @ Pat::Var("a")
                  13..14 @ Expr::Var("a")"#]],
         );
-        check_expr(
+        assert_parse_expr(
             "forall(a: A) -> a",
             expect![[r#"
                 0..17 @ Expr::FunType
@@ -830,7 +830,7 @@ mod tests {
                    10..11 @ Expr::Var("A")
                  16..17 @ Expr::Var("a")"#]],
         );
-        check_expr(
+        assert_parse_expr(
             "forall(a, b) -> a",
             expect![[r#"
                 0..17 @ Expr::FunType
@@ -844,27 +844,27 @@ mod tests {
 
     #[test]
     fn bool_expr() {
-        check_expr("true", expect!["0..4 @ Expr::Bool(true)"]);
-        check_expr("false", expect!["0..5 @ Expr::Bool(false)"]);
+        assert_parse_expr("true", expect!["0..4 @ Expr::Bool(true)"]);
+        assert_parse_expr("false", expect!["0..5 @ Expr::Bool(false)"]);
     }
 
     #[test]
     fn int_expr() {
-        check_expr("1234", expect![[r#"0..4 @ Expr::Number("1234")"#]]);
-        check_expr("0x1234", expect![[r#"0..6 @ Expr::Number("0x1234")"#]]);
-        check_expr("0x1010", expect![[r#"0..6 @ Expr::Number("0x1010")"#]]);
+        assert_parse_expr("1234", expect![[r#"0..4 @ Expr::Number("1234")"#]]);
+        assert_parse_expr("0x1234", expect![[r#"0..6 @ Expr::Number("0x1234")"#]]);
+        assert_parse_expr("0x1010", expect![[r#"0..6 @ Expr::Number("0x1010")"#]]);
     }
 
     #[test]
-    fn char_expr() { check_expr("'a'", expect![[r#"0..3 @ Expr::Char("'a'")"#]]); }
+    fn char_expr() { assert_parse_expr("'a'", expect![[r#"0..3 @ Expr::Char("'a'")"#]]); }
 
     #[test]
-    fn string_expr() { check_expr(r#""a""#, expect![[r#"0..3 @ Expr::String("\"a\"")"#]]); }
+    fn string_expr() { assert_parse_expr(r#""a""#, expect![[r#"0..3 @ Expr::String("\"a\"")"#]]); }
 
     #[test]
     fn do_expr() {
-        check_expr("do {}", expect!["0..5 @ Expr::Do"]);
-        check_expr(
+        assert_parse_expr("do {}", expect!["0..5 @ Expr::Do"]);
+        assert_parse_expr(
             "do { let x = 5; }",
             expect![[r#"
                 0..17 @ Expr::Do
@@ -873,7 +873,7 @@ mod tests {
                    9..10 @ Pat::Var("x")
                    13..14 @ Expr::Number("5")"#]],
         );
-        check_expr(
+        assert_parse_expr(
             "do { let x = 5; x }",
             expect![[r#"
                 0..19 @ Expr::Do
@@ -883,7 +883,7 @@ mod tests {
                    13..14 @ Expr::Number("5")
                  16..17 @ Expr::Var("x")"#]],
         );
-        check_expr(
+        assert_parse_expr(
             "do { x }",
             expect![[r#"
                 0..8 @ Expr::Do
@@ -893,7 +893,7 @@ mod tests {
 
     #[test]
     fn commands() {
-        check_expr(
+        assert_parse_expr(
             "do { #check 1; }",
             expect![[r#"
                 0..16 @ Expr::Do
@@ -901,7 +901,7 @@ mod tests {
                   Stmt::Check
                    12..13 @ Expr::Number("1")"#]],
         );
-        check_expr(
+        assert_parse_expr(
             "do { #eval 1; }",
             expect![[r#"
                 0..15 @ Expr::Do
@@ -913,32 +913,32 @@ mod tests {
 
     #[test]
     fn file() {
-        check_file("", expect!["File"]);
-        check_file(
+        assert_parse_file("", expect!["File"]);
+        assert_parse_file(
             "let x = 5;",
             expect![[r#"
-            File
-            Stmt::Let
-             0..10 @ LetBinding
-              4..5 @ Pat::Var("x")
-              8..9 @ Expr::Number("5")"#]],
+                File
+                 Stmt::Let
+                  0..10 @ LetBinding
+                   4..5 @ Pat::Var("x")
+                   8..9 @ Expr::Number("5")"#]],
         );
-        check_file(
+        assert_parse_file(
             "10;",
             expect![[r#"
-            File
-            Stmt::Expr
-             0..2 @ Expr::Number("10")"#]],
+                File
+                 Stmt::Expr
+                  0..2 @ Expr::Number("10")"#]],
         );
-        check_file(
+        assert_parse_file(
             "#check 10; 45;",
             expect![[r#"
                 File
-                Stmt::Command
-                 Stmt::Check
-                  7..9 @ Expr::Number("10")
-                Stmt::Expr
-                 11..13 @ Expr::Number("45")"#]],
+                 Stmt::Command
+                  Stmt::Check
+                   7..9 @ Expr::Number("10")
+                 Stmt::Expr
+                  11..13 @ Expr::Number("45")"#]],
         );
     }
 }
