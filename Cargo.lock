@@ -326,10 +326,8 @@ version = "0.1.0"
 dependencies = [
  "bumpalo",
  "codespan-reporting",
- "expect-test",
  "pion-core",
  "pion-interner",
- "pion-parser",
  "pion-surface",
  "text-size",
 ]
