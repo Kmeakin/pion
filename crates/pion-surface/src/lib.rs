@@ -1,3 +1,6 @@
+//! This crate defines the surface language for the Pion programming language.
+//! See `lexical-syntax.md` and `context-free-syntax.md` in the specification.
+
 #![feature(allocator_api)]
 
 pub mod lex;
