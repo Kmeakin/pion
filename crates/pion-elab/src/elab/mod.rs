@@ -203,14 +203,14 @@ mod tests {
             "do { let f: Int = 5; f(1) }",
             expect![[r#"
                 do {let f : Int = 5; #error} : #error
-                Diagnostic { severity: Error, code: None, message: "Expected a function", labels: [Label { style: Primary, file_id: 0, range: 21..22, message: "" }], notes: ["Help: the type of the callee is Int"] }
+                Diagnostic { severity: Error, code: None, message: "Expected a function", labels: [Label { style: Primary, file_id: 0, range: 21..22, message: "" }], notes: ["Help: the type of the callee is `Int`"] }
             "#]],
         );
         expr(
             "do { let f: Int -> Int = fun(x) => x; f(1, 2) }",
             expect![[r#"
                 do {let f : forall(_ : Int) -> Int = fun(x : Int) => #var(0); #error} : #error
-                Diagnostic { severity: Error, code: None, message: "Called function with too many arguments", labels: [Label { style: Primary, file_id: 0, range: 38..39, message: "" }], notes: ["Help: the function expects 1 arguments, but received 2", "Help: the type of the callee is forall(_ : Int) -> Int"] }
+                Diagnostic { severity: Error, code: None, message: "Called function with too many arguments", labels: [Label { style: Primary, file_id: 0, range: 38..39, message: "" }], notes: ["Help: the type of the callee is `forall(_ : Int) -> Int`", "Help: the function expects 1 arguments, but received 2"] }
             "#]],
         );
     }
@@ -239,7 +239,7 @@ mod tests {
             "do { false } : Int",
             expect![[r#"
                 do { #error } : Int
-                Diagnostic { severity: Error, code: None, message: "Type mismatch: expected `Int`, found Bool", labels: [Label { style: Primary, file_id: 0, range: 5..10, message: "" }], notes: [] }
+                Diagnostic { severity: Error, code: None, message: "Type mismatch: expected `Int`, found `Bool`", labels: [Label { style: Primary, file_id: 0, range: 5..10, message: "" }], notes: [] }
             "#]],
         );
     }

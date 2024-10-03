@@ -160,7 +160,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 self.diagnostic(
                     expr.range,
                     Diagnostic::error()
-                        .with_message(format!("Type mismatch: expected `{to}`, found {from}")),
+                        .with_message(format!("Type mismatch: expected `{to}`, found `{from}`")),
                 );
                 Expr::Error
             }
@@ -301,30 +301,22 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     result_expr = Expr::FunApp(&*expr, FunArg::new(param.plicity, &*arg_expr));
                     result_type = self.apply_closure(body, arg_value);
                 }
-                _ if arity == 0 => {
-                    self.diagnostic(
-                        callee.range,
-                        Diagnostic::error()
-                            .with_message("Expected a function")
-                            .with_notes(vec![format!(
-                                "Help: the type of the callee is {callee_type}"
-                            )]),
-                    );
-                    return (Expr::Error, Type::ERROR);
-                }
                 _ => {
-                    self.diagnostic(
-                        callee.range,
-                        Diagnostic::error()
-                            .with_message("Called function with too many arguments")
-                            .with_notes(vec![
-                                format!(
-                                    "Help: the function expects {arity} arguments, but received {}",
-                                    args.len()
-                                ),
-                                format!("Help: the type of the callee is {callee_type}"),
-                            ]),
-                    );
+                    let diagnostic = match arity {
+                        0 => Diagnostic::error().with_message("Expected a function"),
+                        _ => Diagnostic::error()
+                            .with_message("Called function with too many arguments"),
+                    };
+                    let mut notes =
+                        vec![format!("Help: the type of the callee is `{callee_type}`")];
+                    if arity > 0 {
+                        notes.push(format!(
+                            "Help: the function expects {arity} arguments, but received {}",
+                            args.len()
+                        ));
+                    }
+                    let diagnostic = diagnostic.with_notes(notes);
+                    self.diagnostic(callee.range, diagnostic);
                     return (Expr::Error, Type::ERROR);
                 }
             }

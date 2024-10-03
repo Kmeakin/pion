@@ -12,7 +12,7 @@ error: Expected a function
 1 │ #check Int(5);
   │        ^^^
   │
-  = Help: the type of the callee is Type
+  = Help: the type of the callee is `Type`
 
 
 """

@@ -8,7 +8,7 @@ do {} : Int
 """
 
 stderr = """
-error: Type mismatch: expected `Int`, found Bool
+error: Type mismatch: expected `Int`, found `Bool`
   ┌─ test-data/elab/do/check.pion:2:14
   │
 2 │ #check (do { false }) : Int;
