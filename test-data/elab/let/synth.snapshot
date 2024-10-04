@@ -1,6 +1,8 @@
 exit status: 0
 
 stdout = """
+#var(0) : #error
+#var(0) ⇝ #error
 
 """
 

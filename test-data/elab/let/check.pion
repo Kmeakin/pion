@@ -1,1 +1,3 @@
-#check let x: Int = 5;
+let x: Int = 5;
+#check x;
+#eval x;

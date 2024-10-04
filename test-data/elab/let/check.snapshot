@@ -1,34 +1,11 @@
 exit status: 0
 
 stdout = """
-#error : #error
+#var(0) : Int
+#var(0) ⇝ 5
 
 """
 
 stderr = """
-error: Syntax error: unexpected `let` while parsing expression
-  ┌─ test-data/elab/let/check.pion:1:8
-  │
-1 │ #check let x: Int = 5;
-  │        ^^^
-
-error: Syntax error: unexpected identifier, expected `;`
-  ┌─ test-data/elab/let/check.pion:1:12
-  │
-1 │ #check let x: Int = 5;
-  │            ^
-
-error: Syntax error: unexpected `:` while parsing expression
-  ┌─ test-data/elab/let/check.pion:1:13
-  │
-1 │ #check let x: Int = 5;
-  │             ^
-
-error: Syntax error: unexpected `=` while parsing expression
-  ┌─ test-data/elab/let/check.pion:1:19
-  │
-1 │ #check let x: Int = 5;
-  │                   ^
-
 
 """
