@@ -29,7 +29,7 @@ pub enum Value<'core> {
     FunLit(FunParam<'core, &'core Expr<'core>>, Closure<'core>),
 }
 
-impl<'core> Value<'core> {
+impl Value<'_> {
     pub const ERROR: Self = Self::Neutral(Head::Error, EcoVec::new());
 
     pub const TYPE: Self = Self::prim_var(PrimVar::Type);

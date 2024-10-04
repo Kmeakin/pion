@@ -23,7 +23,7 @@ pub enum Expr<'core> {
     Do(&'core [Stmt<'core>], Option<&'core Self>),
 }
 
-impl<'core> Expr<'core> {
+impl Expr<'_> {
     pub const TYPE: Self = Self::PrimVar(PrimVar::Type);
     pub const BOOL: Self = Self::PrimVar(PrimVar::Bool);
     pub const INT: Self = Self::PrimVar(PrimVar::Int);

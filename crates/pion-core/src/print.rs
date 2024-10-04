@@ -181,7 +181,7 @@ fn fun_param<W: Write, T>(
         Plicity::Explicit => write!(out, "")?,
         Plicity::Implicit => write!(out, "@")?,
     }
-    pat(out, name)?;
+    pat(out, *name)?;
     write!(out, " : ")?;
     on_expr(out, r#type)?;
     Ok(())
@@ -201,7 +201,7 @@ fn fun_arg<W: Write, T>(
     Ok(())
 }
 
-fn pat(out: &mut impl Write, name: &Option<InternedStr>) -> fmt::Result {
+fn pat(out: &mut impl Write, name: Option<InternedStr>) -> fmt::Result {
     match name {
         None => write!(out, "_"),
         Some(name) => write!(out, "{name}"),
@@ -210,7 +210,7 @@ fn pat(out: &mut impl Write, name: &Option<InternedStr>) -> fmt::Result {
 
 fn let_binding(out: &mut impl Write, binding: &LetBinding<Expr>) -> fmt::Result {
     let LetBinding { name, r#type, init } = binding;
-    pat(out, name)?;
+    pat(out, *name)?;
     write!(out, " : ")?;
     expr_prec(out, r#type, Prec::Fun)?;
     write!(out, " = ")?;

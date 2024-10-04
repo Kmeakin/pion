@@ -1,5 +1,5 @@
 check:
-    cargo check
+    cargo clippy
     typos
 
 build:

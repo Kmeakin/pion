@@ -205,34 +205,34 @@ impl<T: Display> Display for Located<T> {
     }
 }
 
-impl<'text, 'surface> Display for File<'text, 'surface> {
+impl Display for File<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).file(self) }
 }
 
-impl<'text, 'surface> Display for Expr<'text, 'surface> {
+impl Display for Expr<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).expr(self) }
 }
 
-impl<'text, 'surface> Display for Stmt<'text, 'surface> {
+impl Display for Stmt<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).stmt(self) }
 }
 
-impl<'text, 'surface> Display for Command<'text, 'surface> {
+impl Display for Command<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).command(self) }
 }
 
-impl<'text, 'surface> Display for LetBinding<'text, 'surface> {
+impl Display for LetBinding<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).let_binding(self) }
 }
 
-impl<'text, 'surface> Display for Pat<'text, 'surface> {
+impl Display for Pat<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).pat(self) }
 }
 
-impl<'text, 'surface> Display for FunArg<'text, 'surface> {
+impl Display for FunArg<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).fun_arg(self) }
 }
 
-impl<'text, 'surface> Display for FunParam<'text, 'surface> {
+impl Display for FunParam<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).fun_param(self) }
 }
