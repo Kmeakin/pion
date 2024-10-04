@@ -50,9 +50,9 @@
 
 <Char> ::= ''' <CharContent> '''
 <CharContent> ::= <SingleCharElement> | <AsciiEscape>
-<SingleCharElement> ::= Any chararacter other than `\t`, `\n`, `\r` ''' or '\'
+<SingleCharElement> ::= Any character other than `\t`, `\n`, `\r` ''' or '\'
 
 <String> ::= '"' <StringContent> '"'
 <StringContent> ::= <SingleStringElement> | <AsciiEscape>
-<SingleStringElement> ::= Any chararacter other than '"' or '\'
+<SingleStringElement> ::= Any character other than '"' or '\'
 ```

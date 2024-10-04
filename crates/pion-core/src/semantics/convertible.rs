@@ -185,7 +185,7 @@ mod tests {
     }
 
     #[test]
-    fn test_convertible_fun_lits() {
+    fn test_convertible_fun_expr() {
         // `fun (_ : Type) -> Int` == `fun (_ : Type) -> Int`
 
         let param = FunParam::explicit(None, &Expr::TYPE);
