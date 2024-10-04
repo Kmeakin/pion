@@ -132,7 +132,7 @@ pub fn value_prec(out: &mut impl Write, value: &Value, prec: Prec) -> fmt::Resul
         Value::Neutral(head, spine) => {
             match head {
                 Head::Error => write!(out, "#error")?,
-                Head::LocalVar(var) => write!(out, "_#{var}")?,
+                Head::LocalVar(var) => write!(out, "#var({var})")?,
                 Head::MetaVar(var) => write!(out, "?{var}")?,
                 Head::PrimVar(var) => write!(out, "{var}")?,
             }
@@ -394,7 +394,7 @@ mod tests {
     #[test]
     fn print_value_local_var() {
         let value = Value::local_var(AbsoluteVar::new(0));
-        assert_print_value(&value, expect!["_#0"]);
+        assert_print_value(&value, expect!["#var(0)"]);
     }
 
     #[test]
@@ -415,13 +415,13 @@ mod tests {
             Head::LocalVar(AbsoluteVar::new(0)),
             eco_vec![Elim::FunApp(FunArg::explicit(Value::Int(1)))],
         );
-        assert_print_value(&value, expect!["_#0(1)"]);
+        assert_print_value(&value, expect!["#var(0)(1)"]);
 
         let value = Value::Neutral(
             Head::LocalVar(AbsoluteVar::new(0)),
             eco_vec![Elim::FunApp(FunArg::implicit(Value::Int(1)))],
         );
-        assert_print_value(&value, expect!["_#0(@1)"]);
+        assert_print_value(&value, expect!["#var(0)(@1)"]);
     }
 
     #[test]
