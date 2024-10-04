@@ -37,7 +37,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 (Pat::Var(name), Type::ERROR)
             }
             surface::Pat::Paren(pat) => self.synth_pat(*pat),
-            surface::Pat::TypeAnnotation { pat, r#type } => {
+            surface::Pat::TypeAnnotation(pat, r#type) => {
                 let r#type = self.check_expr(*r#type, &Type::TYPE);
                 let type_value = self.eval_expr(&r#type);
                 let pat = self.check_pat(*pat, &type_value);

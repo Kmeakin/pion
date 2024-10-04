@@ -157,10 +157,10 @@ impl<W: Write> Printer<W> {
                 writeln!(self, "Pat::Paren")?;
                 self.with_indent(|this| this.located(pat))
             }
-            Pat::TypeAnnotation { pat: expr, r#type } => {
+            Pat::TypeAnnotation(pat, r#type) => {
                 writeln!(self, "Pat::TypeAnnotation")?;
                 self.with_indent(|this| {
-                    this.located(expr)?;
+                    this.located(pat)?;
                     this.located(r#type)
                 })
             }

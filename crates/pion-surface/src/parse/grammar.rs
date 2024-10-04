@@ -77,10 +77,10 @@ where
                     let r#type = self.expr_bp(2);
                     pat = Located::new(
                         TextRange::new(pat.range.start(), r#type.range.end()),
-                        Pat::TypeAnnotation {
-                            pat: pat.map(|pat| &*self.bump.alloc(pat)),
-                            r#type: r#type.map(|ty| &*self.bump.alloc(ty)),
-                        },
+                        Pat::TypeAnnotation(
+                            pat.map(|pat| &*self.bump.alloc(pat)),
+                            r#type.map(|ty| &*self.bump.alloc(ty)),
+                        ),
                     );
                 }
                 _ => break,

@@ -86,10 +86,10 @@ pub enum Pat<'text, 'surface> {
     Underscore,
     Var(&'text str),
     Paren(Located<&'surface Self>),
-    TypeAnnotation {
-        pat: Located<&'surface Self>,
-        r#type: Located<&'surface Expr<'text, 'surface>>,
-    },
+    TypeAnnotation(
+        Located<&'surface Self>,
+        Located<&'surface Expr<'text, 'surface>>,
+    ),
 }
 
 #[derive(Debug, Copy, Clone)]
