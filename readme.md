@@ -47,4 +47,10 @@
 * [ ] documentation
     * [ ] code comments
     * [ ] specification
+        * [x] Surface language
+            * [x] Lexical syntax
+            * [x] Context-free syntax
+        * [ ] Core language
+            * [ ] Reduction rules
+            * [ ] Typing rules
     * [ ] bibliography
