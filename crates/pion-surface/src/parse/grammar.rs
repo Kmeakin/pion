@@ -2,7 +2,7 @@ use codespan_reporting::diagnostic::Diagnostic;
 use text_size::TextRange;
 
 use super::Parser;
-use crate::lex::{LiteralKind, ReservedIdent, Token, TokenKind};
+use crate::lex::{Token, TokenKind};
 use crate::syntax::*;
 
 type Binop<'text, 'surface> = fn(
@@ -114,23 +114,15 @@ where
                     Expr::Paren(expr),
                 )
             }
-            TokenKind::Reserved(ReservedIdent::False) => {
-                Located::new(token.range, Expr::Bool(false))
-            }
-            TokenKind::Reserved(ReservedIdent::True) => Located::new(token.range, Expr::Bool(true)),
-            TokenKind::Literal(LiteralKind::Number) => {
-                Located::new(token.range, Expr::Number(token.text))
-            }
-            TokenKind::Literal(LiteralKind::Char) => {
-                Located::new(token.range, Expr::Char(token.text))
-            }
-            TokenKind::Literal(LiteralKind::String) => {
-                Located::new(token.range, Expr::String(token.text))
-            }
+            TokenKind::KwFalse => Located::new(token.range, Expr::Bool(false)),
+            TokenKind::KwTrue => Located::new(token.range, Expr::Bool(true)),
+            TokenKind::Int => Located::new(token.range, Expr::Number(token.text)),
+            TokenKind::Char => Located::new(token.range, Expr::Char(token.text)),
+            TokenKind::String => Located::new(token.range, Expr::String(token.text)),
             TokenKind::Ident => Located::new(token.range, Expr::Var(token.text)),
-            TokenKind::Reserved(ReservedIdent::Do) => self.do_expr(),
-            TokenKind::Reserved(ReservedIdent::Forall) => self.forall_expr(),
-            TokenKind::Reserved(ReservedIdent::Fun) => self.fun_expr(),
+            TokenKind::KwDo => self.do_expr(),
+            TokenKind::KwForall => self.forall_expr(),
+            TokenKind::KwFun => self.fun_expr(),
             got => {
                 self.diagnostic(
                     token.range,
@@ -209,7 +201,7 @@ where
 
         while let Some(token) = self.peek_token() {
             match token.kind {
-                TokenKind::Reserved(ReservedIdent::Let) => {
+                TokenKind::KwLet => {
                     self.next_token();
                     let binding = self.let_binding();
                     stmts.push(Stmt::Let(binding));
@@ -294,7 +286,7 @@ where
             tail_expr = None;
 
             match token.kind {
-                TokenKind::Reserved(ReservedIdent::Let) => {
+                TokenKind::KwLet => {
                     self.next_token();
                     let binding = self.let_binding();
                     stmts.push(Stmt::Let(binding));

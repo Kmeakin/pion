@@ -182,17 +182,17 @@ fn reserved_ident() {
     assert_lex(
         "do false forall fun let true",
         expect![[r#"
-            Reserved(Do) 0..2 "do"
+            KwDo 0..2 "do"
             Whitespace 2..3 " "
-            Reserved(False) 3..8 "false"
+            KwFalse 3..8 "false"
             Whitespace 8..9 " "
-            Reserved(Forall) 9..15 "forall"
+            KwForall 9..15 "forall"
             Whitespace 15..16 " "
-            Reserved(Fun) 16..19 "fun"
+            KwFun 16..19 "fun"
             Whitespace 19..20 " "
-            Reserved(Let) 20..23 "let"
+            KwLet 20..23 "let"
             Whitespace 23..24 " "
-            Reserved(True) 24..28 "true""#]],
+            KwTrue 24..28 "true""#]],
     );
 }
 
@@ -201,60 +201,60 @@ fn number() {
     assert_lex(
         "123_456 0x123_456 0b123_456 -123 +123",
         expect![[r#"
-            Literal(Number) 0..7 "123_456"
+            Int 0..7 "123_456"
             Whitespace 7..8 " "
-            Literal(Number) 8..17 "0x123_456"
+            Int 8..17 "0x123_456"
             Whitespace 17..18 " "
-            Literal(Number) 18..27 "0b123_456"
+            Int 18..27 "0b123_456"
             Whitespace 27..28 " "
             Punct('-') 28..29 "-"
-            Literal(Number) 29..32 "123"
+            Int 29..32 "123"
             Whitespace 32..33 " "
             Punct('+') 33..34 "+"
-            Literal(Number) 34..37 "123""#]],
+            Int 34..37 "123""#]],
     );
 }
 
 #[test]
 fn char() {
-    assert_lex("'a'", expect![[r#"Literal(Char) 0..3 "'a'""#]]);
-    assert_lex("'abc'", expect![[r#"Literal(Char) 0..5 "'abc'""#]]);
-    assert_lex("'abc", expect![[r#"Literal(Char) 0..4 "'abc""#]]);
+    assert_lex("'a'", expect![[r#"Char 0..3 "'a'""#]]);
+    assert_lex("'abc'", expect![[r#"Char 0..5 "'abc'""#]]);
+    assert_lex("'abc", expect![[r#"Char 0..4 "'abc""#]]);
     assert_lex(
         r"'abc\'def'",
-        expect![[r#"Literal(Char) 0..10 "'abc\\'def'""#]],
+        expect![[r#"Char 0..10 "'abc\\'def'""#]],
     );
-    assert_lex(r"'abc\'", expect![[r#"Literal(Char) 0..6 "'abc\\'""#]]);
-    assert_lex(r"'abc\", expect![[r#"Literal(Char) 0..5 "'abc\\""#]]);
+    assert_lex(r"'abc\'", expect![[r#"Char 0..6 "'abc\\'""#]]);
+    assert_lex(r"'abc\", expect![[r#"Char 0..5 "'abc\\""#]]);
     assert_lex(
         r"'abc\\'def'",
         expect![[r#"
-                Literal(Char) 0..7 "'abc\\\\'"
-                Ident 7..10 "def"
-                Literal(Char) 10..11 "'""#]],
+            Char 0..7 "'abc\\\\'"
+            Ident 7..10 "def"
+            Char 10..11 "'""#]],
     );
 }
 
 #[test]
 fn string() {
-    assert_lex(r#""""#, expect![[r#"Literal(String) 0..2 "\"\"""#]]);
-    assert_lex(r#""a""#, expect![[r#"Literal(String) 0..3 "\"a\"""#]]);
-    assert_lex(r#""abc""#, expect![[r#"Literal(String) 0..5 "\"abc\"""#]]);
-    assert_lex(r#""abc"#, expect![[r#"Literal(String) 0..4 "\"abc""#]]);
+    assert_lex(r#""""#, expect![[r#"String 0..2 "\"\"""#]]);
+    assert_lex(r#""a""#, expect![[r#"String 0..3 "\"a\"""#]]);
+    assert_lex(r#""abc""#, expect![[r#"String 0..5 "\"abc\"""#]]);
+    assert_lex(r#""abc"#, expect![[r#"String 0..4 "\"abc""#]]);
     assert_lex(
         r#""abc\"def"#,
-        expect![[r#"Literal(String) 0..9 "\"abc\\\"def""#]],
+        expect![[r#"String 0..9 "\"abc\\\"def""#]],
     );
     assert_lex(
         r#""abc\""#,
-        expect![[r#"Literal(String) 0..6 "\"abc\\\"""#]],
+        expect![[r#"String 0..6 "\"abc\\\"""#]],
     );
-    assert_lex(r#""abc\"#, expect![[r#"Literal(String) 0..5 "\"abc\\""#]]);
+    assert_lex(r#""abc\"#, expect![[r#"String 0..5 "\"abc\\""#]]);
     assert_lex(
         r#""abc\\"def""#,
         expect![[r#"
-            Literal(String) 0..7 "\"abc\\\\\""
+            String 0..7 "\"abc\\\\\""
             Ident 7..10 "def"
-            Literal(String) 10..11 "\"""#]],
+            String 10..11 "\"""#]],
     );
 }

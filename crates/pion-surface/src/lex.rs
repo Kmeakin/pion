@@ -9,10 +9,9 @@ use text_size::{TextRange, TextSize};
 mod tests;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
 pub enum TokenKind {
     // Trivia
-    Unknown = 1,
+    Unknown,
     Whitespace,
     LineComment,
 
@@ -24,18 +23,40 @@ pub enum TokenKind {
     LCurly,
     RCurly,
 
-    // Atoms
+    // Punctuation
     SingleArrow,
     DoubleArrow,
-    Ident,
-    Reserved(ReservedIdent),
     Punct(char),
-    Literal(LiteralKind),
+
+    // Identifiers / keywords
+    Ident,
+    KwDo,
+    KwFalse,
+    KwForall,
+    KwFun,
+    KwLet,
+    KwTrue,
+
+    // Literals
+    Int,
+    Char,
+    String,
 }
 
 impl TokenKind {
     pub fn is_trivia(&self) -> bool {
         matches!(self, Self::Unknown | Self::Whitespace | Self::LineComment)
+    }
+
+    pub fn from_reserved(reserved: ReservedIdent) -> Self {
+        match reserved {
+            ReservedIdent::Do => Self::KwDo,
+            ReservedIdent::False => Self::KwFalse,
+            ReservedIdent::Forall => Self::KwForall,
+            ReservedIdent::Fun => Self::KwFun,
+            ReservedIdent::Let => Self::KwLet,
+            ReservedIdent::True => Self::KwTrue,
+        }
     }
 }
 
@@ -45,18 +66,29 @@ impl fmt::Display for TokenKind {
             Self::Unknown => write!(f, "unknown character"),
             Self::Whitespace => write!(f, "whitespace"),
             Self::LineComment => write!(f, "line comment"),
+
             Self::LParen => write!(f, "`(`"),
             Self::RParen => write!(f, "`)`"),
             Self::LSquare => write!(f, "`[`"),
             Self::RSquare => write!(f, "`]`"),
             Self::LCurly => write!(f, "`{{`"),
             Self::RCurly => write!(f, "`}}`"),
+
             Self::SingleArrow => write!(f, "`->`"),
             Self::DoubleArrow => write!(f, "`=>`"),
-            Self::Ident => write!(f, "identifier"),
-            Self::Reserved(reserved) => write!(f, "{reserved}"),
             Self::Punct(c) => write!(f, "`{c}`"),
-            Self::Literal(kind) => write!(f, "{kind}"),
+
+            Self::Ident => write!(f, "identifier"),
+            Self::KwDo => write!(f, "`do`"),
+            Self::KwFalse => write!(f, "`false`"),
+            Self::KwForall => write!(f, "`forall`"),
+            Self::KwFun => write!(f, "`fun`"),
+            Self::KwLet => write!(f, "`let`"),
+            Self::KwTrue => write!(f, "`true`"),
+
+            Self::Int => write!(f, "integer"),
+            Self::Char => write!(f, "character"),
+            Self::String => write!(f, "string"),
         }
     }
 }
@@ -95,23 +127,6 @@ impl fmt::Display for ReservedIdent {
             Self::Fun => write!(f, "`fun`"),
             Self::Let => write!(f, "`let`"),
             Self::True => write!(f, "`true`"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LiteralKind {
-    Number,
-    Char,
-    String,
-}
-
-impl fmt::Display for LiteralKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Number => write!(f, "number"),
-            Self::Char => write!(f, "character"),
-            Self::String => write!(f, "string"),
         }
     }
 }
@@ -204,7 +219,7 @@ pub fn next_token(source: &str) -> Option<(&str, TokenKind, &str)> {
 
         '0'..='9' => {
             skip_while(&mut chars, classify::ident_continue);
-            TokenKind::Literal(LiteralKind::Number)
+            TokenKind::Int
         }
         '-' if peek() == Some('>') => {
             chars.next();
@@ -229,7 +244,7 @@ pub fn next_token(source: &str) -> Option<(&str, TokenKind, &str)> {
             let (text, remainder) = source.split_at(len);
 
             let kind = match ReservedIdent::from_str(text) {
-                Ok(reserved) => TokenKind::Reserved(reserved),
+                Ok(reserved) => TokenKind::from_reserved(reserved),
                 Err(()) => TokenKind::Ident,
             };
             return Some((text, kind, remainder));
@@ -253,7 +268,7 @@ pub fn next_token(source: &str) -> Option<(&str, TokenKind, &str)> {
                     _ => continue,
                 }
             }
-            TokenKind::Literal(LiteralKind::Char)
+            TokenKind::Char
         }
         '\"' => {
             while let Some(c) = chars.next() {
@@ -266,7 +281,7 @@ pub fn next_token(source: &str) -> Option<(&str, TokenKind, &str)> {
                     _ => continue,
                 }
             }
-            TokenKind::Literal(LiteralKind::String)
+            TokenKind::String
         }
 
         _ => TokenKind::Unknown,
