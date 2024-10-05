@@ -10,8 +10,8 @@
     * [ ] type universes
 
 * [ ] unification
-    * [ ] inferring types of unnanotated parameters
-    * [ ] hole expressions
+    * [x] inferring types of unnanotated patterns
+    * [x] hole expressions
     * [ ] implicit arguments
       * [ ] specialization
       * [ ] generalization

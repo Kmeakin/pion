@@ -4,6 +4,7 @@
 <File> ::= <Stmt>*
 
 <Expr> ::=
+    | "_"
     | <Ident>
     | "true" | "false"
     | <Number>

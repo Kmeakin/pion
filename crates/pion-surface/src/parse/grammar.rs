@@ -103,6 +103,7 @@ where
         };
 
         match token.kind {
+            TokenKind::Punct('_') => Located::new(token.range, Expr::Hole),
             TokenKind::LParen => {
                 let start_range = token.range;
                 let expr = self.expr();

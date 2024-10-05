@@ -99,6 +99,7 @@ fn check(path: &PathOrStdin) {
     let mut interner = pion_interner::Interner::default();
     let mut elab = pion_elab::Elaborator::new(&bump, &mut interner, file_id);
     elab.stmts(file.stmts);
+    elab.report_unsolved_metas();
     let (diagnostics, command_output) = elab.finish();
 
     for diagnostic in diagnostics {

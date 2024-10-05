@@ -1,0 +1,28 @@
+exit status: 0
+
+stdout = """
+#var(0) : forall(A : Type) -> forall(_ : forall(_ : #var(0)) -> ?1(#var(1))(#var(0))) -> #var(1)
+
+"""
+
+stderr = """
+error: non-variable function application in problem spine
+  ┌─ test-data/elab/unification/non-linear-spine.pion:2:27
+  │
+2 │     = fun(A) => fun(a) => a(_);
+  │                           ^^^^
+
+error: Could not infer expression to solve hole
+  ┌─ test-data/elab/unification/non-linear-spine.pion:1:37
+  │
+1 │ let it : forall (A : Type) -> (A -> _) -> A
+  │                                     ^
+
+error: Could not infer expression to solve hole
+  ┌─ test-data/elab/unification/non-linear-spine.pion:2:29
+  │
+2 │     = fun(A) => fun(a) => a(_);
+  │                             ^
+
+
+"""

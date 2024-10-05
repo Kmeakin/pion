@@ -1,0 +1,22 @@
+exit status: 0
+
+stdout = """
+#var(0) : forall(Wrap : forall(_ : Type) -> Type) -> forall(f : forall(A : ?1(#var(0))) -> forall(_ : forall(_ : #var(0)) -> #var(2)(#var(1))) -> Type) -> Type
+
+"""
+
+stderr = """
+error: Type mismatch: expected `#var(0)(#var(1))`, found `#var(1)`
+  ┌─ test-data/elab/unification/infinite-solution.pion:5:36
+  │
+5 │   = fun(Wrap, f) => f(_, fun(a) => a);
+  │                                    ^
+
+error: Could not infer expression to solve hole
+  ┌─ test-data/elab/unification/infinite-solution.pion:5:23
+  │
+5 │   = fun(Wrap, f) => f(_, fun(a) => a);
+  │                       ^
+
+
+"""

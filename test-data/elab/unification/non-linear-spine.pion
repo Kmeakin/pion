@@ -1,0 +1,4 @@
+let it : forall (A : Type) -> (A -> _) -> A
+    = fun(A) => fun(a) => a(_);
+
+#check it;

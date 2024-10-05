@@ -1,4 +1,4 @@
-use ecow::EcoVec;
+pub use ecow::{eco_vec, EcoVec};
 
 use crate::env::{AbsoluteVar, EnvLen, SharedEnv, SliceEnv};
 use crate::prim::PrimVar;

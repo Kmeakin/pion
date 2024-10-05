@@ -9,6 +9,7 @@ use pion_surface::syntax::{self as surface, Located};
 use text_size::{TextRange, TextSize};
 
 use super::{Check, Synth};
+use crate::env::MetaSource;
 use crate::Elaborator;
 
 pub type SynthExpr<'core> = Synth<'core, Expr<'core>>;
@@ -21,6 +22,12 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
     ) -> SynthExpr<'core> {
         match expr.data {
             surface::Expr::Error => (Expr::Error, Type::ERROR),
+            surface::Expr::Hole => {
+                let r#type = self.push_unsolved_type(MetaSource::HoleType(expr.range));
+                let expr =
+                    self.push_unsolved_expr(MetaSource::HoleExpr(expr.range), r#type.clone());
+                (expr, r#type)
+            }
             surface::Expr::Var(name) => {
                 let name = self.bump.alloc_str(name);
                 let name = self.interner.intern(name);
@@ -100,6 +107,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         match expr.data {
             surface::Expr::Error
             | surface::Expr::Var(_)
+            | surface::Expr::Hole
             | surface::Expr::Bool(_)
             | surface::Expr::Number(_)
             | surface::Expr::Char(_)
@@ -148,20 +156,16 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         self.coerce_expr(Located::new(expr_range, expr), &r#type, expected)
     }
 
-    pub fn coerce_expr(
+    fn coerce_expr(
         &mut self,
         expr: Located<Expr<'core>>,
         from: &Type<'core>,
         to: &Type<'core>,
     ) -> CheckExpr<'core> {
-        match self.convertible(from, to) {
-            true => expr.data,
-            false => {
-                self.diagnostic(
-                    expr.range,
-                    Diagnostic::error()
-                        .with_message(format!("Type mismatch: expected `{to}`, found `{from}`")),
-                );
+        match self.unify(from, to) {
+            Ok(()) => expr.data,
+            Err(err) => {
+                self.diagnostic(expr.range, err.to_diagnostic(from, to));
                 Expr::Error
             }
         }
@@ -252,8 +256,9 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         body: Located<&surface::Expr<'text, 'surface>>,
         expected: &Type<'core>,
     ) -> CheckExpr<'core> {
+        let expected = self.elim_env().subst_metas(expected);
         match params {
-            [] => self.check_expr(body, expected),
+            [] => self.check_expr(body, &expected),
             [param, rest @ ..] => match expected {
                 Value::FunType(expected_param, expected_body) => {
                     let expected_param_type = self.eval_expr(expected_param.r#type);
@@ -276,7 +281,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 _ => {
                     // FIXME: this span is misleading
                     let (expr, r#type) = self.synth_fun_expr(params, body);
-                    self.coerce_expr(Located::new(body.range, expr), &r#type, expected)
+                    self.coerce_expr(Located::new(body.range, expr), &r#type, &expected)
                 }
             },
         }

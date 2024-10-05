@@ -15,10 +15,6 @@ impl<'env, 'core> ElimEnv<'env, 'core> {
         apply_eliminator(head, elim, self.opts, self.metas)
     }
 
-    pub fn apply_spine(self, head: Value<'core>, spine: Spine<'core>) -> Value<'core> {
-        apply_spine(head, spine, self.opts, self.metas)
-    }
-
     pub fn apply_arg(self, callee: Value<'core>, arg: FunArg<Value<'core>>) -> Value<'core> {
         apply_arg(callee, arg, self.opts, self.metas)
     }
@@ -43,7 +39,7 @@ pub(super) fn apply_eliminator<'core>(
     }
 }
 
-pub(super) fn apply_spine<'core>(
+fn apply_spine<'core>(
     head: Value<'core>,
     spine: Spine<'core>,
     opts: UnfoldOpts,

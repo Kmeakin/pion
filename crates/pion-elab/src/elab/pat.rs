@@ -1,9 +1,9 @@
-use codespan_reporting::diagnostic::Diagnostic;
 use pion_core::semantics::Type;
 use pion_interner::InternedStr;
 use pion_surface::syntax::{self as surface, Located};
 
 use super::{Check, Synth};
+use crate::env::MetaSource;
 use crate::Elaborator;
 
 pub type SynthPat<'core> = Synth<'core, Pat<'core>>;
@@ -29,12 +29,17 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
     pub fn synth_pat(&mut self, pat: Located<&surface::Pat<'text, 'surface>>) -> SynthPat<'core> {
         match pat.data {
             surface::Pat::Error => (Pat::Error, Type::ERROR),
-            // TODO: insert metavariables
-            surface::Pat::Underscore => (Pat::Wildcard, Type::ERROR),
+            surface::Pat::Underscore => {
+                let source = MetaSource::PatType(pat.range, None);
+                let r#type = self.push_unsolved_type(source);
+                (Pat::Wildcard, r#type)
+            }
             surface::Pat::Var(name) => {
                 let name = self.bump.alloc_str(name);
                 let name = self.interner.intern(name);
-                (Pat::Var(name), Type::ERROR)
+                let source = MetaSource::PatType(pat.range, Some(name));
+                let r#type = self.push_unsolved_type(source);
+                (Pat::Var(name), r#type)
             }
             surface::Pat::Paren(pat) => self.synth_pat(*pat),
             surface::Pat::TypeAnnotation(pat, r#type) => {
@@ -80,14 +85,10 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         from: &Type<'core>,
         to: &Type<'core>,
     ) -> CheckPat<'core> {
-        match self.convertible(from, to) {
-            true => pat.data,
-            false => {
-                self.diagnostic(
-                    pat.range,
-                    Diagnostic::error()
-                        .with_message(format!("Type mismatch: expected `{to}`, found {from}")),
-                );
+        match self.unify(from, to) {
+            Ok(()) => pat.data,
+            Err(err) => {
+                self.diagnostic(pat.range, err.to_diagnostic(from, to));
                 Pat::Error
             }
         }

@@ -50,6 +50,7 @@ impl<W: Write> Printer<W> {
     fn expr(&mut self, expr: &Expr) -> fmt::Result {
         match expr {
             Expr::Error => writeln!(self, "Expr::Error"),
+            Expr::Hole => writeln!(self, "Expr::Hole"),
             Expr::Var(name) => writeln!(self, "Expr::Var({name:?})"),
             Expr::Bool(b) => writeln!(self, "Expr::Bool({b:?})"),
             Expr::Number(n) => writeln!(self, "Expr::Number({n:?})"),

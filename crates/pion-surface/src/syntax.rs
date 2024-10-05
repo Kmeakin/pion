@@ -35,6 +35,7 @@ pub struct File<'text, 'surface> {
 #[derive(Debug, Copy, Clone)]
 pub enum Expr<'text, 'surface> {
     Error,
+    Hole,
     Var(&'text str),
     Bool(bool),
     Number(&'text str),

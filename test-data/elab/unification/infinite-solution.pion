@@ -1,0 +1,7 @@
+// FIXME: this should give an `infinite solution` error, but it doesn't
+
+let it :
+    forall(Wrap : Type -> Type, f : forall(A : _) -> (A -> Wrap(A)) -> Type) -> Type
+  = fun(Wrap, f) => f(_, fun(a) => a);
+
+#check it;

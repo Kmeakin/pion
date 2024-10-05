@@ -1,0 +1,28 @@
+exit status: 0
+
+stdout = """
+(fun(n : ?1) => #error) : forall(_ : ?1) -> ?3(#var(0))
+
+"""
+
+stderr = """
+error: escaping local variable in problem spine
+  ┌─ test-data/elab/unification/escaping-local.pion:1:19
+  │
+1 │ #check (fun(n) => n) : _ -> _;
+  │                   ^
+
+error: Could not infer expression to solve hole
+  ┌─ test-data/elab/unification/escaping-local.pion:1:24
+  │
+1 │ #check (fun(n) => n) : _ -> _;
+  │                        ^
+
+error: Could not infer expression to solve hole
+  ┌─ test-data/elab/unification/escaping-local.pion:1:29
+  │
+1 │ #check (fun(n) => n) : _ -> _;
+  │                             ^
+
+
+"""

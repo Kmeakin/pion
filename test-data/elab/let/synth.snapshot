@@ -1,17 +1,11 @@
 exit status: 0
 
 stdout = """
-#var(0) : #error
-#var(0) ⇝ #error
+#var(0) : ?0
+#var(0) ⇝ 5
 
 """
 
 stderr = """
-error: Type mismatch: expected `#error`, found `Int`
-  ┌─ test-data/elab/let/synth.pion:1:9
-  │
-1 │ let x = 5;
-  │         ^
-
 
 """
