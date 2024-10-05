@@ -1,9 +1,37 @@
 use super::*;
 use crate::syntax::Stmt;
 
+pub struct EvalEnv<'env, 'core> {
+    opts: UnfoldOpts,
+    locals: &'env mut LocalValues<'core>,
+    metas: &'env MetaValues<'core>,
+}
+
+impl<'env, 'core> EvalEnv<'env, 'core> {
+    pub fn new(
+        opts: UnfoldOpts,
+        locals: &'env mut LocalValues<'core>,
+        metas: &'env MetaValues<'core>,
+    ) -> Self {
+        Self {
+            opts,
+            locals,
+            metas,
+        }
+    }
+
+    pub fn eval(self, expr: &Expr<'core>) -> Value<'core> {
+        eval(expr, self.opts, self.locals, self.metas)
+    }
+
+    pub fn eval_stmt(self, stmt: &Stmt<'core>) {
+        eval_stmt(stmt, self.opts, self.locals, self.metas);
+    }
+}
+
 /// Evaluate an `Expr` to a `Value`.
 /// Does not reduce under `fun` or `forall`
-pub fn eval<'core, 'env>(
+pub(super) fn eval<'core, 'env>(
     expr: &Expr<'core>,
     opts: UnfoldOpts,
     locals: &'env mut LocalValues<'core>,
@@ -60,7 +88,7 @@ pub fn eval<'core, 'env>(
 /// Evaluate an `Stmt` for side effects.
 /// NOTE: may add bindings to `locals`.
 /// Don't forget to reset in the caller!
-pub fn eval_stmt<'core, 'env>(
+fn eval_stmt<'core, 'env>(
     stmt: &Stmt<'core>,
     opts: UnfoldOpts,
     locals: &'env mut LocalValues<'core>,

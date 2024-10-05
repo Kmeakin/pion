@@ -1,5 +1,19 @@
 use super::*;
 
+#[derive(Debug, Copy, Clone)]
+pub struct QuoteEnv<'env, 'core> {
+    locals: EnvLen,
+    metas: &'env MetaValues<'core>,
+}
+
+impl<'env, 'core> QuoteEnv<'env, 'core> {
+    pub fn new(locals: EnvLen, metas: &'env MetaValues<'core>) -> Self { Self { locals, metas } }
+
+    pub fn quote(&self, value: &Value<'core>, bump: &'core bumpalo::Bump) -> Expr<'core> {
+        quote(value, bump, self.locals, self.metas)
+    }
+}
+
 /// Quote a value back to an expression.
 pub fn quote<'core>(
     value: &Value<'core>,

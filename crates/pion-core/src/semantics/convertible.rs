@@ -1,7 +1,21 @@
 use super::*;
 
+#[derive(Debug, Copy, Clone)]
+pub struct ConvertibleEnv<'env, 'core> {
+    locals: EnvLen,
+    metas: &'env MetaValues<'core>,
+}
+
+impl<'env, 'core> ConvertibleEnv<'env, 'core> {
+    pub fn new(locals: EnvLen, metas: &'env MetaValues<'core>) -> Self { Self { locals, metas } }
+
+    pub fn convertible(&self, lhs: &Value<'core>, rhs: &Value<'core>) -> bool {
+        convertible(lhs, rhs, self.locals, self.metas)
+    }
+}
+
 /// Beta-eta equality of values.
-pub fn convertible<'core>(
+fn convertible<'core>(
     lhs: &Value<'core>,
     rhs: &Value<'core>,
     locals: EnvLen,

@@ -2,7 +2,37 @@
 
 use super::*;
 
-pub fn apply_eliminator<'core>(
+#[derive(Debug, Copy, Clone)]
+pub struct ElimEnv<'env, 'core> {
+    opts: UnfoldOpts,
+    metas: &'env MetaValues<'core>,
+}
+
+impl<'env, 'core> ElimEnv<'env, 'core> {
+    pub fn new(opts: UnfoldOpts, metas: &'env MetaValues<'core>) -> Self { Self { opts, metas } }
+
+    pub fn apply_eliminator(self, head: Value<'core>, elim: Elim<'core>) -> Value<'core> {
+        apply_eliminator(head, elim, self.opts, self.metas)
+    }
+
+    pub fn apply_spine(self, head: Value<'core>, spine: Spine<'core>) -> Value<'core> {
+        apply_spine(head, spine, self.opts, self.metas)
+    }
+
+    pub fn apply_arg(self, callee: Value<'core>, arg: FunArg<Value<'core>>) -> Value<'core> {
+        apply_arg(callee, arg, self.opts, self.metas)
+    }
+
+    pub fn beta_reduce(self, closure: Closure<'core>, arg: Value<'core>) -> Value<'core> {
+        beta_reduce(closure, arg, self.opts, self.metas)
+    }
+
+    pub fn subst_metas(self, value: &Value<'core>) -> Value<'core> {
+        subst_metas(value, self.opts, self.metas)
+    }
+}
+
+pub(super) fn apply_eliminator<'core>(
     head: Value<'core>,
     elim: Elim<'core>,
     opts: UnfoldOpts,
@@ -13,7 +43,7 @@ pub fn apply_eliminator<'core>(
     }
 }
 
-pub fn apply_spine<'core>(
+pub(super) fn apply_spine<'core>(
     head: Value<'core>,
     spine: Spine<'core>,
     opts: UnfoldOpts,
@@ -26,7 +56,7 @@ pub fn apply_spine<'core>(
 
 /// Apply `arg` to `callee`.
 /// Performs beta reduction if `callee` is a lambda.
-pub fn apply_arg<'core>(
+pub(super) fn apply_arg<'core>(
     callee: Value<'core>,
     arg: FunArg<Value<'core>>,
     opts: UnfoldOpts,
@@ -45,7 +75,7 @@ pub fn apply_arg<'core>(
 }
 
 /// Beta reduction: `(fun x => body)(arg)` -> `body[x := arg]`.
-pub fn beta_reduce<'core>(
+pub(super) fn beta_reduce<'core>(
     closure: Closure<'core>,
     arg: Value<'core>,
     opts: UnfoldOpts,
@@ -61,14 +91,18 @@ pub fn beta_reduce<'core>(
 
 /// Substitute meta variables in neutral spines with their values, and reduce
 /// further if possible.
-pub fn subst_metas<'core>(value: &Value<'core>, metas: &MetaValues<'core>) -> Value<'core> {
+fn subst_metas<'core>(
+    value: &Value<'core>,
+    opts: UnfoldOpts,
+    metas: &MetaValues<'core>,
+) -> Value<'core> {
     let mut value = value.clone();
     while let Value::Neutral(Head::MetaVar(var), spine) = value {
         match metas.get_absolute(var) {
             None => return Value::ERROR,
             Some(None) => return Value::Neutral(Head::MetaVar(var), spine),
             Some(Some(head)) => {
-                value = apply_spine(head.clone(), spine, UnfoldOpts::for_quote(), metas);
+                value = apply_spine(head.clone(), spine, opts, metas);
             }
         }
     }
@@ -104,7 +138,7 @@ mod tests {
         let var = AbsoluteVar::new(0);
         let value = Value::meta_var(var);
         let metas = UniqueEnv::default();
-        let result = subst_metas(&value, &metas);
+        let result = subst_metas(&value, UnfoldOpts::for_eval(), &metas);
         assert_eq!(result, Value::ERROR);
     }
 
@@ -122,13 +156,13 @@ mod tests {
             eco_vec![Elim::FunApp(FunArg::explicit(Value::Int(24)))],
         );
 
-        let result = subst_metas(&value, &metas);
+        let result = subst_metas(&value, UnfoldOpts::for_eval(), &metas);
         assert_eq!(result, (Value::Int(42)));
 
         // `?0(24)` in `[None]`
         metas.clear();
         metas.push(None);
-        let result = subst_metas(&value, &metas);
+        let result = subst_metas(&value, UnfoldOpts::for_eval(), &metas);
         assert_eq!(result, value);
     }
 
@@ -145,7 +179,7 @@ mod tests {
             FunParam::explicit(None, &Expr::INT),
             Closure::empty(&Expr::Int(42)),
         )));
-        let result = subst_metas(&value, &metas);
+        let result = subst_metas(&value, UnfoldOpts::for_eval(), &metas);
         assert_eq!(result, Value::Int(42));
     }
 }

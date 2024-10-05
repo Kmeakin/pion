@@ -9,11 +9,15 @@ pub mod elim;
 pub mod eval;
 pub mod quote;
 
+pub use self::convertible::ConvertibleEnv;
+pub use self::elim::ElimEnv;
+pub use self::eval::EvalEnv;
+pub use self::quote::QuoteEnv;
+
 pub type LocalValues<'core> = SharedEnv<Value<'core>>;
 pub type MetaValues<'core> = SliceEnv<Option<Value<'core>>>;
 
 pub type Type<'core> = Value<'core>;
-
 pub type Spine<'core> = EcoVec<Elim<'core>>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

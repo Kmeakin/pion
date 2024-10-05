@@ -2,7 +2,9 @@
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use env::ElabEnv;
-use pion_core::semantics::{Closure, UnfoldOpts, Value};
+use pion_core::semantics::{
+    Closure, ConvertibleEnv, ElimEnv, EvalEnv, QuoteEnv, UnfoldOpts, Value,
+};
 use pion_core::syntax::Expr;
 use text_size::TextRange;
 
@@ -47,38 +49,23 @@ impl<'core> Elaborator<'core> {
     }
 
     fn eval_expr(&mut self, expr: &Expr<'core>) -> Value<'core> {
-        pion_core::semantics::eval::eval(
-            expr,
+        EvalEnv::new(
             UnfoldOpts::for_eval(),
             &mut self.env.locals.values,
             &self.env.metas.values,
         )
+        .eval(expr)
     }
 
     fn quote_value(&self, value: &Value<'core>) -> Expr<'core> {
-        pion_core::semantics::quote::quote(
-            value,
-            self.bump,
-            self.env.locals.len(),
-            &self.env.metas.values,
-        )
+        QuoteEnv::new(self.env.locals.len(), &self.env.metas.values).quote(value, self.bump)
     }
 
     fn apply_closure(&self, closure: Closure<'core>, arg: Value<'core>) -> Value<'core> {
-        pion_core::semantics::elim::beta_reduce(
-            closure,
-            arg,
-            UnfoldOpts::for_eval(),
-            &self.env.metas.values,
-        )
+        ElimEnv::new(UnfoldOpts::for_eval(), &self.env.metas.values).beta_reduce(closure, arg)
     }
 
     fn convertible(&self, lhs: &Value<'core>, rhs: &Value<'core>) -> bool {
-        pion_core::semantics::convertible::convertible(
-            lhs,
-            rhs,
-            self.env.locals.len(),
-            &self.env.metas.values,
-        )
+        ConvertibleEnv::new(self.env.locals.len(), &self.env.metas.values).convertible(lhs, rhs)
     }
 }
