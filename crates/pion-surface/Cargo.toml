@@ -20,3 +20,7 @@ walkdir     = { workspace = true }
 [[bench]]
 harness = false
 name    = "lex"
+
+[[bench]]
+harness = false
+name    = "parse"
