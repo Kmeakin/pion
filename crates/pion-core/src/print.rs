@@ -1,8 +1,6 @@
 use core::fmt;
 use std::fmt::Write;
 
-use pion_interner::InternedStr;
-
 use crate::env::RelativeVar;
 use crate::semantics::{Elim, Head, Value};
 use crate::syntax::*;
@@ -268,7 +266,7 @@ fn fun_arg<W: Write, T>(
     Ok(())
 }
 
-fn pat(out: &mut impl Write, name: Option<InternedStr>) -> fmt::Result {
+fn pat(out: &mut impl Write, name: Name) -> fmt::Result {
     match name {
         None => write!(out, "_"),
         Some(name) => write!(out, "{name}"),

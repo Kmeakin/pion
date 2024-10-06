@@ -1,5 +1,6 @@
 use pion_core::env::{EnvLen, RelativeVar, SharedEnv, UniqueEnv};
 use pion_core::semantics::{Type, Value};
+use pion_core::syntax::Name;
 use pion_interner::InternedStr;
 use text_size::TextRange;
 
@@ -39,7 +40,7 @@ impl<'core> LocalEnv<'core> {
 
     pub fn push(
         &mut self,
-        name: Option<InternedStr<'core>>,
+        name: Name<'core>,
         info: LocalInfo,
         r#type: Type<'core>,
         value: Value<'core>,
@@ -50,17 +51,12 @@ impl<'core> LocalEnv<'core> {
         self.values.push(value);
     }
 
-    pub fn push_param(&mut self, name: Option<InternedStr<'core>>, r#type: Type<'core>) {
+    pub fn push_param(&mut self, name: Name<'core>, r#type: Type<'core>) {
         let value = Value::local_var(self.names.len().to_absolute());
         self.push(name, LocalInfo::Param, r#type, value);
     }
 
-    pub fn push_let(
-        &mut self,
-        name: Option<InternedStr<'core>>,
-        r#type: Type<'core>,
-        value: Value<'core>,
-    ) {
+    pub fn push_let(&mut self, name: Name<'core>, r#type: Type<'core>, value: Value<'core>) {
         self.push(name, LocalInfo::Let, r#type, value);
     }
 

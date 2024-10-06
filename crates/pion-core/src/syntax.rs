@@ -2,7 +2,6 @@ use pion_interner::InternedStr;
 
 use crate::env::{AbsoluteVar, RelativeVar};
 use crate::prim::PrimVar;
-use crate::semantics::LocalValues;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Expr<'core> {
@@ -20,6 +19,8 @@ pub enum Expr<'core> {
 
     Do(&'core [Stmt<'core>], Option<&'core Self>),
 }
+
+pub type Name<'core> = Option<InternedStr<'core>>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Lit<'core> {
@@ -75,36 +76,34 @@ pub enum Stmt<'core> {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct LetBinding<'core, T> {
-    pub name: Option<InternedStr<'core>>,
+    pub name: Name<'core>,
     pub r#type: T,
     pub init: T,
 }
 
 impl<'core, T> LetBinding<'core, T> {
-    pub const fn new(name: Option<InternedStr<'core>>, r#type: T, init: T) -> Self {
-        Self { name, r#type, init }
-    }
+    pub const fn new(name: Name<'core>, r#type: T, init: T) -> Self { Self { name, r#type, init } }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct FunParam<'core, T> {
     pub plicity: Plicity,
-    pub name: Option<InternedStr<'core>>,
+    pub name: Name<'core>,
     pub r#type: T,
 }
 
 impl<'core, T> FunParam<'core, T> {
-    pub const fn new(plicity: Plicity, name: Option<InternedStr<'core>>, r#type: T) -> Self {
+    pub const fn new(plicity: Plicity, name: Name<'core>, r#type: T) -> Self {
         Self {
             plicity,
             name,
             r#type,
         }
     }
-    pub const fn explicit(name: Option<InternedStr<'core>>, r#type: T) -> Self {
+    pub const fn explicit(name: Name<'core>, r#type: T) -> Self {
         Self::new(Plicity::Explicit, name, r#type)
     }
-    pub const fn implicit(name: Option<InternedStr<'core>>, r#type: T) -> Self {
+    pub const fn implicit(name: Name<'core>, r#type: T) -> Self {
         Self::new(Plicity::Implicit, name, r#type)
     }
 }
