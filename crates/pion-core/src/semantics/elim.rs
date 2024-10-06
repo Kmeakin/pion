@@ -90,7 +90,7 @@ pub(super) fn subst_metas<'core>(
 ) -> Value<'core> {
     let mut value = value.clone();
     while let Value::Neutral(Head::MetaVar(var), spine) = value {
-        match metas.get_absolute(var) {
+        match metas.get(var) {
             None => return Value::ERROR,
             Some(None) => return Value::Neutral(Head::MetaVar(var), spine),
             Some(Some(head)) => {
@@ -112,7 +112,7 @@ mod tests {
     #[test]
     fn test_apply_neutral() {
         // `_#0(42)``
-        let var = AbsoluteVar::new(0);
+        let var = LocalVar::new(None, DeBruijnLevel::new(0));
         let callee = Value::local_var(var);
         let arg = FunArg::explicit(Value::int(42));
         let opts = UnfoldOpts::for_eval();
@@ -127,7 +127,7 @@ mod tests {
 
     #[test]
     fn test_subst_metas_unbound() {
-        let var = AbsoluteVar::new(0);
+        let var = MetaVar::new(DeBruijnLevel::new(0));
         let value = Value::meta_var(var);
         let metas = UniqueEnv::default();
         let result = subst_metas(&value, UnfoldOpts::for_eval(), &metas);
@@ -145,7 +145,7 @@ mod tests {
         )));
 
         let value = Value::Neutral(
-            Head::MetaVar(AbsoluteVar::new(0)),
+            Head::MetaVar(MetaVar::new(DeBruijnLevel::new(0))),
             eco_vec![Elim::FunApp(FunArg::explicit(Value::int(24)))],
         );
 
@@ -163,9 +163,9 @@ mod tests {
     fn test_subst_metas_reduce() {
         // `?0(24)` in `[Some(fun x => 42)]`
         let int = Expr::int(42);
-        let var = AbsoluteVar::new(0);
+        let var = DeBruijnLevel::new(0);
         let value = Value::Neutral(
-            Head::MetaVar(var),
+            Head::MetaVar(MetaVar::new(var)),
             eco_vec![Elim::FunApp(FunArg::explicit(Value::int(24)))],
         );
         let mut metas = UniqueEnv::default();

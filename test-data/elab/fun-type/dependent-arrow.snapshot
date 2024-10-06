@@ -1,8 +1,8 @@
 exit status: 0
 
 stdout = """
-(forall(A : Type, _ : #var(0)) -> #var(1)) : Type
-(forall(A : Type, a : #var(0)) -> #var(1)) : Type
+(forall(A : Type, _ : A) -> A) : Type
+(forall(A : Type, a : #var(DeBruijnIndex(0))) -> A) : Type
 
 """
 

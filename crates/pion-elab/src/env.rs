@@ -1,6 +1,6 @@
-use pion_core::env::{EnvLen, RelativeVar, SharedEnv, UniqueEnv};
+use pion_core::env::{DeBruijnIndex, EnvLen, SharedEnv, UniqueEnv};
 use pion_core::semantics::{Type, Value};
-use pion_core::syntax::Name;
+use pion_core::syntax::{LocalVar, Name};
 use pion_interner::InternedStr;
 use text_size::TextRange;
 
@@ -30,12 +30,16 @@ pub enum LocalInfo {
 impl<'core> LocalEnv<'core> {
     pub fn len(&self) -> EnvLen { self.names.len() }
 
-    pub fn lookup(&self, name: InternedStr) -> Option<RelativeVar> {
-        self.names
-            .iter()
-            .rev()
-            .position(|item| *item == Some(name))
-            .map(RelativeVar::new)
+    pub fn lookup(
+        &self,
+        name: InternedStr<'core>,
+    ) -> Option<(LocalVar<'core, DeBruijnIndex>, &Type<'core>, &Value<'core>)> {
+        let index = self.names.find(&Some(name))?;
+        Some((
+            LocalVar::new(Some(name), index),
+            &self.types.get(index).unwrap(),
+            &self.values.get(index).unwrap(),
+        ))
     }
 
     pub fn push(
@@ -52,7 +56,7 @@ impl<'core> LocalEnv<'core> {
     }
 
     pub fn push_param(&mut self, name: Name<'core>, r#type: Type<'core>) {
-        let value = Value::local_var(self.names.len().to_absolute());
+        let value = Value::local_var(LocalVar::new(name, self.names.len().to_level()));
         self.push(name, LocalInfo::Param, r#type, value);
     }
 

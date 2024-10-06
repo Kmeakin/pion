@@ -4,7 +4,7 @@ use std::str::FromStr;
 use codespan_reporting::diagnostic::Diagnostic;
 use pion_core::prim::PrimVar;
 use pion_core::semantics::{Closure, Type, Value};
-use pion_core::syntax::{Expr, FunArg, FunParam, Plicity};
+use pion_core::syntax::{Expr, FunArg, FunParam, LocalVar, Plicity};
 use pion_surface::syntax::{self as surface, Located};
 use text_size::{TextRange, TextSize};
 
@@ -32,8 +32,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let name = self.bump.alloc_str(name);
                 let name = self.interner.intern(name);
 
-                if let Some(var) = self.env.locals.lookup(name) {
-                    let r#type = self.env.locals.types.get_relative(var).unwrap();
+                if let Some((var, r#type, _)) = self.env.locals.lookup(name) {
                     return (Expr::LocalVar(var), r#type.clone());
                 }
 
@@ -264,8 +263,10 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     let expected_param_type = self.eval_env().eval(expected_param.r#type);
                     let param = self.check_fun_param(param.as_ref(), &expected_param_type);
                     let body_expr = {
-                        let arg_value =
-                            Value::local_var(self.env.locals.values.len().to_absolute());
+                        let arg_value = Value::local_var(LocalVar::new(
+                            param.name,
+                            self.env.locals.values.len().to_level(),
+                        ));
                         self.env.locals.push_param(param.name, expected_param_type);
                         let expected = self
                             .elim_env()

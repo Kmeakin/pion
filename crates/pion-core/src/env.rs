@@ -5,37 +5,29 @@ use std::ops::{Add, Deref, DerefMut};
 
 use ecow::EcoVec;
 
-/// A de Bruijn index: counts number of binders from the binder that introduced
+/// A de Bruijn level: counts number of binders from the binder that introduced
 /// the variable to the start of the environment.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
-pub struct AbsoluteVar(usize);
+pub struct DeBruijnLevel(usize);
 
-impl AbsoluteVar {
+impl DeBruijnLevel {
     pub const fn new(value: usize) -> Self { Self(value) }
 }
 
-impl From<usize> for AbsoluteVar {
-    fn from(value: usize) -> Self { Self(value) }
-}
-
-impl From<AbsoluteVar> for usize {
-    fn from(var: AbsoluteVar) -> Self { var.0 }
-}
-
-impl fmt::Display for AbsoluteVar {
+impl fmt::Display for DeBruijnLevel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.0.fmt(f) }
 }
 
-impl AbsoluteVar {
+impl DeBruijnLevel {
     pub fn iter() -> impl Iterator<Item = Self> { (0..).map(Self) }
 }
 
 /// A de Bruijn index: counts number of binders from the variable to the binder
 /// that introduced it.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
-pub struct RelativeVar(usize);
+pub struct DeBruijnIndex(usize);
 
-impl RelativeVar {
+impl DeBruijnIndex {
     pub const fn new(value: usize) -> Self { Self(value) }
 
     #[must_use]
@@ -49,19 +41,11 @@ impl RelativeVar {
     pub fn iter_from(start: Self) -> impl Iterator<Item = Self> { (start.0..).map(Self) }
 }
 
-impl From<usize> for RelativeVar {
-    fn from(value: usize) -> Self { Self(value) }
-}
-
-impl From<RelativeVar> for usize {
-    fn from(var: RelativeVar) -> Self { var.0 }
-}
-
-impl fmt::Display for RelativeVar {
+impl fmt::Display for DeBruijnIndex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.0.fmt(f) }
 }
 
-impl Add<EnvLen> for RelativeVar {
+impl Add<EnvLen> for DeBruijnIndex {
     type Output = Self;
     fn add(self, rhs: EnvLen) -> Self::Output { Self(self.0 + rhs.0) }
 }
@@ -71,14 +55,6 @@ impl Add<EnvLen> for RelativeVar {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct EnvLen(usize);
 
-impl From<usize> for EnvLen {
-    fn from(value: usize) -> Self { Self(value) }
-}
-
-impl From<EnvLen> for usize {
-    fn from(var: EnvLen) -> Self { var.0 }
-}
-
 impl fmt::Display for EnvLen {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.0.fmt(f) }
 }
@@ -86,19 +62,9 @@ impl fmt::Display for EnvLen {
 impl EnvLen {
     pub const fn new(len: usize) -> Self { Self(len) }
 
-    /// Convert a `RelativeVar` to an `AbsoluteVar` in the current environment.
-    pub fn relative_to_absolute(self, relative: RelativeVar) -> Option<AbsoluteVar> {
-        Some(AbsoluteVar(self.0.checked_sub(relative.0)?.checked_sub(1)?))
-    }
-
-    /// Convert an `AbsoluteVar` to a `RelativeVar` in the current environment.
-    pub fn absolute_to_relative(self, absolute: AbsoluteVar) -> Option<RelativeVar> {
-        Some(RelativeVar(self.0.checked_sub(absolute.0)?.checked_sub(1)?))
-    }
-
-    /// Get an `AbsoluteVar` representing the most recent entry in the
+    /// Get a `DeBruijnLevel` representing the most recent entry in the
     /// environment.
-    pub const fn to_absolute(self) -> AbsoluteVar { AbsoluteVar(self.0) }
+    pub const fn to_level(self) -> DeBruijnLevel { DeBruijnLevel(self.0) }
 
     /// Get a new environment with one extra element.
     #[must_use]
@@ -126,6 +92,25 @@ impl EnvLen {
 impl Add for EnvLen {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output { Self(self.0 + rhs.0) }
+}
+
+pub trait DeBruijn: Copy + fmt::Debug {
+    fn to_level(self, len: EnvLen) -> Option<DeBruijnLevel>;
+    fn to_index(self, len: EnvLen) -> Option<DeBruijnIndex>;
+}
+
+impl DeBruijn for DeBruijnLevel {
+    fn to_level(self, _: EnvLen) -> Option<DeBruijnLevel> { Some(self) }
+    fn to_index(self, len: EnvLen) -> Option<DeBruijnIndex> {
+        Some(DeBruijnIndex(len.0.checked_sub(self.0)?.checked_sub(1)?))
+    }
+}
+
+impl DeBruijn for DeBruijnIndex {
+    fn to_level(self, len: EnvLen) -> Option<DeBruijnLevel> {
+        Some(DeBruijnLevel(len.0.checked_sub(self.0)?.checked_sub(1)?))
+    }
+    fn to_index(self, _: EnvLen) -> Option<DeBruijnIndex> { Some(self) }
 }
 
 /// An environment that is cheap to mutate, but expensive (*O(n)*) to clone.
@@ -211,28 +196,32 @@ impl<T> SliceEnv<T> {
 
     pub fn iter_mut(&mut self) -> std::slice::IterMut<T> { self.elems.iter_mut() }
 
-    pub fn get_absolute(&self, var: AbsoluteVar) -> Option<&T> { self.elems.get(var.0) }
+    pub fn get(&self, db: impl DeBruijn) -> Option<&T> {
+        self.elems.get(db.to_level(self.len())?.0)
+    }
 
-    pub fn get_relative(&self, var: RelativeVar) -> Option<&T> {
-        self.get_absolute(self.len().relative_to_absolute(var)?)
+    pub fn get_mut(&mut self, db: impl DeBruijn) -> Option<&mut T> {
+        self.elems.get_mut(db.to_level(self.len())?.0)
     }
 
     /// # Panics
-    /// Panics if `var` is out of bounds.
-    pub fn set_absolute(&mut self, var: AbsoluteVar, value: T) {
-        match self.elems.get_mut(var.0) {
-            None => panic!("set_absolute: index out of range: {var} > {}", self.len()),
+    /// Panics if `db` is out of bounds.
+    pub fn set(&mut self, db: impl DeBruijn, value: T) {
+        match self.get_mut(db) {
             Some(place) => *place = value,
+            None => panic!("set: index out of bounds: {db:?} > {}", self.len()),
         }
     }
 
-    /// # Panics
-    /// Panics if `var` is out of bounds.
-    pub fn set_relative(&mut self, var: RelativeVar, value: T) {
-        match self.len().relative_to_absolute(var) {
-            Some(var) => self.set_absolute(var, value),
-            None => panic!("set_relative: index out of bounds: {var} > {}", self.len()),
-        }
+    pub fn find(&self, elem: &T) -> Option<DeBruijnIndex>
+    where
+        T: PartialEq,
+    {
+        self.elems
+            .iter()
+            .rev()
+            .position(|it| it == elem)
+            .map(DeBruijnIndex::new)
     }
 }
 

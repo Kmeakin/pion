@@ -1,12 +1,12 @@
 exit status: 0
 
 stdout = """
-#var(0) : forall(Wrap : Type -> Type) -> (forall(A : ?1(#var(0)), _ : #var(0) -> #var(2)(#var(1))) -> Type) -> Type
+it : forall(Wrap : Type -> Type) -> (forall(A : ?1(#var(DeBruijnIndex(0))), _ : A -> Wrap(A)) -> Type) -> Type
 
 """
 
 stderr = """
-error: Type mismatch: expected `#var(0)(#var(1))`, found `#var(1)`
+error: Type mismatch: expected `Wrap(f)`, found `f`
   ┌─ test-data/elab/unification/infinite-solution.pion:5:36
   │
 5 │   = fun(Wrap, f) => f(_, fun(a) => a);

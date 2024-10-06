@@ -2,9 +2,9 @@
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use env::{ElabEnv, LocalInfo, MetaSource};
-use pion_core::env::AbsoluteVar;
+use pion_core::env::{DeBruijn, DeBruijnLevel};
 use pion_core::semantics::{ElimEnv, EvalEnv, QuoteEnv, Type, UnfoldOpts, Value};
-use pion_core::syntax::{Expr, FunArg, Plicity};
+use pion_core::syntax::{Expr, FunArg, LocalVar, MetaVar, Plicity};
 use text_size::TextRange;
 use unify::UnifyEnv;
 
@@ -54,16 +54,19 @@ impl<'core> Elaborator<'core> {
         source: MetaSource<'core>,
         r#type: Type<'core>,
     ) -> Expr<'core> {
-        let var = self.env.metas.len().to_absolute();
+        let var = self.env.metas.len().to_level();
         self.env.metas.push(source, r#type);
 
-        let mut expr = Expr::MetaVar(var);
-        for (var, info) in AbsoluteVar::iter().zip(self.env.locals.infos.iter()) {
+        let mut expr = Expr::MetaVar(MetaVar::new(var));
+        for ((level, info), name) in DeBruijnLevel::iter()
+            .zip(self.env.locals.infos.iter())
+            .zip(self.env.locals.names.iter())
+        {
             match info {
                 LocalInfo::Let => {}
                 LocalInfo::Param => {
-                    let var = self.env.locals.len().absolute_to_relative(var).unwrap();
-                    let arg = Expr::LocalVar(var);
+                    let index = level.to_index(self.env.locals.len()).unwrap();
+                    let arg = Expr::LocalVar(LocalVar::new(*name, index));
                     let (fun, arg) = self.bump.alloc((expr, arg));
                     let arg = FunArg::new(Plicity::Explicit, &*arg);
                     expr = Expr::FunApp(fun, arg);

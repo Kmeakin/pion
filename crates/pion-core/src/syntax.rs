@@ -1,6 +1,6 @@
 use pion_interner::InternedStr;
 
-use crate::env::{AbsoluteVar, RelativeVar};
+use crate::env::{DeBruijn, DeBruijnIndex, DeBruijnLevel, EnvLen};
 use crate::prim::PrimVar;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -10,14 +10,48 @@ pub enum Expr<'core> {
     Lit(Lit<'core>),
 
     PrimVar(PrimVar),
-    LocalVar(RelativeVar),
-    MetaVar(AbsoluteVar),
+    LocalVar(LocalVar<'core, DeBruijnIndex>),
+    MetaVar(MetaVar),
 
     FunType(FunParam<'core, &'core Self>, &'core Self),
     FunLit(FunParam<'core, &'core Self>, &'core Self),
     FunApp(&'core Self, FunArg<&'core Self>),
 
     Do(&'core [Stmt<'core>], Option<&'core Self>),
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct LocalVar<'core, V> {
+    pub name: Name<'core>,
+    pub de_bruijn: V,
+}
+
+impl<'core, V> LocalVar<'core, V> {
+    pub const fn new(name: Name<'core>, de_bruijn: V) -> Self { Self { name, de_bruijn } }
+}
+
+impl DeBruijn for LocalVar<'_, DeBruijnIndex> {
+    fn to_level(self, len: EnvLen) -> Option<DeBruijnLevel> { self.de_bruijn.to_level(len) }
+    fn to_index(self, len: EnvLen) -> Option<DeBruijnIndex> { self.de_bruijn.to_index(len) }
+}
+
+impl DeBruijn for LocalVar<'_, DeBruijnLevel> {
+    fn to_level(self, len: EnvLen) -> Option<DeBruijnLevel> { self.de_bruijn.to_level(len) }
+    fn to_index(self, len: EnvLen) -> Option<DeBruijnIndex> { self.de_bruijn.to_index(len) }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct MetaVar {
+    pub de_bruijn: DeBruijnLevel,
+}
+
+impl MetaVar {
+    pub const fn new(de_bruijn: DeBruijnLevel) -> Self { Self { de_bruijn } }
+}
+
+impl DeBruijn for MetaVar {
+    fn to_level(self, len: EnvLen) -> Option<DeBruijnLevel> { self.de_bruijn.to_level(len) }
+    fn to_index(self, len: EnvLen) -> Option<DeBruijnIndex> { self.de_bruijn.to_index(len) }
 }
 
 pub type Name<'core> = Option<InternedStr<'core>>;
@@ -45,10 +79,10 @@ impl<'core> Expr<'core> {
     pub const fn string(s: &'core str) -> Self { Self::Lit(Lit::String(s)) }
 
     /// Returns `true` if the term contains an occurrence of the local variable.
-    pub fn binds_local(&self, mut var: RelativeVar) -> bool {
+    pub fn binds_local(&self, mut var: DeBruijnIndex) -> bool {
         match self {
             Expr::Error | Expr::Lit(_) | Expr::PrimVar(_) | Expr::MetaVar(_) => false,
-            Expr::LocalVar(v) => *v == var,
+            Expr::LocalVar(v) => v.de_bruijn == var,
             Expr::FunType(param, body) | Expr::FunLit(param, body) => {
                 param.r#type.binds_local(var) || body.binds_local(var.succ())
             }

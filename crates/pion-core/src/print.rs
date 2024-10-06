@@ -1,7 +1,7 @@
 use core::fmt;
 use std::fmt::Write;
 
-use crate::env::RelativeVar;
+use crate::env::DeBruijnIndex;
 use crate::semantics::{Elim, Head, Value};
 use crate::syntax::*;
 
@@ -53,9 +53,12 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
         Expr::Error => write!(out, "#error")?,
         Expr::Lit(lit) => write!(out, "{lit}")?,
         Expr::PrimVar(var) => write!(out, "{var}")?,
-        Expr::LocalVar(var) => write!(out, "#var({var})")?,
-        Expr::MetaVar(var) => write!(out, "?{var}")?,
-        Expr::FunType(param, body) if !body.binds_local(RelativeVar::new(0)) => {
+        Expr::LocalVar(var) => match var.name {
+            Some(name) => write!(out, "{name}")?,
+            None => write!(out, "#var({:?})", var.de_bruijn)?,
+        },
+        Expr::MetaVar(var) => write!(out, "?{}", var.de_bruijn)?,
+        Expr::FunType(param, body) if !body.binds_local(DeBruijnIndex::new(0)) => {
             expr_prec(out, param.r#type, Prec::Call)?;
             write!(out, " -> ")?;
             expr_prec(out, body, Prec::MAX)?;
@@ -157,8 +160,11 @@ pub fn value_prec(out: &mut impl Write, value: &Value, prec: Prec) -> fmt::Resul
         Value::Neutral(head, spine) => {
             match head {
                 Head::Error => write!(out, "#error")?,
-                Head::LocalVar(var) => write!(out, "#var({var})")?,
-                Head::MetaVar(var) => write!(out, "?{var}")?,
+                Head::LocalVar(var) => match var.name {
+                    Some(name) => write!(out, "{name}")?,
+                    None => write!(out, "#var({:?})", var.de_bruijn)?,
+                },
+                Head::MetaVar(var) => write!(out, "?{}", var.de_bruijn)?,
                 Head::PrimVar(var) => write!(out, "{var}")?,
             }
 
@@ -310,7 +316,7 @@ mod tests {
     use expect_test::*;
 
     use super::*;
-    use crate::env::{AbsoluteVar, RelativeVar};
+    use crate::env::{DeBruijnIndex, DeBruijnLevel};
     use crate::semantics::Closure;
 
     #[track_caller]
@@ -352,13 +358,13 @@ mod tests {
 
     #[test]
     fn print_expr_local_var() {
-        let expr = Expr::LocalVar(RelativeVar::new(0));
-        assert_print_expr(&expr, expect!["#var(0)"]);
+        let expr = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
+        assert_print_expr(&expr, expect!["#var(DeBruijnIndex(0))"]);
     }
 
     #[test]
     fn print_expr_meta_var() {
-        let expr = Expr::MetaVar(AbsoluteVar::new(0));
+        let expr = Expr::MetaVar(MetaVar::new(DeBruijnLevel::new(0)));
         assert_print_expr(&expr, expect!["?0"]);
     }
 
@@ -400,11 +406,14 @@ mod tests {
             &const {
                 Expr::FunLit(
                     FunParam::explicit(None, &Expr::BOOL),
-                    &const { Expr::LocalVar(RelativeVar::new(0)) },
+                    &const { Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0))) },
                 )
             },
         );
-        assert_print_expr(&expr, expect!["fun(_ : Int, _ : Bool) => #var(0)"]);
+        assert_print_expr(
+            &expr,
+            expect!["fun(_ : Int, _ : Bool) => #var(DeBruijnIndex(0))"],
+        );
     }
 
     #[test]
@@ -425,12 +434,15 @@ mod tests {
             &const {
                 Expr::FunLit(
                     FunParam::explicit(None, &Expr::INT),
-                    &const { Expr::LocalVar(RelativeVar::new(0)) },
+                    &const { Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0))) },
                 )
             },
             FunArg::explicit(&int),
         );
-        assert_print_expr(&expr, expect!["(fun(_ : Int) => #var(0))(1)"]);
+        assert_print_expr(
+            &expr,
+            expect!["(fun(_ : Int) => #var(DeBruijnIndex(0)))(1)"],
+        );
     }
 
     #[test]
@@ -442,11 +454,11 @@ mod tests {
                     Stmt::Let(LetBinding::new(None, Expr::BOOL, Expr::bool(true))),
                 ]
             },
-            Some(&const { Expr::LocalVar(RelativeVar::new(0)) }),
+            Some(&const { Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0))) }),
         );
         assert_print_expr(
             &expr,
-            expect!["do {let _ : Int = 1; let _ : Bool = true; #var(0)}"],
+            expect!["do {let _ : Int = 1; let _ : Bool = true; #var(DeBruijnIndex(0))}"],
         );
     }
 
@@ -467,13 +479,13 @@ mod tests {
 
     #[test]
     fn print_value_local_var() {
-        let value = Value::local_var(AbsoluteVar::new(0));
-        assert_print_value(&value, expect!["#var(0)"]);
+        let value = Value::local_var(LocalVar::new(None, DeBruijnLevel::new(0)));
+        assert_print_value(&value, expect!["#var(DeBruijnLevel(0))"]);
     }
 
     #[test]
     fn print_value_meta_var() {
-        let value = Value::meta_var(AbsoluteVar::new(0));
+        let value = Value::meta_var(MetaVar::new(DeBruijnLevel::new(0)));
         assert_print_value(&value, expect!["?0"]);
     }
 
@@ -486,16 +498,16 @@ mod tests {
     #[test]
     fn print_value_neutral() {
         let value = Value::Neutral(
-            Head::LocalVar(AbsoluteVar::new(0)),
+            Head::LocalVar(LocalVar::new(None, DeBruijnLevel::new(0))),
             eco_vec![Elim::FunApp(FunArg::explicit(Value::int(1)))],
         );
-        assert_print_value(&value, expect!["#var(0)(1)"]);
+        assert_print_value(&value, expect!["#var(DeBruijnLevel(0))(1)"]);
 
         let value = Value::Neutral(
-            Head::LocalVar(AbsoluteVar::new(0)),
+            Head::LocalVar(LocalVar::new(None, DeBruijnLevel::new(0))),
             eco_vec![Elim::FunApp(FunArg::implicit(Value::int(1)))],
         );
-        assert_print_value(&value, expect!["#var(0)(@1)"]);
+        assert_print_value(&value, expect!["#var(DeBruijnLevel(0))(@1)"]);
     }
 
     #[test]

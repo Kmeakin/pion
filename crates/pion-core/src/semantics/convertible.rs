@@ -79,7 +79,7 @@ fn fun_eta_convertible<'core>(
     locals: EnvLen,
     metas: &MetaValues<'core>,
 ) -> bool {
-    let var = Value::local_var(locals.to_absolute());
+    let var = Value::local_var(LocalVar::new(lhs_param.name, locals.to_level()));
     let lhs = elim::apply_closure(
         lhs_body.clone(),
         var.clone(),
@@ -104,14 +104,14 @@ fn convertible_closure<'core>(
 ) -> bool {
     let lhs = elim::apply_closure(
         lhs.clone(),
-        Value::local_var(locals.to_absolute()),
+        Value::local_var(LocalVar::new(None, locals.to_level())),
         UnfoldOpts::for_quote(),
         metas,
     );
 
     let rhs = elim::apply_closure(
         rhs.clone(),
-        Value::local_var(locals.to_absolute()),
+        Value::local_var(LocalVar::new(None, locals.to_level())),
         UnfoldOpts::for_quote(),
         metas,
     );
@@ -121,7 +121,8 @@ fn convertible_closure<'core>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::env::{RelativeVar, UniqueEnv};
+    use crate::env::{DeBruijnIndex, UniqueEnv};
+    use crate::syntax::LocalVar;
 
     #[track_caller]
     fn assert_convertible<'core>(lhs: &Value<'core>, rhs: &Value<'core>) {
@@ -205,7 +206,9 @@ mod tests {
                 &const {
                     Expr::FunApp(
                         &Expr::BOOL,
-                        FunArg::explicit(&const { Expr::LocalVar(RelativeVar::new(0)) }),
+                        FunArg::explicit(
+                            &const { Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0))) },
+                        ),
                     )
                 },
             ),

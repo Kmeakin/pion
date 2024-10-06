@@ -1,7 +1,7 @@
 exit status: 0
 
 stdout = """
-(fun(f : Int -> Bool) => #var(0))(fun(a : Int) => false) : forall(_ : Int) -> Bool
+(fun(f : Int -> Bool) => f)(fun(a : Int) => false) : forall(_ : Int) -> Bool
 
 """
 

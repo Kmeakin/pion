@@ -1,8 +1,8 @@
 pub use ecow::{eco_vec, EcoVec};
 
-use crate::env::{AbsoluteVar, EnvLen, SharedEnv, SliceEnv};
+use crate::env::{DeBruijnLevel, EnvLen, SharedEnv, SliceEnv};
 use crate::prim::PrimVar;
-use crate::syntax::{Expr, FunArg, FunParam, Lit};
+use crate::syntax::{Expr, FunArg, FunParam, Lit, LocalVar, MetaVar};
 
 pub mod convertible;
 pub mod elim;
@@ -24,7 +24,7 @@ pub type Spine<'core> = EcoVec<Elim<'core>>;
 pub enum Value<'core> {
     Lit(Lit<'core>),
 
-    Neutral(Head, Spine<'core>),
+    Neutral(Head<'core>, Spine<'core>),
 
     FunType(FunParam<'core, &'core Expr<'core>>, Closure<'core>),
     FunLit(FunParam<'core, &'core Expr<'core>>, Closure<'core>),
@@ -41,13 +41,11 @@ impl<'core> Value<'core> {
     pub const UNIT_TYPE: Self = Self::prim_var(PrimVar::Unit);
     pub const UNIT_VALUE: Self = Self::prim_var(PrimVar::unit);
 
-    pub const fn local_var(var: AbsoluteVar) -> Self {
+    pub const fn local_var(var: LocalVar<'core, DeBruijnLevel>) -> Self {
         Self::Neutral(Head::LocalVar(var), EcoVec::new())
     }
 
-    pub const fn meta_var(var: AbsoluteVar) -> Self {
-        Self::Neutral(Head::MetaVar(var), EcoVec::new())
-    }
+    pub const fn meta_var(var: MetaVar) -> Self { Self::Neutral(Head::MetaVar(var), EcoVec::new()) }
 
     pub const fn prim_var(var: PrimVar) -> Self { Self::Neutral(Head::PrimVar(var), EcoVec::new()) }
 
@@ -58,10 +56,10 @@ impl<'core> Value<'core> {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Head {
+pub enum Head<'core> {
     Error,
-    LocalVar(AbsoluteVar),
-    MetaVar(AbsoluteVar),
+    LocalVar(LocalVar<'core, DeBruijnLevel>),
+    MetaVar(MetaVar),
     PrimVar(PrimVar),
 }
 
@@ -102,7 +100,7 @@ mod tests {
     #[cfg(target_pointer_width = "64")]
     fn type_sizes() {
         assert_eq!(size_of::<Value>(), 64);
-        assert_eq!(size_of::<Head>(), 16);
+        assert_eq!(size_of::<Head>(), 32);
         assert_eq!(size_of::<Elim>(), 72);
         assert_eq!(size_of::<Closure>(), 24);
     }

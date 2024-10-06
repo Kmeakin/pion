@@ -1,8 +1,8 @@
 exit status: 0
 
 stdout = """
-#var(0) : Int
-#var(0) ⇝ 5
+x : Int
+x ⇝ 5
 
 """
 

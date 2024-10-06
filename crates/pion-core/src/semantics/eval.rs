@@ -44,11 +44,11 @@ pub(super) fn eval<'core, 'env>(
 
         Expr::PrimVar(var) => Value::prim_var(*var),
 
-        Expr::LocalVar(var) => match locals.get_relative(*var) {
+        Expr::LocalVar(var) => match locals.get(*var) {
             None => Value::ERROR,
             Some(value) => value.clone(),
         },
-        Expr::MetaVar(var) => match metas.get_absolute(*var) {
+        Expr::MetaVar(var) => match metas.get(*var) {
             None => Value::ERROR,
             Some(Some(value)) => value.clone(),
             Some(None) => Value::meta_var(*var),
@@ -107,7 +107,7 @@ mod tests {
     use ecow::eco_vec;
 
     use super::*;
-    use crate::env::{RelativeVar, UniqueEnv};
+    use crate::env::{DeBruijnIndex, UniqueEnv};
     use crate::syntax::LetBinding;
 
     #[track_caller]
@@ -154,8 +154,8 @@ mod tests {
 
     #[test]
     fn eval_unbound_local_var() {
-        let var = RelativeVar::new(0);
-        assert_eval(Expr::LocalVar(var), Value::ERROR);
+        let var = DeBruijnIndex::new(0);
+        assert_eval(Expr::LocalVar(LocalVar::new(None, var)), Value::ERROR);
     }
 
     #[test]
@@ -168,21 +168,21 @@ mod tests {
         assert_eval_in_env(
             &mut locals,
             &metas,
-            Expr::MetaVar(AbsoluteVar::new(0)),
-            Value::meta_var(AbsoluteVar::new(0)),
+            Expr::MetaVar(MetaVar::new(DeBruijnLevel::new(0))),
+            Value::meta_var(MetaVar::new(DeBruijnLevel::new(0))),
         );
         assert_eval_in_env(
             &mut locals,
             &metas,
-            Expr::MetaVar(AbsoluteVar::new(1)),
+            Expr::MetaVar(MetaVar::new(DeBruijnLevel::new(1))),
             Value::int(42),
         );
     }
 
     #[test]
     fn eval_unbound_meta_var() {
-        let var = AbsoluteVar::new(0);
-        assert_eval(Expr::MetaVar(var), Value::ERROR);
+        let var = DeBruijnLevel::new(0);
+        assert_eval(Expr::MetaVar(MetaVar::new(var)), Value::ERROR);
     }
 
     #[test]
@@ -190,7 +190,7 @@ mod tests {
         // `do { let _ = 5; y }`
         let expr = Expr::Do(
             &const { [Stmt::Let(LetBinding::new(None, Expr::INT, Expr::int(5)))] },
-            Some(&const { Expr::LocalVar(RelativeVar::new(0)) }),
+            Some(&const { Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0))) }),
         );
 
         let expected = Value::int(5);
@@ -214,7 +214,7 @@ mod tests {
     #[test]
     fn eval_fun_lit() {
         // `fun (x: Int) => x`
-        let body = Expr::LocalVar(RelativeVar::new(0));
+        let body = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
         let expr = Expr::FunLit(FunParam::explicit(None, &Expr::INT), &body);
         let expected = Value::FunLit(
             FunParam::explicit(None, &Expr::INT),
@@ -227,7 +227,7 @@ mod tests {
     fn eval_fun_app_beta_reduce() {
         // `(fun (x : Int) => x)(42)`
         let int = Expr::int(42);
-        let body = Expr::LocalVar(RelativeVar::new(0));
+        let body = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
         let fun = Expr::FunLit(FunParam::explicit(None, &Expr::INT), &body);
         let expr = Expr::FunApp(&fun, FunArg::explicit(&int));
         let expected = Value::int(42);
@@ -260,7 +260,7 @@ mod tests {
     fn eval_fun_app_plicity_mismatch() {
         // `(fun (x : Int) => x)(@42)`
         let int = Expr::int(42);
-        let body = Expr::LocalVar(RelativeVar::new(0));
+        let body = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
         let fun = Expr::FunLit(FunParam::explicit(None, &Expr::INT), &body);
         let expr = Expr::FunApp(&fun, FunArg::implicit(&int));
         let expected = Value::ERROR;
@@ -278,7 +278,7 @@ mod tests {
                         &const {
                             Expr::FunLit(
                                 FunParam::explicit(None, &Expr::INT),
-                                &const { Expr::LocalVar(RelativeVar::new(1)) },
+                                &const { Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(1))) },
                             )
                         },
                         FunArg::explicit(&const { Expr::int(24) }),

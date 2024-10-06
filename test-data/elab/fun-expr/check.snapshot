@@ -1,8 +1,8 @@
 exit status: 0
 
 stdout = """
-(fun(x : Int) => #var(0)) : forall(_ : Int) -> Int
-(fun(x : Bool -> Int) => #var(0)) : forall(_ : Bool -> Int) -> Bool -> Int
+(fun(x : Int) => x) : forall(_ : Int) -> Int
+(fun(x : Bool -> Int) => x) : forall(_ : Bool -> Int) -> Bool -> Int
 
 """
 

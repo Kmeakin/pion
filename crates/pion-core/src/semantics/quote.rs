@@ -1,4 +1,5 @@
 use super::*;
+use crate::env::DeBruijn;
 
 #[derive(Debug, Copy, Clone)]
 pub struct QuoteEnv<'env, 'core> {
@@ -44,11 +45,11 @@ fn quote_head<'core>(
 ) -> Expr<'core> {
     match head {
         Head::Error => Expr::Error,
-        Head::LocalVar(var) => match locals.absolute_to_relative(var) {
-            Some(var) => Expr::LocalVar(var),
+        Head::LocalVar(var) => match var.to_index(locals) {
+            Some(de_bruijn) => Expr::LocalVar(LocalVar::new(None, de_bruijn)),
             None => Expr::Error,
         },
-        Head::MetaVar(var) => match metas.get_absolute(var) {
+        Head::MetaVar(var) => match metas.get(var) {
             Some(Some(value)) => quote(value, bump, locals, metas),
             Some(None) => Expr::MetaVar(var),
             None => Expr::Error,
@@ -87,7 +88,7 @@ fn quote_closure<'core>(
     locals: EnvLen,
     metas: &MetaValues<'core>,
 ) -> &'core Expr<'core> {
-    let arg = Value::local_var(locals.to_absolute());
+    let arg = Value::local_var(LocalVar::new(None, locals.to_level()));
     let body = elim::apply_closure(closure.clone(), arg, UnfoldOpts::for_quote(), metas);
     let body = quote(&body, bump, locals.succ(), metas);
     let body = bump.alloc(body);
@@ -100,7 +101,7 @@ mod tests {
     use ecow::eco_vec;
 
     use super::*;
-    use crate::env::{RelativeVar, UniqueEnv};
+    use crate::env::{DeBruijnIndex, UniqueEnv};
 
     #[track_caller]
     #[allow(clippy::needless_pass_by_value, reason = "It's only a test")]
@@ -136,13 +137,13 @@ mod tests {
 
     #[test]
     fn quote_unbound_local_var() {
-        let value = Value::local_var(AbsoluteVar::new(0));
+        let value = Value::local_var(LocalVar::new(None, DeBruijnLevel::new(0)));
         assert_quote(value, Expr::Error);
     }
 
     #[test]
     fn quote_unbound_meta_var() {
-        let value = Value::meta_var(AbsoluteVar::new(0));
+        let value = Value::meta_var(MetaVar::new(DeBruijnLevel::new(0)));
         assert_quote(value, Expr::Error);
     }
 
@@ -152,11 +153,16 @@ mod tests {
         let mut metas = UniqueEnv::new();
         metas.push(None);
 
-        let value = Value::meta_var(AbsoluteVar::new(0));
-        assert_quote_in_env(locals, &metas, value, Expr::MetaVar(AbsoluteVar::new(0)));
+        let value = Value::meta_var(MetaVar::new(DeBruijnLevel::new(0)));
+        assert_quote_in_env(
+            locals,
+            &metas,
+            value,
+            Expr::MetaVar(MetaVar::new(DeBruijnLevel::new(0))),
+        );
 
         metas.push(Some(Value::int(42)));
-        let value = Value::meta_var(AbsoluteVar::new(1));
+        let value = Value::meta_var(MetaVar::new(DeBruijnLevel::new(1)));
         assert_quote_in_env(locals, &metas, value, Expr::int(42));
     }
 
@@ -166,7 +172,7 @@ mod tests {
         let metas = UniqueEnv::new();
 
         let value = Value::Neutral(
-            Head::LocalVar(AbsoluteVar::new(0)),
+            Head::LocalVar(LocalVar::new(None, DeBruijnLevel::new(0))),
             eco_vec![Elim::FunApp(FunArg::explicit(Value::int(42)))],
         );
 
@@ -175,7 +181,7 @@ mod tests {
             &metas,
             value,
             Expr::FunApp(
-                &Expr::LocalVar(RelativeVar::new(0)),
+                &Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0))),
                 FunArg::explicit(&Expr::int(42)),
             ),
         );
@@ -183,7 +189,7 @@ mod tests {
 
     #[test]
     fn quote_fun_lit() {
-        let body = Expr::LocalVar(RelativeVar::new(0));
+        let body = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
         let fun = Value::FunLit(
             FunParam::explicit(None, &Expr::Error),
             Closure::empty(&body),
@@ -192,14 +198,14 @@ mod tests {
             fun,
             Expr::FunLit(
                 FunParam::explicit(None, &Expr::Error),
-                &Expr::LocalVar(RelativeVar::new(0)),
+                &Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0))),
             ),
         );
     }
 
     #[test]
     fn quote_fun_type() {
-        let body = Expr::LocalVar(RelativeVar::new(0));
+        let body = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
         let fun = Value::FunType(
             FunParam::explicit(None, &Expr::Error),
             Closure::empty(&body),
@@ -208,7 +214,7 @@ mod tests {
             fun,
             Expr::FunType(
                 FunParam::explicit(None, &Expr::Error),
-                &Expr::LocalVar(RelativeVar::new(0)),
+                &Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0))),
             ),
         );
     }

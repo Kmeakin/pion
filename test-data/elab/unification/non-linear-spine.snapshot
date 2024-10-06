@@ -1,7 +1,7 @@
 exit status: 0
 
 stdout = """
-#var(0) : forall(A : Type) -> (forall(_ : #var(0)) -> ?1(#var(1), #var(0))) -> #var(1)
+it : forall(A : Type) -> (forall(_ : A) -> ?1(A, #var(DeBruijnIndex(0)))) -> A
 
 """
 

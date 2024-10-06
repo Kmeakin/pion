@@ -1,7 +1,7 @@
 exit status: 0
 
 stdout = """
-do { (fun(x : Int) => #var(0)) } : forall(_ : Int) -> Int
+do { (fun(x : Int) => x) } : forall(_ : Int) -> Int
 do { #error } : Int
 #error : Int
 
