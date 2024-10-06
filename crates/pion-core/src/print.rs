@@ -19,10 +19,7 @@ impl Prec {
     pub fn of_expr(expr: &Expr) -> Self {
         match expr {
             Expr::Error
-            | Expr::Bool(_)
-            | Expr::Int(_)
-            | Expr::Char(_)
-            | Expr::String(_)
+            | Expr::Lit(_)
             | Expr::PrimVar(_)
             | Expr::LocalVar(_)
             | Expr::MetaVar(_)
@@ -34,7 +31,7 @@ impl Prec {
 
     pub fn of_value(value: &Value) -> Self {
         match value {
-            Value::Bool(_) | Value::Int(_) | Value::Char(_) | Value::String(_) => Self::Atom,
+            Value::Lit(_) => Self::Atom,
             Value::Neutral(..) => Self::Call,
             Value::FunType(..) | Value::FunLit(..) => Self::Fun,
         }
@@ -55,11 +52,7 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
     }
     match expr {
         Expr::Error => write!(out, "#error")?,
-        Expr::Bool(true) => write!(out, "true")?,
-        Expr::Bool(false) => write!(out, "false")?,
-        Expr::Int(n) => write!(out, "{n}")?,
-        Expr::Char(c) => write!(out, "{c:?}")?,
-        Expr::String(s) => write!(out, "{s:?}")?,
+        Expr::Lit(lit) => write!(out, "{lit}")?,
         Expr::PrimVar(var) => write!(out, "{var}")?,
         Expr::LocalVar(var) => write!(out, "#var({var})")?,
         Expr::MetaVar(var) => write!(out, "?{var}")?,
@@ -132,11 +125,7 @@ pub fn value_prec(out: &mut impl Write, value: &Value, prec: Prec) -> fmt::Resul
         write!(out, "(")?;
     }
     match value {
-        Value::Bool(true) => write!(out, "true")?,
-        Value::Bool(false) => write!(out, "false")?,
-        Value::Int(n) => write!(out, "{n}")?,
-        Value::Char(c) => write!(out, "{c:?}")?,
-        Value::String(s) => write!(out, "{s:?}")?,
+        Value::Lit(lit) => write!(out, "{lit}")?,
         Value::Neutral(head, spine) => {
             match head {
                 Head::Error => write!(out, "#error")?,
@@ -256,6 +245,18 @@ impl fmt::Display for Value<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { value_prec(f, self, Prec::MAX) }
 }
 
+impl fmt::Display for Lit<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Lit::Bool(true) => write!(f, "true"),
+            Lit::Bool(false) => write!(f, "false"),
+            Lit::Int(n) => write!(f, "{n}"),
+            Lit::Char(c) => write!(f, "{c:?}"),
+            Lit::String(s) => write!(f, "{s:?}"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use ecow::eco_vec;
@@ -283,18 +284,18 @@ mod tests {
 
     #[test]
     fn print_expr_bool() {
-        assert_print_expr(&Expr::Bool(true), expect!["true"]);
-        assert_print_expr(&Expr::Bool(false), expect!["false"]);
+        assert_print_expr(&Expr::bool(true), expect!["true"]);
+        assert_print_expr(&Expr::bool(false), expect!["false"]);
     }
 
     #[test]
-    fn print_expr_int() { assert_print_expr(&Expr::Int(42), expect!["42"]); }
+    fn print_expr_int() { assert_print_expr(&Expr::int(42), expect!["42"]); }
 
     #[test]
-    fn print_expr_char() { assert_print_expr(&Expr::Char('a'), expect!["'a'"]); }
+    fn print_expr_char() { assert_print_expr(&Expr::char('a'), expect!["'a'"]); }
 
     #[test]
-    fn print_expr_string() { assert_print_expr(&Expr::String("hello"), expect![[r#""hello""#]]); }
+    fn print_expr_string() { assert_print_expr(&Expr::string("hello"), expect![[r#""hello""#]]); }
 
     #[test]
     fn print_expr_prim_var() {
@@ -346,10 +347,11 @@ mod tests {
 
     #[test]
     fn print_expr_fun_lit() {
-        let expr = Expr::FunLit(FunParam::explicit(None, &Expr::INT), &Expr::Int(5));
+        let int = Expr::int(5);
+        let expr = Expr::FunLit(FunParam::explicit(None, &Expr::INT), &int);
         assert_print_expr(&expr, expect!["fun(_ : Int) => 5"]);
 
-        let expr = Expr::FunLit(FunParam::implicit(None, &Expr::INT), &Expr::Int(5));
+        let expr = Expr::FunLit(FunParam::implicit(None, &Expr::INT), &int);
         assert_print_expr(&expr, expect!["fun(@_ : Int) => 5"]);
 
         let expr = Expr::FunLit(
@@ -366,14 +368,16 @@ mod tests {
 
     #[test]
     fn print_expr_fun_app() {
-        let expr = Expr::FunApp(&Expr::INT, FunArg::explicit(&Expr::Int(1)));
+        let int = Expr::int(1);
+        let expr = Expr::FunApp(&Expr::INT, FunArg::explicit(&int));
         assert_print_expr(&expr, expect!["Int(1)"]);
 
-        let expr = Expr::FunApp(&Expr::INT, FunArg::implicit(&Expr::Int(1)));
+        let expr = Expr::FunApp(&Expr::INT, FunArg::implicit(&int));
         assert_print_expr(&expr, expect!["Int(@1)"]);
 
-        let fun = Expr::FunApp(&Expr::BOOL, FunArg::explicit(&Expr::Bool(true)));
-        let expr = Expr::FunApp(&fun, FunArg::explicit(&Expr::Int(1)));
+        let b = Expr::bool(true);
+        let fun = Expr::FunApp(&Expr::BOOL, FunArg::explicit(&b));
+        let expr = Expr::FunApp(&fun, FunArg::explicit(&int));
         assert_print_expr(&expr, expect!["Bool(true, 1)"]);
 
         let expr = Expr::FunApp(
@@ -383,7 +387,7 @@ mod tests {
                     &const { Expr::LocalVar(RelativeVar::new(0)) },
                 )
             },
-            FunArg::explicit(&Expr::Int(1)),
+            FunArg::explicit(&int),
         );
         assert_print_expr(&expr, expect!["(fun(_ : Int) => #var(0))(1)"]);
     }
@@ -393,8 +397,8 @@ mod tests {
         let expr = Expr::Do(
             &const {
                 [
-                    Stmt::Let(LetBinding::new(None, Expr::INT, Expr::Int(1))),
-                    Stmt::Let(LetBinding::new(None, Expr::BOOL, Expr::Bool(true))),
+                    Stmt::Let(LetBinding::new(None, Expr::INT, Expr::int(1))),
+                    Stmt::Let(LetBinding::new(None, Expr::BOOL, Expr::bool(true))),
                 ]
             },
             Some(&const { Expr::LocalVar(RelativeVar::new(0)) }),
@@ -407,18 +411,18 @@ mod tests {
 
     #[test]
     fn print_value_bool() {
-        assert_print_value(&Value::Bool(true), expect!["true"]);
-        assert_print_value(&Value::Bool(false), expect!["false"]);
+        assert_print_value(&Value::bool(true), expect!["true"]);
+        assert_print_value(&Value::bool(false), expect!["false"]);
     }
 
     #[test]
-    fn print_value_int() { assert_print_value(&Value::Int(42), expect!["42"]); }
+    fn print_value_int() { assert_print_value(&Value::int(42), expect!["42"]); }
 
     #[test]
-    fn print_value_char() { assert_print_value(&Value::Char('a'), expect!["'a'"]); }
+    fn print_value_char() { assert_print_value(&Value::char('a'), expect!["'a'"]); }
 
     #[test]
-    fn print_value_string() { assert_print_value(&Value::String("hello"), expect!["\"hello\""]); }
+    fn print_value_string() { assert_print_value(&Value::string("hello"), expect!["\"hello\""]); }
 
     #[test]
     fn print_value_local_var() {
@@ -442,44 +446,36 @@ mod tests {
     fn print_value_neutral() {
         let value = Value::Neutral(
             Head::LocalVar(AbsoluteVar::new(0)),
-            eco_vec![Elim::FunApp(FunArg::explicit(Value::Int(1)))],
+            eco_vec![Elim::FunApp(FunArg::explicit(Value::int(1)))],
         );
         assert_print_value(&value, expect!["#var(0)(1)"]);
 
         let value = Value::Neutral(
             Head::LocalVar(AbsoluteVar::new(0)),
-            eco_vec![Elim::FunApp(FunArg::implicit(Value::Int(1)))],
+            eco_vec![Elim::FunApp(FunArg::implicit(Value::int(1)))],
         );
         assert_print_value(&value, expect!["#var(0)(@1)"]);
     }
 
     #[test]
     fn print_value_fun_type() {
-        let value = Value::FunType(
-            FunParam::explicit(None, &Expr::Int(1)),
-            Closure::empty(&Expr::Bool(true)),
-        );
+        let b = Expr::bool(true);
+        let int = Expr::int(1);
+        let value = Value::FunType(FunParam::explicit(None, &int), Closure::empty(&b));
         assert_print_value(&value, expect!["forall(_ : 1) -> true"]);
 
-        let value = Value::FunType(
-            FunParam::implicit(None, &Expr::Int(1)),
-            Closure::empty(&Expr::Bool(true)),
-        );
+        let value = Value::FunType(FunParam::implicit(None, &int), Closure::empty(&b));
         assert_print_value(&value, expect!["forall(@_ : 1) -> true"]);
     }
 
     #[test]
     fn print_value_fun_lit() {
-        let value = Value::FunLit(
-            FunParam::explicit(None, &Expr::Int(1)),
-            Closure::empty(&Expr::Bool(true)),
-        );
+        let b = Expr::bool(true);
+        let int = Expr::int(1);
+        let value = Value::FunLit(FunParam::explicit(None, &int), Closure::empty(&b));
         assert_print_value(&value, expect!["fun(_ : 1) => true"]);
 
-        let value = Value::FunLit(
-            FunParam::implicit(None, &Expr::Int(1)),
-            Closure::empty(&Expr::Bool(true)),
-        );
+        let value = Value::FunLit(FunParam::implicit(None, &int), Closure::empty(&b));
         assert_print_value(&value, expect!["fun(@_ : 1) => true"]);
     }
 }

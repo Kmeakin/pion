@@ -40,10 +40,7 @@ pub(super) fn eval<'core, 'env>(
     match expr {
         Expr::Error => Value::ERROR,
 
-        Expr::Bool(b) => Value::Bool(*b),
-        Expr::Int(x) => Value::Int(*x),
-        Expr::Char(c) => Value::Char(*c),
-        Expr::String(s) => Value::String(s),
+        Expr::Lit(lit) => Value::Lit(*lit),
 
         Expr::PrimVar(var) => Value::prim_var(*var),
 
@@ -137,18 +134,18 @@ mod tests {
 
     #[test]
     fn eval_bool() {
-        assert_eval(Expr::Bool(true), Value::Bool(true));
-        assert_eval(Expr::Bool(false), Value::Bool(false));
+        assert_eval(Expr::bool(true), Value::bool(true));
+        assert_eval(Expr::bool(false), Value::bool(false));
     }
 
     #[test]
-    fn eval_int() { assert_eval(Expr::Int(42), Value::Int(42)); }
+    fn eval_int() { assert_eval(Expr::int(42), Value::int(42)); }
 
     #[test]
-    fn eval_char() { assert_eval(Expr::Char('a'), Value::Char('a')); }
+    fn eval_char() { assert_eval(Expr::char('a'), Value::char('a')); }
 
     #[test]
-    fn eval_string() { assert_eval(Expr::String("hello"), Value::String("hello")); }
+    fn eval_string() { assert_eval(Expr::string("hello"), Value::string("hello")); }
 
     #[test]
     fn eval_prim_var() {
@@ -166,7 +163,7 @@ mod tests {
         let mut locals = LocalValues::new();
         let mut metas = UniqueEnv::new();
         metas.push(None);
-        metas.push(Some(Value::Int(42)));
+        metas.push(Some(Value::int(42)));
 
         assert_eval_in_env(
             &mut locals,
@@ -178,7 +175,7 @@ mod tests {
             &mut locals,
             &metas,
             Expr::MetaVar(AbsoluteVar::new(1)),
-            Value::Int(42),
+            Value::int(42),
         );
     }
 
@@ -192,11 +189,11 @@ mod tests {
     fn eval_do() {
         // `do { let _ = 5; y }`
         let expr = Expr::Do(
-            &const { [Stmt::Let(LetBinding::new(None, Expr::INT, Expr::Int(5)))] },
+            &const { [Stmt::Let(LetBinding::new(None, Expr::INT, Expr::int(5)))] },
             Some(&const { Expr::LocalVar(RelativeVar::new(0)) }),
         );
 
-        let expected = Value::Int(5);
+        let expected = Value::int(5);
         assert_eval(expr, expected);
     }
 
@@ -229,20 +226,22 @@ mod tests {
     #[test]
     fn eval_fun_app_beta_reduce() {
         // `(fun (x : Int) => x)(42)`
+        let int = Expr::int(42);
         let body = Expr::LocalVar(RelativeVar::new(0));
         let fun = Expr::FunLit(FunParam::explicit(None, &Expr::INT), &body);
-        let expr = Expr::FunApp(&fun, FunArg::explicit(&Expr::Int(42)));
-        let expected = Value::Int(42);
+        let expr = Expr::FunApp(&fun, FunArg::explicit(&int));
+        let expected = Value::int(42);
         assert_eval(expr, expected);
     }
 
     #[test]
     fn eval_fun_app_stuck() {
         // `#error(42)`
-        let expr = Expr::FunApp(&Expr::Error, FunArg::explicit(&Expr::Int(42)));
+        let int = Expr::int(42);
+        let expr = Expr::FunApp(&Expr::Error, FunArg::explicit(&int));
         let expected = Value::Neutral(
             Head::Error,
-            eco_vec![Elim::FunApp(FunArg::explicit(Value::Int(42)))],
+            eco_vec![Elim::FunApp(FunArg::explicit(Value::int(42)))],
         );
         assert_eval(expr, expected);
     }
@@ -250,7 +249,9 @@ mod tests {
     #[test]
     fn eval_fun_app_not_fun() {
         // `42(24)`
-        let expr = Expr::FunApp(&Expr::Int(42), FunArg::explicit(&Expr::Int(24)));
+        let int42 = Expr::int(42);
+        let int24 = Expr::int(24);
+        let expr = Expr::FunApp(&int42, FunArg::explicit(&int24));
         let expected = Value::ERROR;
         assert_eval(expr, expected);
     }
@@ -258,9 +259,10 @@ mod tests {
     #[test]
     fn eval_fun_app_plicity_mismatch() {
         // `(fun (x : Int) => x)(@42)`
+        let int = Expr::int(42);
         let body = Expr::LocalVar(RelativeVar::new(0));
         let fun = Expr::FunLit(FunParam::explicit(None, &Expr::INT), &body);
-        let expr = Expr::FunApp(&fun, FunArg::implicit(&Expr::Int(42)));
+        let expr = Expr::FunApp(&fun, FunArg::implicit(&int));
         let expected = Value::ERROR;
         assert_eval(expr, expected);
     }
@@ -269,7 +271,7 @@ mod tests {
     fn eval_fun_app_closure() {
         // `do { let y = 5; (fun _ => y)(42) }`
         let expr = Expr::Do(
-            &const { [Stmt::Let(LetBinding::new(None, Expr::INT, Expr::Int(5)))] },
+            &const { [Stmt::Let(LetBinding::new(None, Expr::INT, Expr::int(5)))] },
             Some(
                 &const {
                     Expr::FunApp(
@@ -279,13 +281,13 @@ mod tests {
                                 &const { Expr::LocalVar(RelativeVar::new(1)) },
                             )
                         },
-                        FunArg::explicit(&Expr::Int(42)),
+                        FunArg::explicit(&const { Expr::int(24) }),
                     )
                 },
             ),
         );
 
-        let expected = Value::Int(5);
+        let expected = Value::int(5);
         assert_eval(expr, expected);
     }
 }

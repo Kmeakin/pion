@@ -48,17 +48,19 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
 
                 (Expr::Error, Type::ERROR)
             }
-            surface::Expr::Bool(b) => (Expr::Bool(*b), Type::BOOL),
-            surface::Expr::Number(text) => {
-                (self.synth_number(Located::new(expr.range, text)), Type::INT)
-            }
-            surface::Expr::Char(text) => {
-                (self.synth_char(Located::new(expr.range, text)), Type::CHAR)
-            }
-            surface::Expr::String(text) => (
-                self.synth_string(Located::new(expr.range, text)),
-                Type::STRING,
-            ),
+            surface::Expr::Lit(lit) => match lit {
+                surface::Lit::Bool(b) => (Expr::bool(*b), Type::BOOL),
+                surface::Lit::Int(text) => {
+                    (self.synth_int(Located::new(expr.range, text)), Type::INT)
+                }
+                surface::Lit::Char(text) => {
+                    (self.synth_char(Located::new(expr.range, text)), Type::CHAR)
+                }
+                surface::Lit::String(text) => (
+                    self.synth_string(Located::new(expr.range, text)),
+                    Type::STRING,
+                ),
+            },
             surface::Expr::Paren(expr) => self.synth_expr(*expr),
             surface::Expr::TypeAnnotation(expr, r#type) => {
                 let r#type = self.check_expr(*r#type, &Type::TYPE);
@@ -108,10 +110,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             surface::Expr::Error
             | surface::Expr::Var(_)
             | surface::Expr::Hole
-            | surface::Expr::Bool(_)
-            | surface::Expr::Number(_)
-            | surface::Expr::Char(_)
-            | surface::Expr::String(_)
+            | surface::Expr::Lit(_)
             | surface::Expr::TypeAnnotation(..)
             | surface::Expr::FunCall(..)
             | surface::Expr::FunType(..)
@@ -333,7 +332,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         (result_expr, result_type)
     }
 
-    fn synth_number(&mut self, text: Located<&str>) -> Expr<'core> {
+    fn synth_int(&mut self, text: Located<&str>) -> Expr<'core> {
         let range = text.range;
         let text = match text.data.contains('_') {
             false => Cow::Borrowed(text.data),
@@ -354,7 +353,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         };
 
         match res {
-            Ok(n) => Expr::Int(n),
+            Ok(n) => Expr::int(n),
             Err(error) => {
                 self.diagnostic(
                     range,
@@ -437,7 +436,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             return Expr::Error;
         }
 
-        Expr::String(self.bump.alloc_str(&text))
+        Expr::string(self.bump.alloc_str(&text))
     }
 
     #[allow(
@@ -449,6 +448,6 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
     fn synth_char(&mut self, text: Located<&str>) -> Expr<'core> {
         // TODO: Handle escape sequences, check string is terminated, check for invalid
         // characters
-        Expr::Char('\0')
+        Expr::char('\0')
     }
 }

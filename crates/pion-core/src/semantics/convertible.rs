@@ -22,10 +22,7 @@ fn convertible<'core>(
     metas: &MetaValues<'core>,
 ) -> bool {
     match (lhs, rhs) {
-        (Value::Bool(lhs), Value::Bool(rhs)) => lhs == rhs,
-        (Value::Int(lhs), Value::Int(rhs)) => lhs == rhs,
-        (Value::Char(lhs), Value::Char(rhs)) => lhs == rhs,
-        (Value::String(lhs), Value::String(rhs)) => lhs == rhs,
+        (Value::Lit(lhs), Value::Lit(rhs)) => lhs == rhs,
         (Value::Neutral(lhs_head, lhs_spine), Value::Neutral(rhs_head, rhs_spine)) => {
             convertible_neutral(
                 (*lhs_head, lhs_spine),
@@ -157,31 +154,31 @@ mod tests {
     }
 
     #[test]
-    fn test_not_convertible() { assert_not_convertible(&Value::Int(0), &Value::Bool(false)); }
+    fn test_not_convertible() { assert_not_convertible(&Value::int(0), &Value::bool(false)); }
 
     #[test]
     fn test_convertible_bools() {
-        assert_convertible(&Value::Bool(true), &Value::Bool(true));
-        assert_convertible(&Value::Bool(false), &Value::Bool(false));
-        assert_not_convertible(&Value::Bool(true), &Value::Bool(false));
+        assert_convertible(&Value::bool(true), &Value::bool(true));
+        assert_convertible(&Value::bool(false), &Value::bool(false));
+        assert_not_convertible(&Value::bool(true), &Value::bool(false));
     }
 
     #[test]
     fn test_convertible_ints() {
-        assert_convertible(&Value::Int(42), &Value::Int(42));
-        assert_not_convertible(&Value::Int(42), &Value::Int(43));
+        assert_convertible(&Value::int(42), &Value::int(42));
+        assert_not_convertible(&Value::int(42), &Value::int(43));
     }
 
     #[test]
     fn test_convertible_chars() {
-        assert_convertible(&Value::Char('a'), &Value::Char('a'));
-        assert_not_convertible(&Value::Char('a'), &Value::Char('b'));
+        assert_convertible(&Value::char('a'), &Value::char('a'));
+        assert_not_convertible(&Value::char('a'), &Value::char('b'));
     }
 
     #[test]
     fn test_convertible_strings() {
-        assert_convertible(&Value::String("hello"), &Value::String("hello"));
-        assert_not_convertible(&Value::String("hello"), &Value::String("world"));
+        assert_convertible(&Value::string("hello"), &Value::string("hello"));
+        assert_not_convertible(&Value::string("hello"), &Value::string("world"));
     }
 
     #[test]

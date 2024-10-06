@@ -37,10 +37,7 @@ pub enum Expr<'text, 'surface> {
     Error,
     Hole,
     Var(&'text str),
-    Bool(bool),
-    Number(&'text str),
-    Char(&'text str),
-    String(&'text str),
+    Lit(Lit<'text>),
     Paren(Located<&'surface Self>),
     TypeAnnotation(Located<&'surface Self>, Located<&'surface Self>),
     FunCall(
@@ -103,6 +100,14 @@ pub struct FunParam<'text, 'surface> {
     pub pat: Located<Pat<'text, 'surface>>,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum Lit<'text> {
+    Bool(bool),
+    Int(&'text str),
+    Char(&'text str),
+    String(&'text str),
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -118,5 +123,6 @@ mod tests {
         assert_eq!(size_of::<Pat>(), 40);
         assert_eq!(size_of::<FunArg>(), 48);
         assert_eq!(size_of::<FunParam>(), 48);
+        assert_eq!(size_of::<Lit>(), 24);
     }
 }

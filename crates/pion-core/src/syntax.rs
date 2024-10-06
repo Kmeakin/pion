@@ -7,10 +7,7 @@ use crate::prim::PrimVar;
 pub enum Expr<'core> {
     Error,
 
-    Bool(bool),
-    Int(u32),
-    Char(char),
-    String(&'core str),
+    Lit(Lit<'core>),
 
     PrimVar(PrimVar),
     LocalVar(RelativeVar),
@@ -23,7 +20,15 @@ pub enum Expr<'core> {
     Do(&'core [Stmt<'core>], Option<&'core Self>),
 }
 
-impl Expr<'_> {
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Lit<'core> {
+    Bool(bool),
+    Int(u32),
+    Char(char),
+    String(&'core str),
+}
+
+impl<'core> Expr<'core> {
     pub const TYPE: Self = Self::PrimVar(PrimVar::Type);
     pub const BOOL: Self = Self::PrimVar(PrimVar::Bool);
     pub const INT: Self = Self::PrimVar(PrimVar::Int);
@@ -31,6 +36,11 @@ impl Expr<'_> {
     pub const CHAR: Self = Self::PrimVar(PrimVar::Char);
     pub const UNIT_TYPE: Self = Self::PrimVar(PrimVar::Unit);
     pub const UNIT_VALUE: Self = Self::PrimVar(PrimVar::unit);
+
+    pub const fn bool(b: bool) -> Self { Self::Lit(Lit::Bool(b)) }
+    pub const fn int(n: u32) -> Self { Self::Lit(Lit::Int(n)) }
+    pub const fn char(c: char) -> Self { Self::Lit(Lit::Char(c)) }
+    pub const fn string(s: &'core str) -> Self { Self::Lit(Lit::String(s)) }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -112,6 +122,7 @@ mod tests {
     #[cfg(target_pointer_width = "64")]
     fn type_sizes() {
         assert_eq!(size_of::<Expr>(), 48);
+        assert_eq!(size_of::<Lit>(), 24);
         assert_eq!(size_of::<Stmt>(), 112);
         assert_eq!(size_of::<LetBinding<Expr>>(), 112);
         assert_eq!(size_of::<FunParam<Expr>>(), 72);

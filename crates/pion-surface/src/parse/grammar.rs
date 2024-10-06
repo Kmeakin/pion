@@ -115,11 +115,11 @@ where
                     Expr::Paren(expr),
                 )
             }
-            TokenKind::KwFalse => Located::new(token.range, Expr::Bool(false)),
-            TokenKind::KwTrue => Located::new(token.range, Expr::Bool(true)),
-            TokenKind::Int => Located::new(token.range, Expr::Number(token.text)),
-            TokenKind::Char => Located::new(token.range, Expr::Char(token.text)),
-            TokenKind::String => Located::new(token.range, Expr::String(token.text)),
+            TokenKind::KwFalse => Located::new(token.range, Expr::Lit(Lit::Bool(false))),
+            TokenKind::KwTrue => Located::new(token.range, Expr::Lit(Lit::Bool(true))),
+            TokenKind::Int => Located::new(token.range, Expr::Lit(Lit::Int(token.text))),
+            TokenKind::Char => Located::new(token.range, Expr::Lit(Lit::Char(token.text))),
+            TokenKind::String => Located::new(token.range, Expr::Lit(Lit::String(token.text))),
             TokenKind::Ident => Located::new(token.range, Expr::Var(token.text)),
             TokenKind::KwDo => self.do_expr(),
             TokenKind::KwForall => self.forall_expr(),

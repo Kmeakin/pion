@@ -116,10 +116,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
         let right = self.elim_env().subst_metas(right);
 
         match (left, right) {
-            (Value::Bool(left), Value::Bool(right)) if left == right => Ok(()),
-            (Value::Int(left), Value::Int(right)) if left == right => Ok(()),
-            (Value::Char(left), Value::Char(right)) if left == right => Ok(()),
-            (Value::String(left), Value::String(right)) if left == right => Ok(()),
+            (Value::Lit(left), Value::Lit(right)) if left == right => Ok(()),
 
             (Value::Neutral(left_head, left_spine), Value::Neutral(right_head, right_spine))
                 if left_head == right_head =>
@@ -285,10 +282,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
     ) -> Result<Expr<'core>, RenameError> {
         let value = self.elim_env().subst_metas(value);
         match value {
-            Value::Bool(b) => Ok(Expr::Bool(b)),
-            Value::Int(n) => Ok(Expr::Int(n)),
-            Value::Char(c) => Ok(Expr::Char(c)),
-            Value::String(s) => Ok(Expr::String(s)),
+            Value::Lit(lit) => Ok(Expr::Lit(lit)),
             Value::Neutral(head, spine) => {
                 let head = match head {
                     Head::Error => Expr::Error,
@@ -491,8 +485,8 @@ mod tests {
 
     #[test]
     fn unify_bool() {
-        let tt = Value::Bool(true);
-        let ff = Value::Bool(false);
+        let tt = Value::bool(true);
+        let ff = Value::bool(false);
 
         assert_unify(&tt, &tt, Ok(()));
         assert_unify(&ff, &ff, Ok(()));
@@ -502,8 +496,8 @@ mod tests {
 
     #[test]
     fn unify_int() {
-        let zero = Value::Int(0);
-        let one = Value::Int(1);
+        let zero = Value::int(0);
+        let one = Value::int(1);
 
         assert_unify(&zero, &zero, Ok(()));
         assert_unify(&one, &one, Ok(()));
@@ -513,8 +507,8 @@ mod tests {
 
     #[test]
     fn unify_char() {
-        let a = Value::Char('a');
-        let b = Value::Char('b');
+        let a = Value::char('a');
+        let b = Value::char('b');
 
         assert_unify(&a, &a, Ok(()));
         assert_unify(&b, &b, Ok(()));
@@ -524,8 +518,8 @@ mod tests {
 
     #[test]
     fn unify_string() {
-        let a = Value::String("a");
-        let b = Value::String("b");
+        let a = Value::string("a");
+        let b = Value::string("b");
 
         assert_unify(&a, &a, Ok(()));
         assert_unify(&b, &b, Ok(()));
@@ -589,11 +583,11 @@ mod tests {
 
         let lhs = Value::Neutral(
             Head::LocalVar(AbsoluteVar::new(0)),
-            eco_vec![Elim::FunApp(FunArg::explicit(Value::Int(42)))],
+            eco_vec![Elim::FunApp(FunArg::explicit(Value::int(42)))],
         );
         let rhs = Value::Neutral(
             Head::LocalVar(AbsoluteVar::new(0)),
-            eco_vec![Elim::FunApp(FunArg::explicit(Value::Int(24)))],
+            eco_vec![Elim::FunApp(FunArg::explicit(Value::int(24)))],
         );
         assert_unify(&lhs, &lhs, Ok(()));
         assert_unify(&rhs, &rhs, Ok(()));

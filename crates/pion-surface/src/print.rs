@@ -52,10 +52,7 @@ impl<W: Write> Printer<W> {
             Expr::Error => writeln!(self, "Expr::Error"),
             Expr::Hole => writeln!(self, "Expr::Hole"),
             Expr::Var(name) => writeln!(self, "Expr::Var({name:?})"),
-            Expr::Bool(b) => writeln!(self, "Expr::Bool({b:?})"),
-            Expr::Number(n) => writeln!(self, "Expr::Number({n:?})"),
-            Expr::Char(c) => writeln!(self, "Expr::Char({c:?})"),
-            Expr::String(s) => writeln!(self, "Expr::String({s:?})"),
+            Expr::Lit(lit) => writeln!(self, "Expr::Lit({lit:?})"),
             Expr::Paren(expr) => {
                 writeln!(self, "Expr::Paren")?;
                 self.with_indent(|this| this.located(expr))

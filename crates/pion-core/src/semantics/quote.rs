@@ -22,10 +22,7 @@ pub fn quote<'core>(
     metas: &MetaValues<'core>,
 ) -> Expr<'core> {
     match value {
-        Value::Bool(b) => Expr::Bool(*b),
-        Value::Int(x) => Expr::Int(*x),
-        Value::Char(c) => Expr::Char(*c),
-        Value::String(s) => Expr::String(s),
+        Value::Lit(lit) => Expr::Lit(*lit),
         Value::Neutral(head, spine) => quote_neutral(*head, spine, bump, locals, metas),
         Value::FunType(param, body) => {
             let body = quote_closure(body, bump, locals, metas);
@@ -123,18 +120,18 @@ mod tests {
 
     #[test]
     fn quote_bool() {
-        assert_quote(Value::Bool(true), Expr::Bool(true));
-        assert_quote(Value::Bool(false), Expr::Bool(false));
+        assert_quote(Value::bool(true), Expr::bool(true));
+        assert_quote(Value::bool(false), Expr::bool(false));
     }
 
     #[test]
-    fn quote_int() { assert_quote(Value::Int(10), Expr::Int(10)); }
+    fn quote_int() { assert_quote(Value::int(10), Expr::int(10)); }
 
     #[test]
-    fn quote_char() { assert_quote(Value::Char('a'), Expr::Char('a')); }
+    fn quote_char() { assert_quote(Value::char('a'), Expr::char('a')); }
 
     #[test]
-    fn quote_string() { assert_quote(Value::String("hello"), Expr::String("hello")); }
+    fn quote_string() { assert_quote(Value::string("hello"), Expr::string("hello")); }
 
     #[test]
     fn quote_unbound_local_var() {
@@ -157,9 +154,9 @@ mod tests {
         let value = Value::meta_var(AbsoluteVar::new(0));
         assert_quote_in_env(locals, &metas, value, Expr::MetaVar(AbsoluteVar::new(0)));
 
-        metas.push(Some(Value::Int(42)));
+        metas.push(Some(Value::int(42)));
         let value = Value::meta_var(AbsoluteVar::new(1));
-        assert_quote_in_env(locals, &metas, value, Expr::Int(42));
+        assert_quote_in_env(locals, &metas, value, Expr::int(42));
     }
 
     #[test]
@@ -169,7 +166,7 @@ mod tests {
 
         let value = Value::Neutral(
             Head::LocalVar(AbsoluteVar::new(0)),
-            eco_vec![Elim::FunApp(FunArg::explicit(Value::Int(42)))],
+            eco_vec![Elim::FunApp(FunArg::explicit(Value::int(42)))],
         );
 
         assert_quote_in_env(
@@ -178,7 +175,7 @@ mod tests {
             value,
             Expr::FunApp(
                 &Expr::LocalVar(RelativeVar::new(0)),
-                FunArg::explicit(&Expr::Int(42)),
+                FunArg::explicit(&Expr::int(42)),
             ),
         );
     }

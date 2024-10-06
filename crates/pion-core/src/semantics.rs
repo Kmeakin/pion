@@ -2,7 +2,7 @@ pub use ecow::{eco_vec, EcoVec};
 
 use crate::env::{AbsoluteVar, EnvLen, SharedEnv, SliceEnv};
 use crate::prim::PrimVar;
-use crate::syntax::{Expr, FunArg, FunParam};
+use crate::syntax::{Expr, FunArg, FunParam, Lit};
 
 pub mod convertible;
 pub mod elim;
@@ -22,10 +22,7 @@ pub type Spine<'core> = EcoVec<Elim<'core>>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value<'core> {
-    Bool(bool),
-    Int(u32),
-    Char(char),
-    String(&'core str),
+    Lit(Lit<'core>),
 
     Neutral(Head, Spine<'core>),
 
@@ -33,7 +30,7 @@ pub enum Value<'core> {
     FunLit(FunParam<'core, &'core Expr<'core>>, Closure<'core>),
 }
 
-impl Value<'_> {
+impl<'core> Value<'core> {
     pub const ERROR: Self = Self::Neutral(Head::Error, EcoVec::new());
 
     pub const TYPE: Self = Self::prim_var(PrimVar::Type);
@@ -53,6 +50,11 @@ impl Value<'_> {
     }
 
     pub const fn prim_var(var: PrimVar) -> Self { Self::Neutral(Head::PrimVar(var), EcoVec::new()) }
+
+    pub const fn bool(b: bool) -> Self { Self::Lit(Lit::Bool(b)) }
+    pub const fn int(n: u32) -> Self { Self::Lit(Lit::Int(n)) }
+    pub const fn char(c: char) -> Self { Self::Lit(Lit::Char(c)) }
+    pub const fn string(s: &'core str) -> Self { Self::Lit(Lit::String(s)) }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
