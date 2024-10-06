@@ -56,17 +56,41 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
         Expr::PrimVar(var) => write!(out, "{var}")?,
         Expr::LocalVar(var) => write!(out, "#var({var})")?,
         Expr::MetaVar(var) => write!(out, "?{var}")?,
-        Expr::FunType(param, body) => {
+        Expr::FunType(..) => {
+            let mut expr = expr;
+            let params = std::iter::from_fn(|| match expr {
+                Expr::FunType(param, body) => {
+                    expr = body;
+                    Some(param)
+                }
+                body => {
+                    expr = body;
+                    None
+                }
+            });
+
             write!(out, "forall(")?;
-            fun_param(out, param, |out, expr| expr_prec(out, expr, Prec::MAX))?;
+            fun_params(out, params, |out, expr| expr_prec(out, expr, Prec::MAX))?;
             write!(out, ") -> ")?;
-            expr_prec(out, body, Prec::MAX)?;
+            expr_prec(out, expr, Prec::MAX)?;
         }
-        Expr::FunLit(param, body) => {
+        Expr::FunLit(..) => {
+            let mut expr = expr;
+            let params = std::iter::from_fn(|| match expr {
+                Expr::FunLit(param, body) => {
+                    expr = body;
+                    Some(param)
+                }
+                body => {
+                    expr = body;
+                    None
+                }
+            });
+
             write!(out, "fun(")?;
-            fun_param(out, param, |out, expr| expr_prec(out, expr, Prec::MAX))?;
+            fun_params(out, params, |out, expr| expr_prec(out, expr, Prec::MAX))?;
             write!(out, ") => ")?;
-            expr_prec(out, body, Prec::MAX)?;
+            expr_prec(out, expr, Prec::MAX)?;
         }
         Expr::FunApp(..) => {
             let mut args = Vec::new();
@@ -160,6 +184,25 @@ pub fn value_prec(out: &mut impl Write, value: &Value, prec: Prec) -> fmt::Resul
     }
     if parens {
         write!(out, ")")?;
+    }
+
+    Ok(())
+}
+
+fn fun_params<'a, W: Write, T: 'a>(
+    out: &mut W,
+    params: impl IntoIterator<Item = &'a FunParam<'a, T>>,
+    on_expr: impl Copy + FnMut(&mut W, &T) -> fmt::Result,
+) -> fmt::Result {
+    let mut params = params.into_iter();
+
+    if let Some(first) = params.next() {
+        fun_param(out, first, on_expr)?;
+
+        for param in params {
+            write!(out, ", ")?;
+            fun_param(out, param, on_expr)?;
+        }
     }
 
     Ok(())
@@ -327,10 +370,7 @@ mod tests {
             FunParam::explicit(None, &Expr::INT),
             &const { Expr::FunType(FunParam::explicit(None, &Expr::BOOL), &Expr::CHAR) },
         );
-        assert_print_expr(
-            &expr,
-            expect!["forall(_ : Int) -> forall(_ : Bool) -> Char"],
-        );
+        assert_print_expr(&expr, expect!["forall(_ : Int, _ : Bool) -> Char"]);
 
         let expr = Expr::FunType(
             FunParam::explicit(
@@ -363,7 +403,7 @@ mod tests {
                 )
             },
         );
-        assert_print_expr(&expr, expect!["fun(_ : Int) => fun(_ : Bool) => #var(0)"]);
+        assert_print_expr(&expr, expect!["fun(_ : Int, _ : Bool) => #var(0)"]);
     }
 
     #[test]

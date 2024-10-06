@@ -1,7 +1,7 @@
 exit status: 0
 
 stdout = """
-#var(0) : forall(Wrap : forall(_ : Type) -> Type) -> forall(f : forall(A : ?1(#var(0))) -> forall(_ : forall(_ : #var(0)) -> #var(2)(#var(1))) -> Type) -> Type
+#var(0) : forall(Wrap : forall(_ : Type) -> Type) -> forall(f : forall(A : ?1(#var(0)), _ : forall(_ : #var(0)) -> #var(2)(#var(1))) -> Type) -> Type
 
 """
 

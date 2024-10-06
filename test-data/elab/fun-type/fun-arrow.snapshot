@@ -2,7 +2,7 @@ exit status: 0
 
 stdout = """
 (forall(_ : Int) -> Bool) : Type
-(forall(_ : Int) -> forall(_ : Bool) -> Char) : Type
+(forall(_ : Int, _ : Bool) -> Char) : Type
 
 """
 
