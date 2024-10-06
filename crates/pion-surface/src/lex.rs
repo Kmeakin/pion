@@ -311,3 +311,10 @@ pub fn lex(mut source: &str) -> impl Clone + Iterator<Item = Token<'_>> + '_ {
         Some(Token::new(text, kind, range))
     })
 }
+
+#[test]
+#[cfg(target_pointer_width = "64")]
+fn type_sizes() {
+    assert_eq!(size_of::<TokenKind>(), 4);
+    assert_eq!(size_of::<Token>(), 32);
+}

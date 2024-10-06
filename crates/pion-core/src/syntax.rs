@@ -103,3 +103,18 @@ impl Plicity {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[cfg(target_pointer_width = "64")]
+    fn type_sizes() {
+        assert_eq!(size_of::<Expr>(), 48);
+        assert_eq!(size_of::<Stmt>(), 112);
+        assert_eq!(size_of::<LetBinding<Expr>>(), 112);
+        assert_eq!(size_of::<FunParam<Expr>>(), 72);
+        assert_eq!(size_of::<FunArg<Expr>>(), 56);
+    }
+}

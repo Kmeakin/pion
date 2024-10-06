@@ -102,3 +102,21 @@ pub struct FunArg<'text, 'surface> {
 pub struct FunParam<'text, 'surface> {
     pub pat: Located<Pat<'text, 'surface>>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[cfg(target_pointer_width = "64")]
+    fn type_sizes() {
+        assert_eq!(size_of::<File>(), 16);
+        assert_eq!(size_of::<Expr>(), 40);
+        assert_eq!(size_of::<Stmt>(), 104);
+        assert_eq!(size_of::<Command>(), 24);
+        assert_eq!(size_of::<LetBinding>(), 96);
+        assert_eq!(size_of::<Pat>(), 40);
+        assert_eq!(size_of::<FunArg>(), 48);
+        assert_eq!(size_of::<FunParam>(), 48);
+    }
+}

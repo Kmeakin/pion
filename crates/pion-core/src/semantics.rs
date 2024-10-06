@@ -91,3 +91,17 @@ impl UnfoldOpts {
     pub const fn for_eval() -> Self { Self { unfold_fix: true } }
     pub const fn for_quote() -> Self { Self { unfold_fix: false } }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[cfg(target_pointer_width = "64")]
+    fn type_sizes() {
+        assert_eq!(size_of::<Value>(), 64);
+        assert_eq!(size_of::<Head>(), 16);
+        assert_eq!(size_of::<Elim>(), 72);
+        assert_eq!(size_of::<Closure>(), 24);
+    }
+}
