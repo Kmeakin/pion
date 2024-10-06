@@ -2,6 +2,7 @@ use pion_interner::InternedStr;
 
 use crate::env::{AbsoluteVar, RelativeVar};
 use crate::prim::PrimVar;
+use crate::semantics::LocalValues;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Expr<'core> {
@@ -41,6 +42,29 @@ impl<'core> Expr<'core> {
     pub const fn int(n: u32) -> Self { Self::Lit(Lit::Int(n)) }
     pub const fn char(c: char) -> Self { Self::Lit(Lit::Char(c)) }
     pub const fn string(s: &'core str) -> Self { Self::Lit(Lit::String(s)) }
+
+    /// Returns `true` if the term contains an occurrence of the local variable.
+    pub fn binds_local(&self, mut var: RelativeVar) -> bool {
+        match self {
+            Expr::Error | Expr::Lit(_) | Expr::PrimVar(_) | Expr::MetaVar(_) => false,
+            Expr::LocalVar(v) => *v == var,
+            Expr::FunType(param, body) | Expr::FunLit(param, body) => {
+                param.r#type.binds_local(var) || body.binds_local(var.succ())
+            }
+            Expr::FunApp(fun, arg) => fun.binds_local(var) || arg.expr.binds_local(var),
+            Expr::Do(stmts, expr) => {
+                stmts.iter().any(|stmt| match stmt {
+                    Stmt::Expr(expr) => expr.binds_local(var),
+                    Stmt::Let(binding) => {
+                        let result =
+                            binding.r#type.binds_local(var) || binding.init.binds_local(var);
+                        var = var.succ();
+                        result
+                    }
+                }) || expr.map_or(false, |expr| expr.binds_local(var))
+            }
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

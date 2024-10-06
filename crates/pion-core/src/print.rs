@@ -3,6 +3,7 @@ use std::fmt::Write;
 
 use pion_interner::InternedStr;
 
+use crate::env::RelativeVar;
 use crate::semantics::{Elim, Head, Value};
 use crate::syntax::*;
 
@@ -56,6 +57,11 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
         Expr::PrimVar(var) => write!(out, "{var}")?,
         Expr::LocalVar(var) => write!(out, "#var({var})")?,
         Expr::MetaVar(var) => write!(out, "?{var}")?,
+        Expr::FunType(param, body) if !body.binds_local(RelativeVar::new(0)) => {
+            expr_prec(out, param.r#type, Prec::Call)?;
+            write!(out, " -> ")?;
+            expr_prec(out, body, Prec::MAX)?;
+        }
         Expr::FunType(..) => {
             let mut expr = expr;
             let params = std::iter::from_fn(|| match expr {
@@ -361,16 +367,16 @@ mod tests {
     #[test]
     fn print_expr_fun_type() {
         let expr = Expr::FunType(FunParam::explicit(None, &Expr::INT), &Expr::BOOL);
-        assert_print_expr(&expr, expect!["forall(_ : Int) -> Bool"]);
+        assert_print_expr(&expr, expect!["Int -> Bool"]);
 
         let expr = Expr::FunType(FunParam::implicit(None, &Expr::INT), &Expr::BOOL);
-        assert_print_expr(&expr, expect!["forall(@_ : Int) -> Bool"]);
+        assert_print_expr(&expr, expect!["Int -> Bool"]);
 
         let expr = Expr::FunType(
             FunParam::explicit(None, &Expr::INT),
             &const { Expr::FunType(FunParam::explicit(None, &Expr::BOOL), &Expr::CHAR) },
         );
-        assert_print_expr(&expr, expect!["forall(_ : Int, _ : Bool) -> Char"]);
+        assert_print_expr(&expr, expect!["Int -> Bool -> Char"]);
 
         let expr = Expr::FunType(
             FunParam::explicit(
@@ -379,10 +385,7 @@ mod tests {
             ),
             &Expr::CHAR,
         );
-        assert_print_expr(
-            &expr,
-            expect!["forall(_ : forall(_ : Int) -> Bool) -> Char"],
-        );
+        assert_print_expr(&expr, expect!["(Int -> Bool) -> Char"]);
     }
 
     #[test]

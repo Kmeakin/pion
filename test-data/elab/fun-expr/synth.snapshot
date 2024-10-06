@@ -3,7 +3,7 @@ exit status: 0
 stdout = """
 false : Bool
 (fun(x : Int) => #var(0)) : forall(x : Int) -> Int
-(fun(x : Int, y : Bool) => #var(1)) : forall(x : Int) -> forall(y : Bool) -> Int
+(fun(x : Int, y : Bool) => #var(1)) : forall(x : Int) -> Bool -> Int
 
 """
 

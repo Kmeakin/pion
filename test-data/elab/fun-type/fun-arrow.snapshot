@@ -1,8 +1,8 @@
 exit status: 0
 
 stdout = """
-(forall(_ : Int) -> Bool) : Type
-(forall(_ : Int, _ : Bool) -> Char) : Type
+(Int -> Bool) : Type
+(Int -> Bool -> Char) : Type
 
 """
 

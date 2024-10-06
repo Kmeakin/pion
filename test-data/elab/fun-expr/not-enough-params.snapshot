@@ -1,7 +1,7 @@
 exit status: 0
 
 stdout = """
-(fun(x : Int) => #error) : forall(_ : Int) -> forall(_ : Bool) -> Char
+(fun(x : Int) => #error) : forall(_ : Int) -> Bool -> Char
 
 """
 
