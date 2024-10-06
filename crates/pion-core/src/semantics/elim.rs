@@ -11,16 +11,12 @@ pub struct ElimEnv<'env, 'core> {
 impl<'env, 'core> ElimEnv<'env, 'core> {
     pub fn new(opts: UnfoldOpts, metas: &'env MetaValues<'core>) -> Self { Self { opts, metas } }
 
-    pub fn apply_eliminator(self, head: Value<'core>, elim: Elim<'core>) -> Value<'core> {
-        apply_eliminator(head, elim, self.opts, self.metas)
+    pub fn fun_app(self, callee: Value<'core>, arg: FunArg<Value<'core>>) -> Value<'core> {
+        fun_app(callee, arg, self.opts, self.metas)
     }
 
-    pub fn apply_arg(self, callee: Value<'core>, arg: FunArg<Value<'core>>) -> Value<'core> {
-        apply_arg(callee, arg, self.opts, self.metas)
-    }
-
-    pub fn beta_reduce(self, closure: Closure<'core>, arg: Value<'core>) -> Value<'core> {
-        beta_reduce(closure, arg, self.opts, self.metas)
+    pub fn apply_closure(self, closure: Closure<'core>, arg: Value<'core>) -> Value<'core> {
+        apply_closure(closure, arg, self.opts, self.metas)
     }
 
     pub fn subst_metas(self, value: &Value<'core>) -> Value<'core> {
@@ -28,14 +24,14 @@ impl<'env, 'core> ElimEnv<'env, 'core> {
     }
 }
 
-pub(super) fn apply_eliminator<'core>(
+fn apply_eliminator<'core>(
     head: Value<'core>,
     elim: Elim<'core>,
     opts: UnfoldOpts,
     metas: &MetaValues<'core>,
 ) -> Value<'core> {
     match elim {
-        Elim::FunApp(arg) => apply_arg(head, arg, opts, metas),
+        Elim::FunApp(arg) => fun_app(head, arg, opts, metas),
     }
 }
 
@@ -52,7 +48,7 @@ fn apply_spine<'core>(
 
 /// Apply `arg` to `callee`.
 /// Performs beta reduction if `callee` is a lambda.
-pub(super) fn apply_arg<'core>(
+pub(super) fn fun_app<'core>(
     callee: Value<'core>,
     arg: FunArg<Value<'core>>,
     opts: UnfoldOpts,
@@ -64,14 +60,14 @@ pub(super) fn apply_arg<'core>(
             Value::Neutral(head, spine)
         }
         Value::FunLit(param, body) if param.plicity == arg.plicity => {
-            beta_reduce(body, arg.expr, opts, metas)
+            apply_closure(body, arg.expr, opts, metas)
         }
         _ => Value::ERROR,
     }
 }
 
 /// Beta reduction: `(fun x => body)(arg)` -> `body[x := arg]`.
-pub(super) fn beta_reduce<'core>(
+pub(super) fn apply_closure<'core>(
     closure: Closure<'core>,
     arg: Value<'core>,
     opts: UnfoldOpts,
@@ -87,7 +83,7 @@ pub(super) fn beta_reduce<'core>(
 
 /// Substitute meta variables in neutral spines with their values, and reduce
 /// further if possible.
-fn subst_metas<'core>(
+pub(super) fn subst_metas<'core>(
     value: &Value<'core>,
     opts: UnfoldOpts,
     metas: &MetaValues<'core>,
@@ -121,7 +117,7 @@ mod tests {
         let arg = FunArg::explicit(Value::int(42));
         let opts = UnfoldOpts::for_eval();
         let meta_values = UniqueEnv::default();
-        let result = apply_arg(callee, arg.clone(), opts, &meta_values);
+        let result = fun_app(callee, arg.clone(), opts, &meta_values);
 
         assert_eq!(
             result,

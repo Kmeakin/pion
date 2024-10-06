@@ -269,7 +269,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                         self.env.locals.push_param(param.name, expected_param_type);
                         let expected = self
                             .elim_env()
-                            .beta_reduce(expected_body.clone(), arg_value);
+                            .apply_closure(expected_body.clone(), arg_value);
                         let body_expr = self.check_fun_expr(rest, body, &expected);
                         self.env.locals.pop();
                         body_expr
@@ -306,7 +306,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     let arg_value = self.eval_env().eval(&arg_expr);
                     let (expr, arg_expr) = self.bump.alloc((result_expr, arg_expr));
                     result_expr = Expr::FunApp(&*expr, FunArg::new(param.plicity, &*arg_expr));
-                    result_type = self.elim_env().beta_reduce(body, arg_value);
+                    result_type = self.elim_env().apply_closure(body, arg_value);
                 }
                 _ => {
                     let diagnostic = match arity {

@@ -143,10 +143,10 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                 let left_var = Value::local_var(self.locals.to_absolute());
                 let right_var = Value::local_var(self.locals.to_absolute());
 
-                let left_value = self.elim_env().beta_reduce(closure, left_var);
+                let left_value = self.elim_env().apply_closure(closure, left_var);
                 let right_value = self
                     .elim_env()
-                    .apply_arg(value, FunArg::new(param.plicity, right_var));
+                    .fun_app(value, FunArg::new(param.plicity, right_var));
 
                 self.locals.push();
                 let result = self.unify(&left_value, &right_value);
@@ -196,8 +196,8 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
         let left_var = Value::local_var(self.locals.to_absolute());
         let right_var = Value::local_var(self.locals.to_absolute());
 
-        let left_value = self.elim_env().beta_reduce(left_closure, left_var);
-        let right_value = self.elim_env().beta_reduce(right_closure, right_var);
+        let left_value = self.elim_env().apply_closure(left_closure, left_var);
+        let right_value = self.elim_env().apply_closure(right_closure, right_var);
 
         self.locals.push();
         let result = self.unify(&left_value, &right_value);
@@ -323,7 +323,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
         closure: Closure<'core>,
     ) -> Result<&'core Expr<'core>, RenameError> {
         let var = self.renaming.next_local_var();
-        let body = self.elim_env().beta_reduce(closure, var);
+        let body = self.elim_env().apply_closure(closure, var);
 
         self.renaming.push_local();
         let body = self.rename(meta_var, &body);

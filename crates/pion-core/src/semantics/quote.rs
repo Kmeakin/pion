@@ -21,16 +21,17 @@ pub fn quote<'core>(
     locals: EnvLen,
     metas: &MetaValues<'core>,
 ) -> Expr<'core> {
+    let value = elim::subst_metas(value, UnfoldOpts::for_quote(), metas);
     match value {
-        Value::Lit(lit) => Expr::Lit(*lit),
-        Value::Neutral(head, spine) => quote_neutral(*head, spine, bump, locals, metas),
+        Value::Lit(lit) => Expr::Lit(lit),
+        Value::Neutral(head, spine) => quote_neutral(head, &spine, bump, locals, metas),
         Value::FunType(param, body) => {
-            let body = quote_closure(body, bump, locals, metas);
-            Expr::FunType(*param, body)
+            let body = quote_closure(&body, bump, locals, metas);
+            Expr::FunType(param, body)
         }
         Value::FunLit(param, body) => {
-            let body = quote_closure(body, bump, locals, metas);
-            Expr::FunLit(*param, body)
+            let body = quote_closure(&body, bump, locals, metas);
+            Expr::FunLit(param, body)
         }
     }
 }
@@ -87,7 +88,7 @@ fn quote_closure<'core>(
     metas: &MetaValues<'core>,
 ) -> &'core Expr<'core> {
     let arg = Value::local_var(locals.to_absolute());
-    let body = elim::beta_reduce(closure.clone(), arg, UnfoldOpts::for_quote(), metas);
+    let body = elim::apply_closure(closure.clone(), arg, UnfoldOpts::for_quote(), metas);
     let body = quote(&body, bump, locals.succ(), metas);
     let body = bump.alloc(body);
     body

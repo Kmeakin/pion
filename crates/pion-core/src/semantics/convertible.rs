@@ -33,12 +33,8 @@ fn convertible<'core>(
         }
         (Value::FunType(lhs_param, lhs_body), Value::FunType(rhs_param, rhs_body))
         | (Value::FunLit(lhs_param, lhs_body), Value::FunLit(rhs_param, rhs_body)) => {
-            convertible_funlike(
-                &(*lhs_param, lhs_body),
-                &(*rhs_param, rhs_body),
-                locals,
-                metas,
-            )
+            lhs_param.plicity == rhs_param.plicity
+                && convertible_closure(lhs_body, rhs_body, locals, metas)
         }
         (Value::FunLit(param, body), value) | (value, Value::FunLit(param, body)) => {
             fun_eta_convertible(*param, body, value, locals, metas)
@@ -74,16 +70,6 @@ fn convertible_elim<'core>(
     }
 }
 
-fn convertible_funlike<'core>(
-    (lhs_param, lhs_closure): &(FunParam<'core, &'core Expr<'core>>, &Closure<'core>),
-    (rhs_param, rhs_closure): &(FunParam<'core, &'core Expr<'core>>, &Closure<'core>),
-    locals: EnvLen,
-    metas: &MetaValues<'core>,
-) -> bool {
-    lhs_param.plicity == rhs_param.plicity
-        && convertible_closure(lhs_closure, rhs_closure, locals, metas)
-}
-
 /// Check if a function is eta-convertible to a value:
 /// `fun x => f` is eta-equivalent to `f`
 fn fun_eta_convertible<'core>(
@@ -94,13 +80,13 @@ fn fun_eta_convertible<'core>(
     metas: &MetaValues<'core>,
 ) -> bool {
     let var = Value::local_var(locals.to_absolute());
-    let lhs = elim::beta_reduce(
+    let lhs = elim::apply_closure(
         lhs_body.clone(),
         var.clone(),
         UnfoldOpts::for_quote(),
         metas,
     );
-    let rhs = elim::apply_arg(
+    let rhs = elim::fun_app(
         rhs_value.clone(),
         FunArg::new(lhs_param.plicity, var),
         UnfoldOpts::for_quote(),
@@ -116,14 +102,14 @@ fn convertible_closure<'core>(
     locals: EnvLen,
     metas: &MetaValues<'core>,
 ) -> bool {
-    let lhs = elim::beta_reduce(
+    let lhs = elim::apply_closure(
         lhs.clone(),
         Value::local_var(locals.to_absolute()),
         UnfoldOpts::for_quote(),
         metas,
     );
 
-    let rhs = elim::beta_reduce(
+    let rhs = elim::apply_closure(
         rhs.clone(),
         Value::local_var(locals.to_absolute()),
         UnfoldOpts::for_quote(),

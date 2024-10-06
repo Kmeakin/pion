@@ -65,7 +65,7 @@ pub(super) fn eval<'core, 'env>(
             let fun = eval(fun, opts, locals, metas);
             let arg_expr = eval(arg.expr, opts, locals, metas);
             let arg = FunArg::new(arg.plicity, arg_expr);
-            elim::apply_arg(fun, arg, opts, metas)
+            elim::fun_app(fun, arg, opts, metas)
         }
         Expr::Do(stmts, trailing_expr) => {
             let len = locals.len();
