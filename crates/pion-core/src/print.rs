@@ -75,10 +75,18 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
             write!(out, ") => ")?;
             expr_prec(out, body, Prec::MAX)?;
         }
-        Expr::FunApp(fun, arg) => {
-            expr_prec(out, fun, Prec::Call)?;
+        Expr::FunApp(..) => {
+            let mut args = Vec::new();
+            let mut callee = expr;
+            while let Expr::FunApp(head, arg) = callee {
+                callee = head;
+                args.push(arg);
+            }
+            expr_prec(out, callee, Prec::Call)?;
             write!(out, "(")?;
-            fun_arg(out, arg, |out, expr| expr_prec(out, expr, Prec::MAX))?;
+            fun_args(out, args.into_iter().rev(), |out, expr| {
+                expr_prec(out, expr, Prec::MAX)
+            })?;
             write!(out, ")")?;
         }
         Expr::Do([], None) => write!(out, "do {{}}")?,
@@ -136,15 +144,17 @@ pub fn value_prec(out: &mut impl Write, value: &Value, prec: Prec) -> fmt::Resul
                 Head::MetaVar(var) => write!(out, "?{var}")?,
                 Head::PrimVar(var) => write!(out, "{var}")?,
             }
-            for elim in spine {
-                match elim {
-                    Elim::FunApp(arg) => {
-                        write!(out, "(")?;
-                        fun_arg(out, arg, |out, value| value_prec(out, value, Prec::MAX))?;
-                        write!(out, ")")?;
-                    }
-                }
+
+            if spine.is_empty() {
+                return Ok(());
             }
+
+            let args = spine.into_iter().map(|elim| match elim {
+                Elim::FunApp(arg) => arg,
+            });
+            write!(out, "(")?;
+            fun_args(out, args, |out, value| value_prec(out, value, Prec::MAX))?;
+            write!(out, ")")?;
         }
         Value::FunType(param, body) => {
             write!(out, "forall(")?;
@@ -184,6 +194,25 @@ fn fun_param<W: Write, T>(
     pat(out, *name)?;
     write!(out, " : ")?;
     on_expr(out, r#type)?;
+    Ok(())
+}
+
+fn fun_args<'a, W: Write, T: 'a>(
+    out: &mut W,
+    args: impl IntoIterator<Item = &'a FunArg<T>>,
+    on_expr: impl Copy + FnMut(&mut W, &T) -> fmt::Result,
+) -> fmt::Result {
+    let mut args = args.into_iter();
+
+    if let Some(first) = args.next() {
+        fun_arg(out, first, on_expr)?;
+
+        for arg in args {
+            write!(out, ", ")?;
+            fun_arg(out, arg, on_expr)?;
+        }
+    }
+
     Ok(())
 }
 
@@ -345,7 +374,7 @@ mod tests {
 
         let fun = Expr::FunApp(&Expr::BOOL, FunArg::explicit(&Expr::Bool(true)));
         let expr = Expr::FunApp(&fun, FunArg::explicit(&Expr::Int(1)));
-        assert_print_expr(&expr, expect!["Bool(true)(1)"]);
+        assert_print_expr(&expr, expect!["Bool(true, 1)"]);
 
         let expr = Expr::FunApp(
             &const {
