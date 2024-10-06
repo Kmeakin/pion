@@ -62,7 +62,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             surface::Expr::Paren(expr) => self.synth_expr(*expr),
             surface::Expr::TypeAnnotation(expr, r#type) => {
                 let r#type = self.check_expr(*r#type, &Type::TYPE);
-                let r#type_value = self.eval_expr(&r#type);
+                let r#type_value = self.eval_env().eval(&r#type);
                 let expr = self.check_expr(*expr, &r#type_value);
                 (expr, r#type_value)
             }
@@ -72,7 +72,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             surface::Expr::FunArrow(domain, codomain) => {
                 let domain = self.check_expr(*domain, &Type::TYPE);
                 let codomain = {
-                    let domain_value = self.eval_expr(&domain);
+                    let domain_value = self.eval_env().eval(&domain);
                     self.env.locals.push_param(None, domain_value);
                     let codomain = self.check_expr(*codomain, &Type::TYPE);
                     self.env.locals.pop();
@@ -118,30 +118,23 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             | surface::Expr::FunArrow(..) => self.synth_and_coerce_expr(expr, expected),
             surface::Expr::Paren(expr) => self.check_expr(*expr, expected),
             surface::Expr::FunExpr(params, body) => self.check_fun_expr(params, *body, expected),
-            surface::Expr::Do(stmts, trailing_expr) => {
+            surface::Expr::Do(stmts, Some(trailing_expr)) => {
                 let len = self.env.locals.len();
                 let stmts = self.stmts(stmts);
-
-                let trailing_expr = match trailing_expr {
-                    Some(expr) => {
-                        let expr = self.check_expr(*expr, expected);
-                        Some(&*self.bump.alloc(expr))
-                    }
-                    None => {
-                        if !self.convertible(expected, &Type::UNIT_TYPE) {
-                            self.diagnostic(
-                                expr.range,
-                                Diagnostic::error().with_message(format!(
-                                    "Type mismatch: expected `{expected}`, found `Unit`"
-                                )),
-                            );
-                        }
-                        None
-                    }
-                };
+                let trailing_expr = self.check_expr(*trailing_expr, expected);
                 self.env.locals.truncate(len);
-
-                Expr::Do(stmts, trailing_expr)
+                Expr::Do(stmts, Some(&*self.bump.alloc(trailing_expr)))
+            }
+            surface::Expr::Do(stmts, None) => {
+                let len = self.env.locals.len();
+                let stmts = self.stmts(stmts);
+                self.env.locals.truncate(len);
+                let result_expr = Expr::Do(stmts, None);
+                self.coerce_expr(
+                    Located::new(expr.range, result_expr),
+                    &Type::UNIT_TYPE,
+                    expected,
+                )
             }
         }
     }
@@ -162,7 +155,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         from: &Type<'core>,
         to: &Type<'core>,
     ) -> CheckExpr<'core> {
-        match self.unify(from, to) {
+        match self.unify_env().unify(from, to) {
             Ok(()) => expr.data,
             Err(err) => {
                 self.diagnostic(expr.range, err.to_diagnostic(from, to));
@@ -177,7 +170,11 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
     ) -> Synth<'core, FunParam<'core, Expr<'core>>> {
         let surface::FunParam { pat } = param.data;
         let (pat, r#type) = self.synth_pat(pat.as_ref());
-        let param = FunParam::new(Plicity::Explicit, pat.name(), self.quote_value(&r#type));
+        let param = FunParam::new(
+            Plicity::Explicit,
+            pat.name(),
+            self.quote_env().quote(&r#type, self.bump),
+        );
         (param, r#type)
     }
 
@@ -188,7 +185,11 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
     ) -> Check<FunParam<'core, Expr<'core>>> {
         let surface::FunParam { pat } = param.data;
         let pat = self.check_pat(pat.as_ref(), expected);
-        FunParam::new(Plicity::Explicit, pat.name(), self.quote_value(expected))
+        FunParam::new(
+            Plicity::Explicit,
+            pat.name(),
+            self.quote_env().quote(expected, self.bump),
+        )
     }
 
     fn synth_fun_type(
@@ -233,7 +234,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let (body_expr, body_type) = {
                     self.env.locals.push_param(param.name, param_type.clone());
                     let (body_expr, body_type) = self.synth_fun_expr(params, body);
-                    let body_type = self.quote_value(&body_type);
+                    let body_type = self.quote_env().quote(&body_type, self.bump);
                     self.env.locals.pop();
                     (body_expr, body_type)
                 };
@@ -261,13 +262,15 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             [] => self.check_expr(body, &expected),
             [param, rest @ ..] => match expected {
                 Value::FunType(expected_param, expected_body) => {
-                    let expected_param_type = self.eval_expr(expected_param.r#type);
+                    let expected_param_type = self.eval_env().eval(expected_param.r#type);
                     let param = self.check_fun_param(param.as_ref(), &expected_param_type);
                     let body_expr = {
                         let arg_value =
                             Value::local_var(self.env.locals.values.len().to_absolute());
                         self.env.locals.push_param(param.name, expected_param_type);
-                        let expected = self.apply_closure(expected_body.clone(), arg_value);
+                        let expected = self
+                            .elim_env()
+                            .beta_reduce(expected_body.clone(), arg_value);
                         let body_expr = self.check_fun_expr(rest, body, &expected);
                         self.env.locals.pop();
                         body_expr
@@ -299,12 +302,12 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         for (arity, arg) in args.iter().enumerate() {
             match result_type {
                 Value::FunType(param, body) => {
-                    let param_type = self.eval_expr(param.r#type);
+                    let param_type = self.eval_env().eval(param.r#type);
                     let arg_expr = self.check_expr(arg.data.expr.as_ref(), &param_type);
-                    let arg_value = self.eval_expr(&arg_expr);
+                    let arg_value = self.eval_env().eval(&arg_expr);
                     let (expr, arg_expr) = self.bump.alloc((result_expr, arg_expr));
                     result_expr = Expr::FunApp(&*expr, FunArg::new(param.plicity, &*arg_expr));
-                    result_type = self.apply_closure(body, arg_value);
+                    result_type = self.elim_env().beta_reduce(body, arg_value);
                 }
                 _ => {
                     let diagnostic = match arity {

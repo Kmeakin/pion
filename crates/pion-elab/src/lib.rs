@@ -3,12 +3,10 @@
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use env::{ElabEnv, LocalInfo, MetaSource};
 use pion_core::env::AbsoluteVar;
-use pion_core::semantics::{
-    Closure, ConvertibleEnv, ElimEnv, EvalEnv, QuoteEnv, Type, UnfoldOpts, Value,
-};
+use pion_core::semantics::{ElimEnv, EvalEnv, QuoteEnv, Type, UnfoldOpts, Value};
 use pion_core::syntax::{Expr, FunArg, Plicity};
 use text_size::TextRange;
-use unify::{UnifyEnv, UnifyError};
+use unify::UnifyEnv;
 
 pub mod env;
 
@@ -51,37 +49,6 @@ impl<'core> Elaborator<'core> {
         (self.diagnostics, self.command_output)
     }
 
-    fn eval_expr(&mut self, expr: &Expr<'core>) -> Value<'core> {
-        EvalEnv::new(
-            UnfoldOpts::for_eval(),
-            &mut self.env.locals.values,
-            &self.env.metas.values,
-        )
-        .eval(expr)
-    }
-
-    fn quote_value(&self, value: &Value<'core>) -> Expr<'core> {
-        QuoteEnv::new(self.env.locals.len(), &self.env.metas.values).quote(value, self.bump)
-    }
-
-    fn apply_closure(&self, closure: Closure<'core>, arg: Value<'core>) -> Value<'core> {
-        ElimEnv::new(UnfoldOpts::for_eval(), &self.env.metas.values).beta_reduce(closure, arg)
-    }
-
-    fn convertible(&self, lhs: &Value<'core>, rhs: &Value<'core>) -> bool {
-        ConvertibleEnv::new(self.env.locals.len(), &self.env.metas.values).convertible(lhs, rhs)
-    }
-
-    fn unify(&mut self, lhs: &Value<'core>, rhs: &Value<'core>) -> Result<(), UnifyError> {
-        UnifyEnv::new(
-            self.bump,
-            &mut self.env.renaming,
-            self.env.locals.len(),
-            &mut self.env.metas.values,
-        )
-        .unify(lhs, rhs)
-    }
-
     fn push_unsolved_expr(
         &mut self,
         source: MetaSource<'core>,
@@ -108,7 +75,7 @@ impl<'core> Elaborator<'core> {
 
     fn push_unsolved_type(&mut self, source: MetaSource<'core>) -> Value<'core> {
         let expr = self.push_unsolved_expr(source, Value::TYPE);
-        self.eval_expr(&expr)
+        self.eval_env().eval(&expr)
     }
 
     pub fn report_unsolved_metas(&mut self) {
@@ -132,5 +99,26 @@ impl<'core> Elaborator<'core> {
 
     fn elim_env(&self) -> ElimEnv<'_, 'core> {
         ElimEnv::new(UnfoldOpts::for_eval(), &self.env.metas.values)
+    }
+
+    fn eval_env(&mut self) -> EvalEnv<'_, 'core> {
+        EvalEnv::new(
+            UnfoldOpts::for_eval(),
+            &mut self.env.locals.values,
+            &self.env.metas.values,
+        )
+    }
+
+    fn quote_env(&self) -> QuoteEnv<'_, 'core> {
+        QuoteEnv::new(self.env.locals.len(), &self.env.metas.values)
+    }
+
+    fn unify_env(&mut self) -> UnifyEnv<'_, 'core> {
+        UnifyEnv::new(
+            self.bump,
+            &mut self.env.renaming,
+            self.env.locals.len(),
+            &mut self.env.metas.values,
+        )
     }
 }

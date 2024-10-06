@@ -3,7 +3,7 @@ exit status: 0
 stdout = """
 do { (fun(x : Int) => #var(0)) } : forall(_ : Int) -> Int
 do { #error } : Int
-do {} : Int
+#error : Int
 
 """
 

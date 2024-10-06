@@ -1,7 +1,7 @@
 use codespan_reporting::diagnostic::Diagnostic;
 use pion_core::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, SliceEnv, UniqueEnv};
 use pion_core::semantics::{self, Closure, Elim, Head, MetaValues, Type, UnfoldOpts, Value};
-use pion_core::syntax::{Expr, FunArg, FunParam, Plicity};
+use pion_core::syntax::{Expr, FunArg, FunParam};
 
 /// Unification environment.
 pub struct UnifyEnv<'env, 'core> {

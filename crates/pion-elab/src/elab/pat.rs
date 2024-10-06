@@ -44,7 +44,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             surface::Pat::Paren(pat) => self.synth_pat(*pat),
             surface::Pat::TypeAnnotation(pat, r#type) => {
                 let r#type = self.check_expr(*r#type, &Type::TYPE);
-                let type_value = self.eval_expr(&r#type);
+                let type_value = self.eval_env().eval(&r#type);
                 let pat = self.check_pat(*pat, &type_value);
                 (pat, type_value)
             }
@@ -85,7 +85,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         from: &Type<'core>,
         to: &Type<'core>,
     ) -> CheckPat<'core> {
-        match self.unify(from, to) {
+        match self.unify_env().unify(from, to) {
             Ok(()) => pat.data,
             Err(err) => {
                 self.diagnostic(pat.range, err.to_diagnostic(from, to));

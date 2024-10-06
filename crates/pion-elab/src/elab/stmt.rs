@@ -36,7 +36,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             }
             surface::Stmt::Let(binding) => {
                 let (binding, r#type) = self.let_binding(binding.as_ref());
-                let value = self.eval_expr(&binding.init);
+                let value = self.eval_env().eval(&binding.init);
                 self.env.locals.push_let(binding.name, r#type, value);
                 Some(Stmt::Let(binding))
             }
@@ -54,7 +54,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         let surface::LetBinding { pat, init } = binding.data;
         let (pat, r#type_value) = self.synth_pat(pat.as_ref());
         let init = self.check_expr(init.as_ref(), &r#type_value);
-        let r#type = self.quote_value(&r#type_value);
+        let r#type = self.quote_env().quote(&r#type_value, self.bump);
         let binding = LetBinding::new(pat.name(), r#type, init);
         (binding, r#type_value)
     }
@@ -69,7 +69,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             }
             surface::Command::Eval(expr) => {
                 let (expr, _type) = self.synth_expr(*expr);
-                let value = self.eval_expr(&expr);
+                let value = self.eval_env().eval(&expr);
 
                 let mut out = String::new();
                 pion_core::print::expr_prec(&mut out, &expr, Prec::MAX).unwrap();
