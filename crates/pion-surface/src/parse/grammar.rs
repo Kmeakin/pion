@@ -43,7 +43,7 @@ where
 
         match token.kind {
             TokenKind::Punct('_') => Located::new(token.range, Pat::Underscore),
-            TokenKind::Ident => Located::new(token.range, Pat::Var(token.text)),
+            TokenKind::Ident => Located::new(token.range, Pat::Var(token.text())),
             TokenKind::LParen => {
                 let start_range = token.range;
                 let pat = self.pat();
@@ -117,10 +117,10 @@ where
             }
             TokenKind::KwFalse => Located::new(token.range, Expr::Lit(Lit::Bool(false))),
             TokenKind::KwTrue => Located::new(token.range, Expr::Lit(Lit::Bool(true))),
-            TokenKind::Int => Located::new(token.range, Expr::Lit(Lit::Int(token.text))),
-            TokenKind::Char => Located::new(token.range, Expr::Lit(Lit::Char(token.text))),
-            TokenKind::String => Located::new(token.range, Expr::Lit(Lit::String(token.text))),
-            TokenKind::Ident => Located::new(token.range, Expr::Var(token.text)),
+            TokenKind::Int => Located::new(token.range, Expr::Lit(Lit::Int(token.text()))),
+            TokenKind::Char => Located::new(token.range, Expr::Lit(Lit::Char(token.text()))),
+            TokenKind::String => Located::new(token.range, Expr::Lit(Lit::String(token.text()))),
+            TokenKind::Ident => Located::new(token.range, Expr::Var(token.text())),
             TokenKind::KwDo => self.do_expr(),
             TokenKind::KwForall => self.forall_expr(),
             TokenKind::KwFun => self.fun_expr(),
@@ -223,7 +223,7 @@ where
                             );
                         }
                         Some(token) => match token.kind {
-                            TokenKind::Ident if token.text == "check" => {
+                            TokenKind::Ident if token.text() == "check" => {
                                 self.next_token();
                                 let expr = self.expr();
                                 self.expect_token(TokenKind::Punct(';'));
@@ -231,7 +231,7 @@ where
                                     expr.map(|expr| &*self.bump.alloc(expr)),
                                 )));
                             }
-                            TokenKind::Ident if token.text == "eval" => {
+                            TokenKind::Ident if token.text() == "eval" => {
                                 self.next_token();
                                 let expr = self.expr();
                                 self.expect_token(TokenKind::Punct(';'));
@@ -308,7 +308,7 @@ where
                             );
                         }
                         Some(token) => match token.kind {
-                            TokenKind::Ident if token.text == "check" => {
+                            TokenKind::Ident if token.text() == "check" => {
                                 self.next_token();
                                 let expr = self.expr();
                                 self.expect_token(TokenKind::Punct(';'));
@@ -316,7 +316,7 @@ where
                                     expr.map(|expr| &*self.bump.alloc(expr)),
                                 )));
                             }
-                            TokenKind::Ident if token.text == "eval" => {
+                            TokenKind::Ident if token.text() == "eval" => {
                                 self.next_token();
                                 let expr = self.expr();
                                 self.expect_token(TokenKind::Punct(';'));

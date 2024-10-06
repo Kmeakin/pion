@@ -9,7 +9,7 @@ use super::*;
 fn assert_lex(text: &str, expected: Expect) {
     let mut got = String::with_capacity(text.len());
     for token in lex(text) {
-        writeln!(got, "{:?} {:?} {:?}", token.kind, token.range, token.text).unwrap();
+        writeln!(got, "{:?} {:?} {:?}", token.kind, token.range, token.text()).unwrap();
     }
     expected.assert_eq(got.trim_end());
 }
@@ -220,10 +220,7 @@ fn char() {
     assert_lex("'a'", expect![[r#"Char 0..3 "'a'""#]]);
     assert_lex("'abc'", expect![[r#"Char 0..5 "'abc'""#]]);
     assert_lex("'abc", expect![[r#"Char 0..4 "'abc""#]]);
-    assert_lex(
-        r"'abc\'def'",
-        expect![[r#"Char 0..10 "'abc\\'def'""#]],
-    );
+    assert_lex(r"'abc\'def'", expect![[r#"Char 0..10 "'abc\\'def'""#]]);
     assert_lex(r"'abc\'", expect![[r#"Char 0..6 "'abc\\'""#]]);
     assert_lex(r"'abc\", expect![[r#"Char 0..5 "'abc\\""#]]);
     assert_lex(
@@ -241,14 +238,8 @@ fn string() {
     assert_lex(r#""a""#, expect![[r#"String 0..3 "\"a\"""#]]);
     assert_lex(r#""abc""#, expect![[r#"String 0..5 "\"abc\"""#]]);
     assert_lex(r#""abc"#, expect![[r#"String 0..4 "\"abc""#]]);
-    assert_lex(
-        r#""abc\"def"#,
-        expect![[r#"String 0..9 "\"abc\\\"def""#]],
-    );
-    assert_lex(
-        r#""abc\""#,
-        expect![[r#"String 0..6 "\"abc\\\"""#]],
-    );
+    assert_lex(r#""abc\"def"#, expect![[r#"String 0..9 "\"abc\\\"def""#]]);
+    assert_lex(r#""abc\""#, expect![[r#"String 0..6 "\"abc\\\"""#]]);
     assert_lex(r#""abc\"#, expect![[r#"String 0..5 "\"abc\\""#]]);
     assert_lex(
         r#""abc\\"def""#,

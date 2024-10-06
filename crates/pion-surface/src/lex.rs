@@ -1,6 +1,8 @@
 //! See `lexical-syntax.md`
 
 use core::fmt;
+use std::marker::PhantomData;
+use std::ptr::NonNull;
 use std::str::{Chars, FromStr};
 
 use text_size::{TextRange, TextSize};
@@ -131,16 +133,42 @@ impl fmt::Display for ReservedIdent {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Token<'text> {
-    pub text: &'text str,
+    text: NonNull<u8>,
     pub kind: TokenKind,
     pub range: TextRange,
+
+    phantom: PhantomData<&'text str>,
 }
 
 impl<'text> Token<'text> {
     pub fn new(text: &'text str, kind: TokenKind, range: TextRange) -> Self {
-        Self { text, kind, range }
+        debug_assert_eq!(text.len(), range.len().into());
+
+        Self {
+            // SAFETY: `text` is a valid reference to a valid string
+            text: unsafe { NonNull::new_unchecked(text.as_ptr().cast_mut()) },
+            kind,
+            range,
+            phantom: PhantomData,
+        }
+    }
+
+    pub fn text(&self) -> &'text str {
+        // SAFETY: `text` is a valid reference to a valid string, and `range` encodes
+        // the length of the string
+        unsafe { std::str::from_raw_parts(self.text.as_ptr(), self.range.len().into()) }
+    }
+}
+
+impl fmt::Debug for Token<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Token")
+            .field("text", &self.text())
+            .field("kind", &self.kind)
+            .field("range", &self.range)
+            .finish()
     }
 }
 
@@ -316,5 +344,5 @@ pub fn lex(mut source: &str) -> impl Clone + Iterator<Item = Token<'_>> + '_ {
 #[cfg(target_pointer_width = "64")]
 fn type_sizes() {
     assert_eq!(size_of::<TokenKind>(), 4);
-    assert_eq!(size_of::<Token>(), 32);
+    assert_eq!(size_of::<Token>(), 24);
 }
