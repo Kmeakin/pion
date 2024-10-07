@@ -195,28 +195,34 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         params: &[Located<surface::FunParam<'text, 'surface>>],
         body: Located<&surface::Expr<'text, 'surface>>,
     ) -> SynthExpr<'core> {
-        match params {
-            [] => {
-                let body = self.check_expr(body, &Type::TYPE);
-                (body, Type::TYPE)
-            }
-            [param, params @ ..] => {
-                let (param, r#param_type) = self.synth_fun_param(param.as_ref());
+        fn recur<'text, 'surface, 'core>(
+            this: &mut Elaborator<'core>,
+            params: &[Located<surface::FunParam<'text, 'surface>>],
+            body: Located<&surface::Expr<'text, 'surface>>,
+        ) -> Expr<'core> {
+            match params {
+                [] => this.check_expr(body, &Type::TYPE),
+                [param, params @ ..] => {
+                    let (param, r#param_type) = this.synth_fun_param(param.as_ref());
 
-                let body_expr = {
-                    self.env.locals.push_param(param.name, param_type);
-                    let (body_expr, _) = self.synth_fun_type(params, body);
-                    self.env.locals.pop();
-                    body_expr
-                };
+                    let body_expr = {
+                        this.env.locals.push_param(param.name, param_type);
+                        let body_expr = recur(this, params, body);
+                        this.env.locals.pop();
+                        body_expr
+                    };
 
-                let expr = Expr::FunType(
-                    FunParam::new(param.plicity, param.name, self.bump.alloc(param.r#type)),
-                    self.bump.alloc(body_expr),
-                );
-                (expr, Type::TYPE)
+                    let (param_type, body_expr) = this.bump.alloc((param.r#type, body_expr));
+                    Expr::FunType(
+                        FunParam::new(param.plicity, param.name, param_type),
+                        body_expr,
+                    )
+                }
             }
         }
+
+        let expr = recur(self, params, body);
+        (expr, Type::TYPE)
     }
 
     fn synth_fun_expr(
@@ -234,17 +240,15 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     let (body_expr, body_type) = self.synth_fun_expr(params, body);
                     let body_type = self.quote_env().quote(&body_type);
                     self.env.locals.pop();
-                    (body_expr, body_type)
+                    self.bump.alloc((body_expr, body_type))
                 };
 
-                let expr_param =
-                    FunParam::new(param.plicity, param.name, &*self.bump.alloc(param.r#type));
-                let value_param =
-                    FunParam::new(param.plicity, param.name, &*self.bump.alloc(param_type));
-                let expr = Expr::FunLit(expr_param, self.bump.alloc(body_expr));
+                let (t1, t2) = self.bump.alloc((param.r#type, param_type));
+
+                let expr = Expr::FunLit(FunParam::new(param.plicity, param.name, t1), body_expr);
                 let r#type = Type::FunType(
-                    value_param,
-                    Closure::new(self.env.locals.values.clone(), self.bump.alloc(body_type)),
+                    FunParam::new(param.plicity, param.name, t2),
+                    Closure::new(self.env.locals.values.clone(), body_type),
                 );
                 (expr, r#type)
             }
@@ -257,13 +261,11 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         body: Located<&surface::Expr<'text, 'surface>>,
         expected: &Type<'core>,
     ) -> CheckExpr<'core> {
-        let expected = self.elim_env().subst_metas(expected);
         match params {
-            [] => self.check_expr(body, &expected),
+            [] => self.check_expr(body, expected),
             [param, rest @ ..] => match expected {
                 Value::FunType(expected_param, expected_body) => {
-                    let expected_param_type = expected_param.r#type;
-                    let param = self.check_fun_param(param.as_ref(), expected_param_type);
+                    let param = self.check_fun_param(param.as_ref(), expected_param.r#type);
                     let body_expr = {
                         let arg_value = Value::local_var(LocalVar::new(
                             param.name,
@@ -271,7 +273,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                         ));
                         self.env
                             .locals
-                            .push_param(param.name, expected_param_type.clone());
+                            .push_param(param.name, expected_param.r#type.clone());
                         let expected = self
                             .elim_env()
                             .apply_closure(expected_body.clone(), arg_value);
@@ -279,16 +281,17 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                         self.env.locals.pop();
                         body_expr
                     };
-                    let expr = Expr::FunLit(
-                        FunParam::new(param.plicity, param.name, self.bump.alloc(param.r#type)),
-                        self.bump.alloc(body_expr),
-                    );
-                    expr
+
+                    let (param_type, body_expr) = self.bump.alloc((param.r#type, body_expr));
+                    Expr::FunLit(
+                        FunParam::new(param.plicity, param.name, param_type),
+                        body_expr,
+                    )
                 }
                 _ => {
                     // FIXME: this span is misleading
                     let (expr, r#type) = self.synth_fun_expr(params, body);
-                    self.coerce_expr(Located::new(body.range, expr), &r#type, &expected)
+                    self.coerce_expr(Located::new(body.range, expr), &r#type, expected)
                 }
             },
         }

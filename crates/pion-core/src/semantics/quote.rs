@@ -34,15 +34,11 @@ pub fn quote<'core>(
         Value::Lit(lit) => Expr::Lit(lit),
         Value::Neutral(head, spine) => quote_neutral(head, &spine, bump, locals, metas),
         Value::FunType(param, body) => {
-            let param_type = quote(param.r#type, bump, locals, metas);
-            let body = quote_closure(&body, bump, locals, metas);
-            let param = FunParam::new(param.plicity, param.name, &*bump.alloc(param_type));
+            let (param, body) = quote_funs(&param, &body, bump, locals, metas);
             Expr::FunType(param, body)
         }
         Value::FunLit(param, body) => {
-            let param_type = quote(param.r#type, bump, locals, metas);
-            let body = quote_closure(&body, bump, locals, metas);
-            let param = FunParam::new(param.plicity, param.name, &*bump.alloc(param_type));
+            let (param, body) = quote_funs(&param, &body, bump, locals, metas);
             Expr::FunLit(param, body)
         }
     }
@@ -93,17 +89,22 @@ fn quote_neutral<'core>(
 /// reference a local variable in `closure.env`. We *could* convert the closure
 /// environment back to series of nested `let`s, but that would produce very big
 /// terms!
-fn quote_closure<'core>(
+fn quote_funs<'core>(
+    param: &FunParam<'core, &'core Type<'core>>,
     closure: &Closure<'core>,
     bump: &'core bumpalo::Bump,
     locals: EnvLen,
     metas: &MetaValues<'core>,
-) -> &'core Expr<'core> {
+) -> (FunParam<'core, &'core Expr<'core>>, &'core Expr<'core>) {
+    let param_type = quote(param.r#type, bump, locals, metas);
+
     let arg = Value::local_var(LocalVar::new(None, locals.to_level()));
     let body = elim::apply_closure(closure.clone(), arg, bump, UnfoldOpts::for_quote(), metas);
     let body = quote(&body, bump, locals.succ(), metas);
-    let body = bump.alloc(body);
-    body
+
+    let (param_type, body) = bump.alloc((param_type, body));
+    let param = FunParam::new(param.plicity, param.name, &*param_type);
+    (param, body)
 }
 
 #[cfg(test)]

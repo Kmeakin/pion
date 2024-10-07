@@ -150,8 +150,8 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
             (
                 Value::FunType(left_param, left_closure),
                 Value::FunType(right_param, right_closure),
-            ) => self.unify_funs(left_param, left_closure, right_param, right_closure),
-            (
+            )
+            | (
                 Value::FunLit(left_param, left_closure),
                 Value::FunLit(right_param, right_closure),
             ) => self.unify_funs(left_param, left_closure, right_param, right_closure),
