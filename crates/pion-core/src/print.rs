@@ -59,6 +59,7 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
         },
         Expr::MetaVar(var) => write!(out, "?{}", var.de_bruijn)?,
         Expr::FunType(param, body) if !body.binds_local(DeBruijnIndex::new(0)) => {
+            plicity(out, param.plicity)?;
             expr_prec(out, param.r#type, Prec::Call)?;
             write!(out, " -> ")?;
             expr_prec(out, body, Prec::MAX)?;
@@ -223,19 +224,10 @@ fn fun_param<W: Write, T>(
     param: &FunParam<T>,
     mut on_expr: impl FnMut(&mut W, &T) -> fmt::Result,
 ) -> fmt::Result {
-    let FunParam {
-        plicity,
-        name,
-        r#type,
-    } = param;
-
-    match plicity {
-        Plicity::Explicit => write!(out, "")?,
-        Plicity::Implicit => write!(out, "@")?,
-    }
-    pat(out, *name)?;
+    plicity(out, param.plicity)?;
+    pat(out, param.name)?;
     write!(out, " : ")?;
-    on_expr(out, r#type)?;
+    on_expr(out, &param.r#type)?;
     Ok(())
 }
 
@@ -263,13 +255,16 @@ fn fun_arg<W: Write, T>(
     arg: &FunArg<T>,
     mut on_expr: impl FnMut(&mut W, &T) -> fmt::Result,
 ) -> fmt::Result {
-    let FunArg { plicity, expr } = arg;
-    match plicity {
-        Plicity::Explicit => write!(out, "")?,
-        Plicity::Implicit => write!(out, "@")?,
-    }
-    on_expr(out, expr)?;
+    plicity(out, arg.plicity)?;
+    on_expr(out, &arg.expr)?;
     Ok(())
+}
+
+fn plicity<W: Write>(out: &mut W, plicity: Plicity) -> fmt::Result {
+    match plicity {
+        Plicity::Implicit => write!(out, "@"),
+        Plicity::Explicit => Ok(()),
+    }
 }
 
 fn pat(out: &mut impl Write, name: Name) -> fmt::Result {
@@ -374,7 +369,7 @@ mod tests {
         assert_print_expr(&expr, expect!["Int -> Bool"]);
 
         let expr = Expr::FunType(FunParam::implicit(None, &Expr::INT), &Expr::BOOL);
-        assert_print_expr(&expr, expect!["Int -> Bool"]);
+        assert_print_expr(&expr, expect!["@Int -> Bool"]);
 
         let expr = Expr::FunType(
             FunParam::explicit(None, &Expr::INT),
