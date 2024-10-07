@@ -1,2 +1,3 @@
+// TODO: don't attempt to specialize `f` in this case, and so give better error messages?
 let f = fun(@x: Int) => x;
 #check (f : (Int -> Int));

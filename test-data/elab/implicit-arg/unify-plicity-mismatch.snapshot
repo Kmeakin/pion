@@ -6,10 +6,16 @@ stdout = """
 """
 
 stderr = """
-error: Type mismatch: expected `forall(_ : Int) -> Int`, found `forall(@x : Int) -> Int`
-  ┌─ test-data/elab/implicit-arg/unify-plicity-mismatch.pion:2:9
+error: Type mismatch: expected `forall(_ : Int) -> Int`, found `Int`
+  ┌─ test-data/elab/implicit-arg/unify-plicity-mismatch.pion:3:9
   │
-2 │ #check (f : (Int -> Int));
+3 │ #check (f : (Int -> Int));
+  │         ^
+
+error: Could not infer implicit argument `x`
+  ┌─ test-data/elab/implicit-arg/unify-plicity-mismatch.pion:3:9
+  │
+3 │ #check (f : (Int -> Int));
   │         ^
 
 

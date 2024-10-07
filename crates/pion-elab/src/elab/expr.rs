@@ -153,11 +153,24 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         from: &Type<'core>,
         to: &Type<'core>,
     ) -> CheckExpr<'core> {
-        match self.unify_env().unify(from, to) {
+        // Attempt to specialize exprs with freshly inserted implicit
+        // arguments if an explicit function was expected.
+        let (expr, from) = match (expr.data, to) {
+            (Expr::FunLit(..), _) => (expr, Cow::Borrowed(from)),
+            (_, Type::FunType(param, ..)) if param.plicity == Plicity::Explicit => {
+                let (specialized, from) =
+                    self.insert_implicit_apps(expr.range, expr.data, from.clone());
+                let expr = Located::new(expr.range, specialized);
+                (expr, Cow::Owned(from))
+            }
+            _ => (expr, Cow::Borrowed(from)),
+        };
+
+        match self.unify_env().unify(&from, to) {
             Ok(()) => expr.data,
             Err(err) => {
                 // Unification may have unblocked some metas
-                let from = self.elim_env().subst_metas(from);
+                let from = self.elim_env().subst_metas(&from);
                 let to = self.elim_env().subst_metas(to);
                 self.diagnostic(expr.range, err.to_diagnostic(&from, &to));
                 Expr::Error

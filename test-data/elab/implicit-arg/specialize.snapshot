@@ -1,0 +1,10 @@
+exit status: 0
+
+stdout = """
+id(@?1) : forall(_ : Int) -> Int
+
+"""
+
+stderr = """
+
+"""

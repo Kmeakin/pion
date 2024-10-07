@@ -1,0 +1,2 @@
+let id = fun(@A: Type, a: A) => a;
+#check id : Int -> Int;
