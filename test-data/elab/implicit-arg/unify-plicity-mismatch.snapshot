@@ -1,0 +1,16 @@
+exit status: 0
+
+stdout = """
+#error : forall(_ : Int) -> Int
+
+"""
+
+stderr = """
+error: Type mismatch: expected `forall(_ : Int) -> Int`, found `forall(@x : Int) -> Int`
+  ┌─ test-data/elab/implicit-arg/unify-plicity-mismatch.pion:2:9
+  │
+2 │ #check (f : (Int -> Int));
+  │         ^
+
+
+"""

@@ -88,7 +88,10 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         match self.unify_env().unify(from, to) {
             Ok(()) => pat.data,
             Err(err) => {
-                self.diagnostic(pat.range, err.to_diagnostic(from, to));
+                // Unification may have unblocked some metas
+                let from = self.elim_env().subst_metas(from);
+                let to = self.elim_env().subst_metas(to);
+                self.diagnostic(pat.range, err.to_diagnostic(&from, &to));
                 Pat::Error
             }
         }

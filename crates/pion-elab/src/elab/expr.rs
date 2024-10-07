@@ -156,7 +156,10 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         match self.unify_env().unify(from, to) {
             Ok(()) => expr.data,
             Err(err) => {
-                self.diagnostic(expr.range, err.to_diagnostic(from, to));
+                // Unification may have unblocked some metas
+                let from = self.elim_env().subst_metas(from);
+                let to = self.elim_env().subst_metas(to);
+                self.diagnostic(expr.range, err.to_diagnostic(&from, &to));
                 Expr::Error
             }
         }
