@@ -264,39 +264,57 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         body: Located<&surface::Expr<'text, 'surface>>,
         expected: &Type<'core>,
     ) -> CheckExpr<'core> {
-        match params {
-            [] => self.check_expr(body, expected),
-            [param, rest @ ..] => match expected {
-                Value::FunType(expected_param, expected_body) => {
-                    let param = self.check_fun_param(param.as_ref(), expected_param.r#type);
-                    let body_expr = {
-                        let arg_value = Value::local_var(LocalVar::new(
-                            param.name,
-                            self.env.locals.values.len().to_level(),
-                        ));
-                        self.env
-                            .locals
-                            .push_param(param.name, expected_param.r#type.clone());
-                        let expected = self
-                            .elim_env()
-                            .apply_closure(expected_body.clone(), arg_value);
-                        let body_expr = self.check_fun_expr(rest, body, &expected);
-                        self.env.locals.pop();
-                        body_expr
-                    };
+        let [param, rest @ ..] = params else {
+            return self.check_expr(body, expected);
+        };
 
-                    let (param_type, body_expr) = self.bump.alloc((param.r#type, body_expr));
-                    Expr::FunLit(
-                        FunParam::new(param.plicity, param.name, param_type),
-                        body_expr,
-                    )
-                }
-                _ => {
-                    // FIXME: this span is misleading
-                    let (expr, r#type) = self.synth_fun_expr(params, body);
-                    self.coerce_expr(Located::new(body.range, expr), &r#type, expected)
-                }
-            },
+        let Value::FunType(expected_param, expected_body) = expected else {
+            // FIXME: this span is misleading
+            let (expr, r#type) = self.synth_fun_expr(params, body);
+            return self.coerce_expr(Located::new(body.range, expr), &r#type, expected);
+        };
+
+        match (param.data.plicity, expected_param.plicity) {
+            (surface::Plicity::Implicit, Plicity::Explicit) => todo!("plicity mismatch"),
+
+            // If an implicit function is expected, try to generalize the
+            // function literal by wrapping it in an implicit function
+            (surface::Plicity::Explicit, Plicity::Implicit) => {
+                let r#type = self.quote_env().quote(expected_param.r#type);
+                let arg_value = Value::local_var(LocalVar::new(
+                    expected_param.name,
+                    self.env.locals.values.len().to_level(),
+                ));
+                (self.env.locals).push_param(expected_param.name, expected_param.r#type.clone());
+                let expected = (self.elim_env()).apply_closure(expected_body.clone(), arg_value);
+                let body = self.check_fun_expr(params, body, &expected);
+                self.env.locals.pop();
+                let (r#type, body) = self.bump.alloc((r#type, body));
+                let param = FunParam::new(expected_param.plicity, expected_param.name, &*r#type);
+                Expr::FunLit(param, body)
+            }
+
+            (surface::Plicity::Explicit, Plicity::Explicit)
+            | (surface::Plicity::Implicit, Plicity::Implicit) => {
+                let param = self.check_fun_param(param.as_ref(), expected_param.r#type);
+                let body_expr = {
+                    let arg_value = Value::local_var(LocalVar::new(
+                        param.name,
+                        self.env.locals.values.len().to_level(),
+                    ));
+                    (self.env.locals).push_param(param.name, expected_param.r#type.clone());
+                    let expected =
+                        (self.elim_env()).apply_closure(expected_body.clone(), arg_value);
+                    let body_expr = self.check_fun_expr(rest, body, &expected);
+                    self.env.locals.pop();
+                    body_expr
+                };
+                let (param_type, body_expr) = self.bump.alloc((param.r#type, body_expr));
+                Expr::FunLit(
+                    FunParam::new(param.plicity, param.name, param_type),
+                    body_expr,
+                )
+            }
         }
     }
 

@@ -1,0 +1,7 @@
+let id: forall (@A: Type) -> A -> A = fun(x) => x;
+#check id;
+#eval id;
+
+let always: forall (@A: Type, @B: Type) -> A -> B -> A = fun(x, y) => x;
+#check always;
+#eval always;
