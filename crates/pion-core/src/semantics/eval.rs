@@ -58,12 +58,16 @@ pub(super) fn eval<'core, 'env>(
             Some(None) => Value::meta_var(*var),
         },
         Expr::FunType(param, body) => {
+            let param_type = eval(param.r#type, bump, opts, locals, metas);
             let body = Closure::new(locals.clone(), body);
-            Value::FunType(*param, body)
+            let param = FunParam::new(param.plicity, param.name, &*bump.alloc(param_type));
+            Value::FunType(param, body)
         }
         Expr::FunLit(param, body) => {
+            let param_type = eval(param.r#type, bump, opts, locals, metas);
             let body = Closure::new(locals.clone(), body);
-            Value::FunLit(*param, body)
+            let param = FunParam::new(param.plicity, param.name, &*bump.alloc(param_type));
+            Value::FunLit(param, body)
         }
         Expr::FunApp(fun, arg) => {
             let fun = eval(fun, bump, opts, locals, metas);
@@ -216,24 +220,23 @@ mod tests {
     #[test]
     fn eval_fun_type() {
         // `forall (b: Bool) -> Int`
+        let bool = Type::BOOL;
         let expr = Expr::FunType(
             FunParam::explicit(None, &Expr::BOOL),
             &Expr::PrimVar(PrimVar::Int),
         );
-        let expected = Value::FunType(
-            FunParam::explicit(None, &Expr::BOOL),
-            Closure::empty(&Expr::INT),
-        );
+        let expected = Value::FunType(FunParam::explicit(None, &bool), Closure::empty(&Expr::INT));
         assert_eval(expr, expected);
     }
 
     #[test]
     fn eval_fun_lit() {
         // `fun (x: Int) => x`
+        let ty = Type::INT;
         let body = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
         let expr = Expr::FunLit(FunParam::explicit(None, &Expr::INT), &body);
         let expected = Value::FunLit(
-            FunParam::explicit(None, &Expr::INT),
+            FunParam::explicit(None, &ty),
             Closure::new(LocalValues::new(), &body),
         );
         assert_eval(expr, expected);

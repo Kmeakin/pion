@@ -26,8 +26,8 @@ pub enum Value<'core> {
 
     Neutral(Head<'core>, Spine<'core>),
 
-    FunType(FunParam<'core, &'core Expr<'core>>, Closure<'core>),
-    FunLit(FunParam<'core, &'core Expr<'core>>, Closure<'core>),
+    FunType(FunParam<'core, &'core Value<'core>>, Closure<'core>),
+    FunLit(FunParam<'core, &'core Value<'core>>, Closure<'core>),
 }
 
 impl<'core> Value<'core> {

@@ -42,8 +42,9 @@ fn convertible<'core>(
         }
         (Value::FunType(lhs_param, lhs_body), Value::FunType(rhs_param, rhs_body))
         | (Value::FunLit(lhs_param, lhs_body), Value::FunLit(rhs_param, rhs_body)) => {
-            lhs_param.plicity == rhs_param.plicity
-                && convertible_closure(lhs_body, rhs_body, bump, locals, metas)
+            convertible_funs(
+                lhs_param, lhs_body, rhs_param, rhs_body, bump, locals, metas,
+            )
         }
         (Value::FunLit(param, body), value) | (value, Value::FunLit(param, body)) => {
             fun_eta_convertible(*param, body, value, bump, locals, metas)
@@ -84,7 +85,7 @@ fn convertible_elim<'core>(
 /// Check if a function is eta-convertible to a value:
 /// `fun x => f` is eta-equivalent to `f`
 fn fun_eta_convertible<'core>(
-    lhs_param: FunParam<'core, &'core Expr<'core>>,
+    lhs_param: FunParam<'core, &'core Value<'core>>,
     lhs_body: &Closure<'core>,
     rhs_value: &Value<'core>,
     bump: &'core bumpalo::Bump,
@@ -110,13 +111,23 @@ fn fun_eta_convertible<'core>(
     convertible(&lhs, &rhs, bump, locals.succ(), metas)
 }
 
-fn convertible_closure<'core>(
+fn convertible_funs<'core>(
+    lhs_param: &FunParam<'core, &'core Value<'core>>,
     lhs: &Closure<'core>,
+    rhs_param: &FunParam<'core, &'core Value<'core>>,
     rhs: &Closure<'core>,
     bump: &'core bumpalo::Bump,
     locals: EnvLen,
     metas: &MetaValues<'core>,
 ) -> bool {
+    if lhs_param.plicity != rhs_param.plicity {
+        return false;
+    }
+
+    if !convertible(lhs_param.r#type, rhs_param.r#type, bump, locals, metas) {
+        return false;
+    }
+
     let lhs = elim::apply_closure(
         lhs.clone(),
         Value::local_var(LocalVar::new(None, locals.to_level())),
@@ -191,7 +202,8 @@ mod tests {
     fn test_convertible_fun_types() {
         // `forall (_ : Type) -> Int` == `forall (_ : Type) -> Int`
 
-        let param = FunParam::explicit(None, &Expr::TYPE);
+        let ty = Type::TYPE;
+        let param = FunParam::explicit(None, &ty);
         let body = Closure::empty(&Expr::INT);
         let fun = Value::FunType(param, body);
 
@@ -205,7 +217,8 @@ mod tests {
     fn test_convertible_fun_expr() {
         // `fun (_ : Type) -> Int` == `fun (_ : Type) -> Int`
 
-        let param = FunParam::explicit(None, &Expr::TYPE);
+        let ty = Type::TYPE;
+        let param = FunParam::explicit(None, &ty);
         let body = Closure::empty(&Expr::INT);
         let fun = Value::FunLit(param, body);
 
@@ -219,8 +232,9 @@ mod tests {
     fn test_eta_convertible_fun() {
         // `fun (x : Int) => Bool(x)` == `Bool`
 
+        let ty = Type::TYPE;
         let lhs = Value::FunLit(
-            FunParam::explicit(None, &Expr::INT),
+            FunParam::explicit(None, &ty),
             Closure::empty(
                 &const {
                     Expr::FunApp(

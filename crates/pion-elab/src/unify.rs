@@ -150,21 +150,11 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
             (
                 Value::FunType(left_param, left_closure),
                 Value::FunType(right_param, right_closure),
-            ) if left_param.plicity == right_param.plicity => self.unify_closures(
-                left_param.name,
-                left_closure,
-                right_param.name,
-                right_closure,
-            ),
+            ) => self.unify_funs(left_param, left_closure, right_param, right_closure),
             (
                 Value::FunLit(left_param, left_closure),
                 Value::FunLit(right_param, right_closure),
-            ) if left_param.plicity == right_param.plicity => self.unify_closures(
-                left_param.name,
-                left_closure,
-                right_param.name,
-                right_closure,
-            ),
+            ) => self.unify_funs(left_param, left_closure, right_param, right_closure),
 
             // Unify a function literal with a value, using eta-conversion:
             // `(fun x => f x) ?= f`
@@ -217,15 +207,21 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
     }
 
     /// Unify two [closures][Closure].
-    fn unify_closures(
+    fn unify_funs(
         &mut self,
-        left_param_name: Name<'core>,
+        left_param: FunParam<'core, &'core Type<'core>>,
         left_closure: Closure<'core>,
-        right_param_name: Name<'core>,
+        right_param: FunParam<'core, &'core Type<'core>>,
         right_closure: Closure<'core>,
     ) -> Result<(), UnifyError<'core>> {
-        let left_var = Value::local_var(LocalVar::new(left_param_name, self.locals.to_level()));
-        let right_var = Value::local_var(LocalVar::new(right_param_name, self.locals.to_level()));
+        if left_param.plicity != right_param.plicity {
+            return Err(UnifyError::Mismatch);
+        }
+
+        self.unify(left_param.r#type, right_param.r#type)?;
+
+        let left_var = Value::local_var(LocalVar::new(left_param.name, self.locals.to_level()));
+        let right_var = Value::local_var(LocalVar::new(right_param.name, self.locals.to_level()));
 
         let left_value = self.elim_env().apply_closure(left_closure, left_var);
         let right_value = self.elim_env().apply_closure(right_closure, right_var);
@@ -341,12 +337,12 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                 })
             }
             Value::FunType(param, closure) => {
-                let closure = self.rename_closure(param.name, meta_var, closure)?;
-                Ok(Expr::FunType(param, closure))
+                let (param, body) = self.rename_closure(meta_var, param, closure)?;
+                Ok(Expr::FunType(param, body))
             }
             Value::FunLit(param, closure) => {
-                let closure = self.rename_closure(param.name, meta_var, closure)?;
-                Ok(Expr::FunLit(param, closure))
+                let (param, body) = self.rename_closure(meta_var, param, closure)?;
+                Ok(Expr::FunLit(param, body))
             }
         }
     }
@@ -354,18 +350,22 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
     /// Rename a closure back into an [`Expr`].
     fn rename_closure(
         &mut self,
-        param_name: Name<'core>,
         meta_var: MetaVar,
+        param: FunParam<'core, &'core Value<'core>>,
         closure: Closure<'core>,
-    ) -> Result<&'core Expr<'core>, RenameError<'core>> {
-        let var = self.renaming.next_local_var(param_name);
+    ) -> Result<(FunParam<'core, &'core Expr<'core>>, &'core Expr<'core>), RenameError<'core>> {
+        let param_type = self.rename(meta_var, param.r#type)?;
+
+        let var = self.renaming.next_local_var(param.name);
         let body = self.elim_env().apply_closure(closure, var);
 
         self.renaming.push_local();
         let body = self.rename(meta_var, &body);
         self.renaming.pop_local();
 
-        Ok(self.bump.alloc(body?))
+        let (param_type, body) = self.bump.alloc((param_type, body?));
+        let param = FunParam::new(param.plicity, param.name, &*param_type);
+        Ok((param, body))
     }
 }
 
@@ -565,9 +565,10 @@ mod tests {
 
     #[test]
     fn unify_fun_type() {
+        let bool = Type::BOOL;
         let var = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
-        let lhs = Value::FunType(FunParam::explicit(None, &Expr::BOOL), Closure::empty(&var));
-        let rhs = Value::FunType(FunParam::implicit(None, &Expr::BOOL), Closure::empty(&var));
+        let lhs = Value::FunType(FunParam::explicit(None, &bool), Closure::empty(&var));
+        let rhs = Value::FunType(FunParam::implicit(None, &bool), Closure::empty(&var));
 
         assert_unify(&lhs, &lhs, Ok(()));
         assert_unify(&rhs, &rhs, Ok(()));
@@ -577,9 +578,10 @@ mod tests {
 
     #[test]
     fn unify_fun_lit() {
+        let bool = Type::BOOL;
         let var = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
-        let lhs = Value::FunLit(FunParam::explicit(None, &Expr::BOOL), Closure::empty(&var));
-        let rhs = Value::FunLit(FunParam::implicit(None, &Expr::BOOL), Closure::empty(&var));
+        let lhs = Value::FunLit(FunParam::explicit(None, &bool), Closure::empty(&var));
+        let rhs = Value::FunLit(FunParam::implicit(None, &bool), Closure::empty(&var));
 
         assert_unify(&lhs, &lhs, Ok(()));
         assert_unify(&rhs, &rhs, Ok(()));
@@ -590,9 +592,10 @@ mod tests {
     #[test]
     fn unify_fun_lit_eta() {
         // `fun(x : Int) => Bool(x) == Bool`
+        let int = Type::INT;
         let var = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
         let body = Expr::FunApp(&Expr::BOOL, FunArg::explicit(&var));
-        let lhs = Value::FunLit(FunParam::explicit(None, &Expr::INT), Closure::empty(&body));
+        let lhs = Value::FunLit(FunParam::explicit(None, &int), Closure::empty(&body));
         let rhs = Value::BOOL;
         assert_unify(&lhs, &rhs, Ok(()));
         assert_unify(&rhs, &lhs, Ok(()));

@@ -153,9 +153,10 @@ mod tests {
         // `?0(24)` in `[Some(fun x => 42)]`
         let bump = bumpalo::Bump::new();
         let int = Expr::int(42);
+        let ty = Type::INT;
         let mut metas = UniqueEnv::default();
         metas.push(Some(Value::FunLit(
-            FunParam::explicit(None, &Expr::INT),
+            FunParam::explicit(None, &ty),
             Closure::empty(&int),
         )));
 
@@ -179,6 +180,7 @@ mod tests {
         // `?0(24)` in `[Some(fun x => 42)]`
         let bump = bumpalo::Bump::new();
         let int = Expr::int(42);
+        let ty = Type::INT;
         let var = DeBruijnLevel::new(0);
         let value = Value::Neutral(
             Head::MetaVar(MetaVar::new(var)),
@@ -186,7 +188,7 @@ mod tests {
         );
         let mut metas = UniqueEnv::default();
         metas.push(Some(Value::FunLit(
-            FunParam::explicit(None, &Expr::INT),
+            FunParam::explicit(None, &ty),
             Closure::empty(&int),
         )));
         let result = subst_metas(&value, &bump, UnfoldOpts::for_eval(), &metas);

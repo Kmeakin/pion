@@ -237,11 +237,13 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     (body_expr, body_type)
                 };
 
-                let param =
+                let expr_param =
                     FunParam::new(param.plicity, param.name, &*self.bump.alloc(param.r#type));
-                let expr = Expr::FunLit(param, self.bump.alloc(body_expr));
+                let value_param =
+                    FunParam::new(param.plicity, param.name, &*self.bump.alloc(param_type));
+                let expr = Expr::FunLit(expr_param, self.bump.alloc(body_expr));
                 let r#type = Type::FunType(
-                    param,
+                    value_param,
                     Closure::new(self.env.locals.values.clone(), self.bump.alloc(body_type)),
                 );
                 (expr, r#type)
@@ -260,14 +262,16 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             [] => self.check_expr(body, &expected),
             [param, rest @ ..] => match expected {
                 Value::FunType(expected_param, expected_body) => {
-                    let expected_param_type = self.eval_env().eval(expected_param.r#type);
-                    let param = self.check_fun_param(param.as_ref(), &expected_param_type);
+                    let expected_param_type = expected_param.r#type;
+                    let param = self.check_fun_param(param.as_ref(), expected_param_type);
                     let body_expr = {
                         let arg_value = Value::local_var(LocalVar::new(
                             param.name,
                             self.env.locals.values.len().to_level(),
                         ));
-                        self.env.locals.push_param(param.name, expected_param_type);
+                        self.env
+                            .locals
+                            .push_param(param.name, expected_param_type.clone());
                         let expected = self
                             .elim_env()
                             .apply_closure(expected_body.clone(), arg_value);
@@ -302,8 +306,8 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         for (arity, arg) in args.iter().enumerate() {
             match result_type {
                 Value::FunType(param, body) => {
-                    let param_type = self.eval_env().eval(param.r#type);
-                    let arg_expr = self.check_expr(arg.data.expr.as_ref(), &param_type);
+                    let param_type = param.r#type;
+                    let arg_expr = self.check_expr(arg.data.expr.as_ref(), param_type);
                     let arg_value = self.eval_env().eval(&arg_expr);
                     let (expr, arg_expr) = self.bump.alloc((result_expr, arg_expr));
                     result_expr = Expr::FunApp(&*expr, FunArg::new(param.plicity, &*arg_expr));

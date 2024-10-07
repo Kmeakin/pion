@@ -181,13 +181,13 @@ pub fn value_prec(out: &mut impl Write, value: &Value, prec: Prec) -> fmt::Resul
         }
         Value::FunType(param, body) => {
             write!(out, "forall(")?;
-            fun_param(out, param, |out, expr| expr_prec(out, expr, Prec::MAX))?;
+            fun_param(out, param, |out, value| value_prec(out, value, Prec::MAX))?;
             write!(out, ") -> ")?;
             expr_prec(out, body.body, Prec::MAX)?;
         }
         Value::FunLit(param, body) => {
             write!(out, "fun(")?;
-            fun_param(out, param, |out, expr| expr_prec(out, expr, Prec::MAX))?;
+            fun_param(out, param, |out, value| value_prec(out, value, Prec::MAX))?;
             write!(out, ") => ")?;
             expr_prec(out, body.body, Prec::MAX)?;
         }
@@ -513,7 +513,7 @@ mod tests {
     #[test]
     fn print_value_fun_type() {
         let b = Expr::bool(true);
-        let int = Expr::int(1);
+        let int = Value::int(1);
         let value = Value::FunType(FunParam::explicit(None, &int), Closure::empty(&b));
         assert_print_value(&value, expect!["forall(_ : 1) -> true"]);
 
@@ -524,7 +524,7 @@ mod tests {
     #[test]
     fn print_value_fun_lit() {
         let b = Expr::bool(true);
-        let int = Expr::int(1);
+        let int = Value::int(1);
         let value = Value::FunLit(FunParam::explicit(None, &int), Closure::empty(&b));
         assert_print_value(&value, expect!["fun(_ : 1) => true"]);
 

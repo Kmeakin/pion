@@ -34,11 +34,15 @@ pub fn quote<'core>(
         Value::Lit(lit) => Expr::Lit(lit),
         Value::Neutral(head, spine) => quote_neutral(head, &spine, bump, locals, metas),
         Value::FunType(param, body) => {
+            let param_type = quote(param.r#type, bump, locals, metas);
             let body = quote_closure(&body, bump, locals, metas);
+            let param = FunParam::new(param.plicity, param.name, &*bump.alloc(param_type));
             Expr::FunType(param, body)
         }
         Value::FunLit(param, body) => {
+            let param_type = quote(param.r#type, bump, locals, metas);
             let body = quote_closure(&body, bump, locals, metas);
+            let param = FunParam::new(param.plicity, param.name, &*bump.alloc(param_type));
             Expr::FunLit(param, body)
         }
     }
@@ -196,11 +200,9 @@ mod tests {
 
     #[test]
     fn quote_fun_lit() {
+        let ty = Type::ERROR;
         let body = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
-        let fun = Value::FunLit(
-            FunParam::explicit(None, &Expr::Error),
-            Closure::empty(&body),
-        );
+        let fun = Value::FunLit(FunParam::explicit(None, &ty), Closure::empty(&body));
         assert_quote(
             fun,
             Expr::FunLit(
@@ -212,11 +214,9 @@ mod tests {
 
     #[test]
     fn quote_fun_type() {
+        let ty = Type::ERROR;
         let body = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
-        let fun = Value::FunType(
-            FunParam::explicit(None, &Expr::Error),
-            Closure::empty(&body),
-        );
+        let fun = Value::FunType(FunParam::explicit(None, &ty), Closure::empty(&body));
         assert_quote(
             fun,
             Expr::FunType(
