@@ -12,9 +12,9 @@
 * [ ] unification
     * [x] inferring types of unnanotated patterns
     * [x] hole expressions
-    * [ ] implicit arguments
-      * [ ] specialization
-      * [ ] generalization
+    * [x] implicit arguments
+      * [x] specialization
+      * [x] generalization
     * [ ] pruning
 
 * [ ] recursion
