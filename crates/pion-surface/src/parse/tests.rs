@@ -120,39 +120,39 @@ fn call_expr() {
     assert_parse_expr(
         "f(a)",
         expect![[r#"
-                0..4 @ Expr::FunCall
-                 0..1 @ Expr::Var("f")
-                 2..4 @ FunArg
-                  2..3 @ Expr::Var("a")"#]],
+            0..4 @ Expr::FunCall
+             0..1 @ Expr::Var("f")
+             2..4 @ FunArg(Explicit)
+              2..3 @ Expr::Var("a")"#]],
     );
     assert_parse_expr(
         "f(a,)",
         expect![[r#"
-                0..5 @ Expr::FunCall
-                 0..1 @ Expr::Var("f")
-                 2..4 @ FunArg
-                  2..3 @ Expr::Var("a")"#]],
+            0..5 @ Expr::FunCall
+             0..1 @ Expr::Var("f")
+             2..4 @ FunArg(Explicit)
+              2..3 @ Expr::Var("a")"#]],
     );
     assert_parse_expr(
         "f(a, b)",
         expect![[r#"
-                0..7 @ Expr::FunCall
-                 0..1 @ Expr::Var("f")
-                 2..4 @ FunArg
-                  2..3 @ Expr::Var("a")
-                 5..7 @ FunArg
-                  5..6 @ Expr::Var("b")"#]],
+            0..7 @ Expr::FunCall
+             0..1 @ Expr::Var("f")
+             2..4 @ FunArg(Explicit)
+              2..3 @ Expr::Var("a")
+             5..7 @ FunArg(Explicit)
+              5..6 @ Expr::Var("b")"#]],
     );
     assert_parse_expr(
         "f(a)(b)",
         expect![[r#"
-                0..7 @ Expr::FunCall
-                 0..4 @ Expr::FunCall
-                  0..1 @ Expr::Var("f")
-                  2..4 @ FunArg
-                   2..3 @ Expr::Var("a")
-                 5..7 @ FunArg
-                  5..6 @ Expr::Var("b")"#]],
+            0..7 @ Expr::FunCall
+             0..4 @ Expr::FunCall
+              0..1 @ Expr::Var("f")
+              2..4 @ FunArg(Explicit)
+               2..3 @ Expr::Var("a")
+             5..7 @ FunArg(Explicit)
+              5..6 @ Expr::Var("b")"#]],
     );
 }
 
@@ -187,30 +187,40 @@ fn fun_expr() {
     assert_parse_expr(
         "fun(a) => a",
         expect![[r#"
-                0..11 @ Expr::FunExpr
-                 4..6 @ FunParam
-                  4..5 @ Pat::Var("a")
-                 10..11 @ Expr::Var("a")"#]],
+            0..11 @ Expr::FunExpr
+             4..6 @ FunParam(Explicit)
+              4..5 @ Pat::Var("a")
+             10..11 @ Expr::Var("a")"#]],
     );
     assert_parse_expr(
         "fun(a: A) => a",
         expect![[r#"
-                0..14 @ Expr::FunExpr
-                 4..9 @ FunParam
-                  4..8 @ Pat::TypeAnnotation
-                   4..5 @ Pat::Var("a")
-                   7..8 @ Expr::Var("A")
-                 13..14 @ Expr::Var("a")"#]],
+            0..14 @ Expr::FunExpr
+             4..9 @ FunParam(Explicit)
+              4..8 @ Pat::TypeAnnotation
+               4..5 @ Pat::Var("a")
+               7..8 @ Expr::Var("A")
+             13..14 @ Expr::Var("a")"#]],
     );
     assert_parse_expr(
         "fun(a, b) => a",
         expect![[r#"
-                0..14 @ Expr::FunExpr
-                 4..6 @ FunParam
-                  4..5 @ Pat::Var("a")
-                 7..9 @ FunParam
-                  7..8 @ Pat::Var("b")
-                 13..14 @ Expr::Var("a")"#]],
+            0..14 @ Expr::FunExpr
+             4..6 @ FunParam(Explicit)
+              4..5 @ Pat::Var("a")
+             7..9 @ FunParam(Explicit)
+              7..8 @ Pat::Var("b")
+             13..14 @ Expr::Var("a")"#]],
+    );
+    assert_parse_expr(
+        "fun(@a: A) => a",
+        expect![[r#"
+            0..15 @ Expr::FunExpr
+             4..10 @ FunParam(Implicit)
+              5..9 @ Pat::TypeAnnotation
+               5..6 @ Pat::Var("a")
+               8..9 @ Expr::Var("A")
+             14..15 @ Expr::Var("a")"#]],
     );
 }
 
@@ -225,30 +235,40 @@ fn forall_expr() {
     assert_parse_expr(
         "forall(a) -> a",
         expect![[r#"
-                0..14 @ Expr::FunType
-                 7..9 @ FunParam
-                  7..8 @ Pat::Var("a")
-                 13..14 @ Expr::Var("a")"#]],
+            0..14 @ Expr::FunType
+             7..9 @ FunParam(Explicit)
+              7..8 @ Pat::Var("a")
+             13..14 @ Expr::Var("a")"#]],
     );
     assert_parse_expr(
         "forall(a: A) -> a",
         expect![[r#"
-                0..17 @ Expr::FunType
-                 7..12 @ FunParam
-                  7..11 @ Pat::TypeAnnotation
-                   7..8 @ Pat::Var("a")
-                   10..11 @ Expr::Var("A")
-                 16..17 @ Expr::Var("a")"#]],
+            0..17 @ Expr::FunType
+             7..12 @ FunParam(Explicit)
+              7..11 @ Pat::TypeAnnotation
+               7..8 @ Pat::Var("a")
+               10..11 @ Expr::Var("A")
+             16..17 @ Expr::Var("a")"#]],
     );
     assert_parse_expr(
         "forall(a, b) -> a",
         expect![[r#"
-                0..17 @ Expr::FunType
-                 7..9 @ FunParam
-                  7..8 @ Pat::Var("a")
-                 10..12 @ FunParam
-                  10..11 @ Pat::Var("b")
-                 16..17 @ Expr::Var("a")"#]],
+            0..17 @ Expr::FunType
+             7..9 @ FunParam(Explicit)
+              7..8 @ Pat::Var("a")
+             10..12 @ FunParam(Explicit)
+              10..11 @ Pat::Var("b")
+             16..17 @ Expr::Var("a")"#]],
+    );
+    assert_parse_expr(
+        "forall(@a: A) -> a",
+        expect![[r#"
+            0..18 @ Expr::FunType
+             7..13 @ FunParam(Implicit)
+              8..12 @ Pat::TypeAnnotation
+               8..9 @ Pat::Var("a")
+               11..12 @ Expr::Var("A")
+             17..18 @ Expr::Var("a")"#]],
     );
 }
 

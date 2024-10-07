@@ -92,12 +92,20 @@ pub enum Pat<'text, 'surface> {
 
 #[derive(Debug, Copy, Clone)]
 pub struct FunArg<'text, 'surface> {
+    pub plicity: Plicity,
     pub expr: Located<Expr<'text, 'surface>>,
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct FunParam<'text, 'surface> {
+    pub plicity: Plicity,
     pub pat: Located<Pat<'text, 'surface>>,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum Plicity {
+    Explicit,
+    Implicit,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -121,8 +129,8 @@ mod tests {
         assert_eq!(size_of::<Command>(), 24);
         assert_eq!(size_of::<LetBinding>(), 96);
         assert_eq!(size_of::<Pat>(), 40);
-        assert_eq!(size_of::<FunArg>(), 48);
-        assert_eq!(size_of::<FunParam>(), 48);
+        assert_eq!(size_of::<FunArg>(), 56);
+        assert_eq!(size_of::<FunParam>(), 56);
         assert_eq!(size_of::<Lit>(), 24);
     }
 }

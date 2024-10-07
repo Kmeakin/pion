@@ -417,11 +417,12 @@ where
             }
 
             let start_range = self.range;
+            let plicity = self.plicity();
             let expr = self.expr();
             let end_range = self.range;
             args.push(Located::new(
                 TextRange::new(start_range.start(), end_range.end()),
-                FunArg { expr },
+                FunArg { plicity, expr },
             ));
 
             if let Some(token) = self.peek_token() {
@@ -443,11 +444,12 @@ where
             }
 
             let start_range = self.range;
+            let plicity = self.plicity();
             let pat = self.pat();
             let end_range = self.range;
             params.push(Located::new(
                 TextRange::new(start_range.start(), end_range.end()),
-                FunParam { pat },
+                FunParam { plicity, pat },
             ));
 
             if let Some(token) = self.peek_token() {
@@ -459,5 +461,15 @@ where
         }
 
         params.leak()
+    }
+
+    fn plicity(&mut self) -> Plicity {
+        match self.peek_token() {
+            Some(token) if token.kind == TokenKind::Punct('@') => {
+                self.next_token();
+                Plicity::Implicit
+            }
+            _ => Plicity::Explicit,
+        }
     }
 }

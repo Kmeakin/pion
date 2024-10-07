@@ -166,14 +166,14 @@ impl<W: Write> Printer<W> {
     }
 
     fn fun_param(&mut self, param: &FunParam) -> fmt::Result {
-        writeln!(self, "FunParam")?;
-        let FunParam { pat } = param;
+        let FunParam { plicity, pat } = param;
+        writeln!(self, "FunParam({plicity:?})")?;
         self.with_indent(|this| this.located(pat))
     }
 
     fn fun_arg(&mut self, arg: &FunArg) -> fmt::Result {
-        writeln!(self, "FunArg")?;
-        let FunArg { expr } = arg;
+        let FunArg { plicity, expr } = arg;
+        writeln!(self, "FunArg({plicity:?})")?;
         self.with_indent(|this| this.located(expr))
     }
 

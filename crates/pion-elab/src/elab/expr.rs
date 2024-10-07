@@ -166,7 +166,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         &mut self,
         param: Located<&surface::FunParam<'text, 'surface>>,
     ) -> Synth<'core, FunParam<'core, Expr<'core>>> {
-        let surface::FunParam { pat } = param.data;
+        let surface::FunParam { plicity, pat } = param.data;
         let (pat, r#type) = self.synth_pat(pat.as_ref());
         let param = FunParam::new(
             Plicity::Explicit,
@@ -181,7 +181,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         param: Located<&surface::FunParam<'text, 'surface>>,
         expected: &Type<'core>,
     ) -> Check<FunParam<'core, Expr<'core>>> {
-        let surface::FunParam { pat } = param.data;
+        let surface::FunParam { plicity, pat } = param.data;
         let pat = self.check_pat(pat.as_ref(), expected);
         FunParam::new(
             Plicity::Explicit,
