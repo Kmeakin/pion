@@ -169,7 +169,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         let surface::FunParam { plicity, pat } = param.data;
         let (pat, r#type) = self.synth_pat(pat.as_ref());
         let param = FunParam::new(
-            Plicity::Explicit,
+            surface_plicity_to_core(*plicity),
             pat.name(),
             self.quote_env().quote(&r#type),
         );
@@ -184,7 +184,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         let surface::FunParam { plicity, pat } = param.data;
         let pat = self.check_pat(pat.as_ref(), expected);
         FunParam::new(
-            Plicity::Explicit,
+            surface_plicity_to_core(*plicity),
             pat.name(),
             self.quote_env().quote(expected),
         )
@@ -457,5 +457,12 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         // TODO: Handle escape sequences, check string is terminated, check for invalid
         // characters
         Expr::char('\0')
+    }
+}
+
+fn surface_plicity_to_core(surface_plicity: surface::Plicity) -> Plicity {
+    match surface_plicity {
+        surface::Plicity::Explicit => Plicity::Explicit,
+        surface::Plicity::Implicit => Plicity::Implicit,
     }
 }
