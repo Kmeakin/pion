@@ -54,7 +54,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         let surface::LetBinding { pat, init } = binding.data;
         let (pat, r#type_value) = self.synth_pat(pat.as_ref());
         let init = self.check_expr(init.as_ref(), &r#type_value);
-        let r#type = self.quote_env().quote(&r#type_value, self.bump);
+        let r#type = self.quote_env().quote(&r#type_value);
         let binding = LetBinding::new(pat.name(), r#type, init);
         (binding, r#type_value)
     }

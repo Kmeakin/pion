@@ -2,6 +2,7 @@ use super::*;
 use crate::syntax::Stmt;
 
 pub struct EvalEnv<'env, 'core> {
+    bump: &'core bumpalo::Bump,
     opts: UnfoldOpts,
     locals: &'env mut LocalValues<'core>,
     metas: &'env MetaValues<'core>,
@@ -9,11 +10,13 @@ pub struct EvalEnv<'env, 'core> {
 
 impl<'env, 'core> EvalEnv<'env, 'core> {
     pub fn new(
+        bump: &'core bumpalo::Bump,
         opts: UnfoldOpts,
         locals: &'env mut LocalValues<'core>,
         metas: &'env MetaValues<'core>,
     ) -> Self {
         Self {
+            bump,
             opts,
             locals,
             metas,
@@ -21,11 +24,11 @@ impl<'env, 'core> EvalEnv<'env, 'core> {
     }
 
     pub fn eval(self, expr: &Expr<'core>) -> Value<'core> {
-        eval(expr, self.opts, self.locals, self.metas)
+        eval(expr, self.bump, self.opts, self.locals, self.metas)
     }
 
     pub fn eval_stmt(self, stmt: &Stmt<'core>) {
-        eval_stmt(stmt, self.opts, self.locals, self.metas);
+        eval_stmt(stmt, self.bump, self.opts, self.locals, self.metas);
     }
 }
 
@@ -33,6 +36,7 @@ impl<'env, 'core> EvalEnv<'env, 'core> {
 /// Does not reduce under `fun` or `forall`
 pub(super) fn eval<'core, 'env>(
     expr: &Expr<'core>,
+    bump: &'core bumpalo::Bump,
     opts: UnfoldOpts,
     locals: &'env mut LocalValues<'core>,
     metas: &'env MetaValues<'core>,
@@ -62,19 +66,19 @@ pub(super) fn eval<'core, 'env>(
             Value::FunLit(*param, body)
         }
         Expr::FunApp(fun, arg) => {
-            let fun = eval(fun, opts, locals, metas);
-            let arg_expr = eval(arg.expr, opts, locals, metas);
+            let fun = eval(fun, bump, opts, locals, metas);
+            let arg_expr = eval(arg.expr, bump, opts, locals, metas);
             let arg = FunArg::new(arg.plicity, arg_expr);
-            elim::fun_app(fun, arg, opts, metas)
+            elim::fun_app(fun, arg, bump, opts, metas)
         }
         Expr::Do(stmts, trailing_expr) => {
             let len = locals.len();
             for stmt in *stmts {
-                eval_stmt(stmt, opts, locals, metas);
+                eval_stmt(stmt, bump, opts, locals, metas);
             }
             let result = match trailing_expr {
                 None => Value::UNIT_VALUE,
-                Some(expr) => eval(expr, opts, locals, metas),
+                Some(expr) => eval(expr, bump, opts, locals, metas),
             };
             locals.truncate(len);
             result
@@ -87,16 +91,17 @@ pub(super) fn eval<'core, 'env>(
 /// Don't forget to reset in the caller!
 fn eval_stmt<'core, 'env>(
     stmt: &Stmt<'core>,
+    bump: &'core bumpalo::Bump,
     opts: UnfoldOpts,
     locals: &'env mut LocalValues<'core>,
     metas: &'env MetaValues<'core>,
 ) {
     match stmt {
         Stmt::Expr(expr) => {
-            eval(expr, opts, locals, metas);
+            eval(expr, bump, opts, locals, metas);
         }
         Stmt::Let(binding) => {
-            let rhs = eval(&binding.init, opts, locals, metas);
+            let rhs = eval(&binding.init, bump, opts, locals, metas);
             locals.push(rhs);
         }
     }
@@ -113,20 +118,28 @@ mod tests {
     #[track_caller]
     #[allow(clippy::needless_pass_by_value, reason = "It's only a test")]
     fn assert_eval_in_env<'env, 'core>(
+        bump: &'core bumpalo::Bump,
         locals: &'env mut LocalValues<'core>,
         metas: &'env MetaValues<'core>,
         expr: Expr<'core>,
         expected: Value,
     ) {
         let opts = UnfoldOpts::for_eval();
-        let result = eval(&expr, opts, locals, metas);
+        let result = eval(&expr, bump, opts, locals, metas);
         assert_eq!(result, expected);
     }
 
     #[track_caller]
     #[allow(clippy::needless_pass_by_value, reason = "It's only a test")]
     fn assert_eval(expr: Expr, expected: Value) {
-        assert_eval_in_env(&mut LocalValues::new(), &UniqueEnv::new(), expr, expected);
+        let bump = bumpalo::Bump::new();
+        assert_eval_in_env(
+            &bump,
+            &mut LocalValues::new(),
+            &UniqueEnv::new(),
+            expr,
+            expected,
+        );
     }
 
     #[test]
@@ -160,18 +173,21 @@ mod tests {
 
     #[test]
     fn eval_meta_var() {
+        let bump = bumpalo::Bump::new();
         let mut locals = LocalValues::new();
         let mut metas = UniqueEnv::new();
         metas.push(None);
         metas.push(Some(Value::int(42)));
 
         assert_eval_in_env(
+            &bump,
             &mut locals,
             &metas,
             Expr::MetaVar(MetaVar::new(DeBruijnLevel::new(0))),
             Value::meta_var(MetaVar::new(DeBruijnLevel::new(0))),
         );
         assert_eval_in_env(
+            &bump,
             &mut locals,
             &metas,
             Expr::MetaVar(MetaVar::new(DeBruijnLevel::new(1))),

@@ -101,11 +101,12 @@ impl<'core> Elaborator<'core> {
     }
 
     fn elim_env(&self) -> ElimEnv<'_, 'core> {
-        ElimEnv::new(UnfoldOpts::for_eval(), &self.env.metas.values)
+        ElimEnv::new(self.bump, UnfoldOpts::for_eval(), &self.env.metas.values)
     }
 
     fn eval_env(&mut self) -> EvalEnv<'_, 'core> {
         EvalEnv::new(
+            self.bump,
             UnfoldOpts::for_eval(),
             &mut self.env.locals.values,
             &self.env.metas.values,
@@ -113,7 +114,7 @@ impl<'core> Elaborator<'core> {
     }
 
     fn quote_env(&self) -> QuoteEnv<'_, 'core> {
-        QuoteEnv::new(self.env.locals.len(), &self.env.metas.values)
+        QuoteEnv::new(self.bump, self.env.locals.len(), &self.env.metas.values)
     }
 
     fn unify_env(&mut self) -> UnifyEnv<'_, 'core> {

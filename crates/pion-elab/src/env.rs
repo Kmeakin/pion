@@ -37,8 +37,8 @@ impl<'core> LocalEnv<'core> {
         let index = self.names.find(&Some(name))?;
         Some((
             LocalVar::new(Some(name), index),
-            &self.types.get(index).unwrap(),
-            &self.values.get(index).unwrap(),
+            self.types.get(index).unwrap(),
+            self.values.get(index).unwrap(),
         ))
     }
 

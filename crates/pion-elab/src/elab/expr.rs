@@ -171,7 +171,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         let param = FunParam::new(
             Plicity::Explicit,
             pat.name(),
-            self.quote_env().quote(&r#type, self.bump),
+            self.quote_env().quote(&r#type),
         );
         (param, r#type)
     }
@@ -186,7 +186,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         FunParam::new(
             Plicity::Explicit,
             pat.name(),
-            self.quote_env().quote(expected, self.bump),
+            self.quote_env().quote(expected),
         )
     }
 
@@ -232,7 +232,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let (body_expr, body_type) = {
                     self.env.locals.push_param(param.name, param_type.clone());
                     let (body_expr, body_type) = self.synth_fun_expr(params, body);
-                    let body_type = self.quote_env().quote(&body_type, self.bump);
+                    let body_type = self.quote_env().quote(&body_type);
                     self.env.locals.pop();
                     (body_expr, body_type)
                 };

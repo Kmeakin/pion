@@ -111,7 +111,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
     }
 
     fn elim_env(&self) -> semantics::ElimEnv<'_, 'core> {
-        semantics::ElimEnv::new(UnfoldOpts::for_eval(), self.metas)
+        semantics::ElimEnv::new(self.bump, UnfoldOpts::for_eval(), self.metas)
     }
 
     /// Unify two values, updating the solution environment if necessary.
@@ -259,9 +259,13 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
         let expr = self.rename(meta_var, value)?;
         let fun_expr = self.fun_intros(spine, expr);
         let mut local_values = SharedEnv::new();
-        let solution =
-            semantics::EvalEnv::new(UnfoldOpts::for_eval(), &mut local_values, self.metas)
-                .eval(&fun_expr);
+        let solution = semantics::EvalEnv::new(
+            self.bump,
+            UnfoldOpts::for_eval(),
+            &mut local_values,
+            self.metas,
+        )
+        .eval(&fun_expr);
         self.metas.set(meta_var, Some(solution));
         Ok(())
     }

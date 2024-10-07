@@ -3,15 +3,22 @@ use crate::env::DeBruijn;
 
 #[derive(Debug, Copy, Clone)]
 pub struct QuoteEnv<'env, 'core> {
+    bump: &'core bumpalo::Bump,
     locals: EnvLen,
     metas: &'env MetaValues<'core>,
 }
 
 impl<'env, 'core> QuoteEnv<'env, 'core> {
-    pub fn new(locals: EnvLen, metas: &'env MetaValues<'core>) -> Self { Self { locals, metas } }
+    pub fn new(bump: &'core bumpalo::Bump, locals: EnvLen, metas: &'env MetaValues<'core>) -> Self {
+        Self {
+            bump,
+            locals,
+            metas,
+        }
+    }
 
-    pub fn quote(&self, value: &Value<'core>, bump: &'core bumpalo::Bump) -> Expr<'core> {
-        quote(value, bump, self.locals, self.metas)
+    pub fn quote(&self, value: &Value<'core>) -> Expr<'core> {
+        quote(value, self.bump, self.locals, self.metas)
     }
 }
 
@@ -22,7 +29,7 @@ pub fn quote<'core>(
     locals: EnvLen,
     metas: &MetaValues<'core>,
 ) -> Expr<'core> {
-    let value = elim::subst_metas(value, UnfoldOpts::for_quote(), metas);
+    let value = elim::subst_metas(value, bump, UnfoldOpts::for_quote(), metas);
     match value {
         Value::Lit(lit) => Expr::Lit(lit),
         Value::Neutral(head, spine) => quote_neutral(head, &spine, bump, locals, metas),
@@ -89,7 +96,7 @@ fn quote_closure<'core>(
     metas: &MetaValues<'core>,
 ) -> &'core Expr<'core> {
     let arg = Value::local_var(LocalVar::new(None, locals.to_level()));
-    let body = elim::apply_closure(closure.clone(), arg, UnfoldOpts::for_quote(), metas);
+    let body = elim::apply_closure(closure.clone(), arg, bump, UnfoldOpts::for_quote(), metas);
     let body = quote(&body, bump, locals.succ(), metas);
     let body = bump.alloc(body);
     body

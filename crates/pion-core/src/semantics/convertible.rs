@@ -2,15 +2,22 @@ use super::*;
 
 #[derive(Debug, Copy, Clone)]
 pub struct ConvertibleEnv<'env, 'core> {
+    bump: &'core bumpalo::Bump,
     locals: EnvLen,
     metas: &'env MetaValues<'core>,
 }
 
 impl<'env, 'core> ConvertibleEnv<'env, 'core> {
-    pub fn new(locals: EnvLen, metas: &'env MetaValues<'core>) -> Self { Self { locals, metas } }
+    pub fn new(bump: &'core bumpalo::Bump, locals: EnvLen, metas: &'env MetaValues<'core>) -> Self {
+        Self {
+            bump,
+            locals,
+            metas,
+        }
+    }
 
     pub fn convertible(&self, lhs: &Value<'core>, rhs: &Value<'core>) -> bool {
-        convertible(lhs, rhs, self.locals, self.metas)
+        convertible(lhs, rhs, self.bump, self.locals, self.metas)
     }
 }
 
@@ -18,6 +25,7 @@ impl<'env, 'core> ConvertibleEnv<'env, 'core> {
 fn convertible<'core>(
     lhs: &Value<'core>,
     rhs: &Value<'core>,
+    bump: &'core bumpalo::Bump,
     locals: EnvLen,
     metas: &MetaValues<'core>,
 ) -> bool {
@@ -27,6 +35,7 @@ fn convertible<'core>(
             convertible_neutral(
                 (*lhs_head, lhs_spine),
                 (*rhs_head, rhs_spine),
+                bump,
                 locals,
                 metas,
             )
@@ -34,10 +43,10 @@ fn convertible<'core>(
         (Value::FunType(lhs_param, lhs_body), Value::FunType(rhs_param, rhs_body))
         | (Value::FunLit(lhs_param, lhs_body), Value::FunLit(rhs_param, rhs_body)) => {
             lhs_param.plicity == rhs_param.plicity
-                && convertible_closure(lhs_body, rhs_body, locals, metas)
+                && convertible_closure(lhs_body, rhs_body, bump, locals, metas)
         }
         (Value::FunLit(param, body), value) | (value, Value::FunLit(param, body)) => {
-            fun_eta_convertible(*param, body, value, locals, metas)
+            fun_eta_convertible(*param, body, value, bump, locals, metas)
         }
         _ => false,
     }
@@ -46,6 +55,7 @@ fn convertible<'core>(
 fn convertible_neutral<'core>(
     (lhs_head, lhs_spine): (Head, &EcoVec<Elim<'core>>),
     (rhs_head, rhs_spine): (Head, &EcoVec<Elim<'core>>),
+    bump: &'core bumpalo::Bump,
     locals: EnvLen,
     metas: &MetaValues<'core>,
 ) -> bool {
@@ -54,18 +64,19 @@ fn convertible_neutral<'core>(
         && lhs_spine
             .iter()
             .zip(rhs_spine.iter())
-            .all(|(lhs, rhs)| convertible_elim(lhs, rhs, locals, metas))
+            .all(|(lhs, rhs)| convertible_elim(lhs, rhs, bump, locals, metas))
 }
 
 fn convertible_elim<'core>(
     lhs: &Elim<'core>,
     rhs: &Elim<'core>,
+    bump: &'core bumpalo::Bump,
     locals: EnvLen,
     metas: &MetaValues<'core>,
 ) -> bool {
     match (lhs, rhs) {
         (Elim::FunApp(lhs), Elim::FunApp(rhs)) => {
-            lhs.plicity == rhs.plicity && convertible(&lhs.expr, &rhs.expr, locals, metas)
+            lhs.plicity == rhs.plicity && convertible(&lhs.expr, &rhs.expr, bump, locals, metas)
         }
     }
 }
@@ -76,6 +87,7 @@ fn fun_eta_convertible<'core>(
     lhs_param: FunParam<'core, &'core Expr<'core>>,
     lhs_body: &Closure<'core>,
     rhs_value: &Value<'core>,
+    bump: &'core bumpalo::Bump,
     locals: EnvLen,
     metas: &MetaValues<'core>,
 ) -> bool {
@@ -83,28 +95,32 @@ fn fun_eta_convertible<'core>(
     let lhs = elim::apply_closure(
         lhs_body.clone(),
         var.clone(),
+        bump,
         UnfoldOpts::for_quote(),
         metas,
     );
     let rhs = elim::fun_app(
         rhs_value.clone(),
         FunArg::new(lhs_param.plicity, var),
+        bump,
         UnfoldOpts::for_quote(),
         metas,
     );
 
-    convertible(&lhs, &rhs, locals.succ(), metas)
+    convertible(&lhs, &rhs, bump, locals.succ(), metas)
 }
 
 fn convertible_closure<'core>(
     lhs: &Closure<'core>,
     rhs: &Closure<'core>,
+    bump: &'core bumpalo::Bump,
     locals: EnvLen,
     metas: &MetaValues<'core>,
 ) -> bool {
     let lhs = elim::apply_closure(
         lhs.clone(),
         Value::local_var(LocalVar::new(None, locals.to_level())),
+        bump,
         UnfoldOpts::for_quote(),
         metas,
     );
@@ -112,10 +128,11 @@ fn convertible_closure<'core>(
     let rhs = elim::apply_closure(
         rhs.clone(),
         Value::local_var(LocalVar::new(None, locals.to_level())),
+        bump,
         UnfoldOpts::for_quote(),
         metas,
     );
-    convertible(&lhs, &rhs, locals.succ(), metas)
+    convertible(&lhs, &rhs, bump, locals.succ(), metas)
 }
 
 #[cfg(test)]
@@ -126,18 +143,20 @@ mod tests {
 
     #[track_caller]
     fn assert_convertible<'core>(lhs: &Value<'core>, rhs: &Value<'core>) {
+        let bump = bumpalo::Bump::new();
         let locals = EnvLen::default();
         let metas = UniqueEnv::default();
-        assert!(convertible(lhs, rhs, locals, &metas));
-        assert!(convertible(rhs, lhs, locals, &metas));
+        assert!(convertible(lhs, rhs, &bump, locals, &metas));
+        assert!(convertible(rhs, lhs, &bump, locals, &metas));
     }
 
     #[track_caller]
     fn assert_not_convertible<'core>(lhs: &Value<'core>, rhs: &Value<'core>) {
+        let bump = bumpalo::Bump::new();
         let locals = EnvLen::default();
         let metas = UniqueEnv::default();
-        assert!(!convertible(lhs, rhs, locals, &metas));
-        assert!(!convertible(rhs, lhs, locals, &metas));
+        assert!(!convertible(lhs, rhs, &bump, locals, &metas));
+        assert!(!convertible(rhs, lhs, &bump, locals, &metas));
     }
 
     #[test]
