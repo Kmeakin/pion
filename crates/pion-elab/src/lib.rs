@@ -90,6 +90,8 @@ impl<'core> Elaborator<'core> {
                     MetaSource::PatType(_, None) => String::from("type of wildcard pattern"),
                     MetaSource::HoleType(_) => String::from("type of hole"),
                     MetaSource::HoleExpr(_) => String::from("expression to solve hole"),
+                    MetaSource::ImplicitArg(_, Some(name)) => format!("implicit argument `{name}`"),
+                    MetaSource::ImplicitArg(_, None) => String::from("implicit argument"),
                 };
                 self.diagnostic(
                     source.range(),

@@ -108,9 +108,10 @@ impl<'core> MetaEnv<'core> {
 
 #[derive(Debug, Copy, Clone)]
 pub enum MetaSource<'core> {
-    PatType(TextRange, Option<InternedStr<'core>>),
+    PatType(TextRange, Name<'core>),
     HoleType(TextRange),
     HoleExpr(TextRange),
+    ImplicitArg(TextRange, Name<'core>),
 }
 
 impl MetaSource<'_> {
@@ -118,7 +119,8 @@ impl MetaSource<'_> {
         match self {
             MetaSource::PatType(range, ..)
             | MetaSource::HoleExpr(range, ..)
-            | MetaSource::HoleType(range, ..) => *range,
+            | MetaSource::HoleType(range, ..)
+            | MetaSource::ImplicitArg(range, ..) => *range,
         }
     }
 }

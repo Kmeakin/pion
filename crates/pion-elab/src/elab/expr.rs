@@ -275,7 +275,11 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         };
 
         match (param.data.plicity, expected_param.plicity) {
-            (surface::Plicity::Implicit, Plicity::Explicit) => todo!("plicity mismatch"),
+            (surface::Plicity::Implicit, Plicity::Explicit) => {
+                // FIXME: this span is misleading
+                let (expr, r#type) = self.synth_fun_expr(params, body);
+                self.coerce_expr(Located::new(body.range, expr), &r#type, expected)
+            }
 
             // If an implicit function is expected, try to generalize the
             // function literal by wrapping it in an implicit function
@@ -324,18 +328,42 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         args: &[Located<surface::FunArg<'text, 'surface>>],
     ) -> (Expr<'core>, Value<'core>) {
         let (callee_expr, callee_type) = self.synth_expr(callee);
+        let callee_range = callee.range;
         let mut result_expr = callee_expr;
         let mut result_type = callee_type.clone();
 
         for (arity, arg) in args.iter().enumerate() {
+            let arg_plicity = surface_plicity_to_core(arg.data.plicity);
+
+            if arg_plicity == Plicity::Explicit {
+                (result_expr, result_type) =
+                    self.insert_implicit_apps(callee_range, result_expr, result_type);
+            }
+
             match result_type {
-                Value::FunType(param, body) => {
+                Value::FunType(param, body) if arg_plicity == param.plicity => {
                     let param_type = param.r#type;
                     let arg_expr = self.check_expr(arg.data.expr.as_ref(), param_type);
                     let arg_value = self.eval_env().eval(&arg_expr);
                     let (expr, arg_expr) = self.bump.alloc((result_expr, arg_expr));
                     result_expr = Expr::FunApp(&*expr, FunArg::new(param.plicity, &*arg_expr));
                     result_type = self.elim_env().apply_closure(body, arg_value);
+                }
+                Value::FunType(param, _) => {
+                    self.diagnostic(
+                        arg.range,
+                        Diagnostic::error()
+                            .with_message(format!(
+                                "Applied {} argument when {} argument was expected",
+                                arg_plicity.description(),
+                                param.plicity.description()
+                            ))
+                            .with_notes(vec![format!(
+                                "Help: the type of the callee is `{}`",
+                                callee_type
+                            )]),
+                    );
+                    return (Expr::Error, Type::ERROR);
                 }
                 _ => {
                     let diagnostic = match arity {
@@ -359,6 +387,34 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         }
 
         (result_expr, result_type)
+    }
+
+    /// Wrap an expr in fresh implicit applications that correspond to implicit
+    /// parameters in the type provided.
+    fn insert_implicit_apps(
+        &mut self,
+        range: TextRange,
+        mut expr: Expr<'core>,
+        mut r#type: Type<'core>,
+    ) -> (Expr<'core>, Type<'core>) {
+        loop {
+            r#type = self.elim_env().subst_metas(&r#type);
+            match r#type {
+                Value::FunType { 0: param, 1: body } if param.plicity == Plicity::Implicit => {
+                    let source = MetaSource::ImplicitArg(range, param.name);
+                    let arg_expr = self.push_unsolved_expr(source, param.r#type.clone());
+                    let arg_value = self.eval_env().eval(&arg_expr);
+
+                    let (fun, arg_expr) = self.bump.alloc((expr, arg_expr));
+
+                    let arg = FunArg::new(param.plicity, &*arg_expr);
+                    expr = Expr::FunApp(fun, arg);
+                    r#type = self.elim_env().apply_closure(body, arg_value);
+                }
+                _ => break,
+            }
+        }
+        (expr, r#type)
     }
 
     fn synth_int(&mut self, text: Located<&str>) -> Expr<'core> {

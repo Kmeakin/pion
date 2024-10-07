@@ -1,0 +1,2 @@
+#check (fun(@A: Type, x: A) => x)(5);
+#eval (fun(@A: Type, x: A) => x)(5);

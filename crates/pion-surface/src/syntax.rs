@@ -102,7 +102,7 @@ pub struct FunParam<'text, 'surface> {
     pub pat: Located<Pat<'text, 'surface>>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Plicity {
     Explicit,
     Implicit,

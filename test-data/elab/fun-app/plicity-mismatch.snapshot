@@ -1,0 +1,18 @@
+exit status: 0
+
+stdout = """
+#error : #error
+
+"""
+
+stderr = """
+error: Applied implicit argument when explicit argument was expected
+  ┌─ test-data/elab/fun-app/plicity-mismatch.pion:1:27
+  │
+1 │ #check (fun(x: Int) => x)(@5);
+  │                           ^^^
+  │
+  = Help: the type of the callee is `forall(x : Int) -> Int`
+
+
+"""

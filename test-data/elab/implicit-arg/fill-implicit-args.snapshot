@@ -1,0 +1,11 @@
+exit status: 0
+
+stdout = """
+(fun(@A : Type, x : #var(DeBruijnIndex(0))) => x)(@?0, 5) : ?0
+(fun(@A : Type, x : #var(DeBruijnIndex(0))) => x)(@?1, 5) ⇝ 5
+
+"""
+
+stderr = """
+
+"""

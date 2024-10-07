@@ -1,0 +1,1 @@
+#check (fun(@x: Int) => false) : forall(x: Int) -> Bool;
