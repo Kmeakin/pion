@@ -45,7 +45,7 @@ pub fn quote<'core>(
 }
 
 fn quote_head<'core>(
-    head: Head,
+    head: Head<'core>,
     bump: &'core bumpalo::Bump,
     locals: EnvLen,
     metas: &MetaValues<'core>,
@@ -53,7 +53,7 @@ fn quote_head<'core>(
     match head {
         Head::Error => Expr::Error,
         Head::LocalVar(var) => match var.to_index(locals) {
-            Some(de_bruijn) => Expr::LocalVar(LocalVar::new(None, de_bruijn)),
+            Some(de_bruijn) => Expr::LocalVar(LocalVar::new(var.name, de_bruijn)),
             None => Expr::Error,
         },
         Head::MetaVar(var) => match metas.get(var) {
@@ -66,7 +66,7 @@ fn quote_head<'core>(
 }
 
 fn quote_neutral<'core>(
-    head: Head,
+    head: Head<'core>,
     spine: &EcoVec<Elim<'core>>,
     bump: &'core bumpalo::Bump,
     locals: EnvLen,
@@ -98,7 +98,7 @@ fn quote_funs<'core>(
 ) -> (FunParam<'core, &'core Expr<'core>>, &'core Expr<'core>) {
     let param_type = quote(param.r#type, bump, locals, metas);
 
-    let arg = Value::local_var(LocalVar::new(None, locals.to_level()));
+    let arg = Value::local_var(LocalVar::new(param.name, locals.to_level()));
     let body = elim::apply_closure(closure.clone(), arg, bump, UnfoldOpts::for_quote(), metas);
     let body = quote(&body, bump, locals.succ(), metas);
 

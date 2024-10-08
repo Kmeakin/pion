@@ -2,7 +2,7 @@ exit status: 0
 
 stdout = """
 (forall(A : Type, _ : A) -> A) : Type
-(forall(A : Type, a : #var(DeBruijnIndex(0))) -> A) : Type
+(forall(A : Type, a : A) -> A) : Type
 
 """
 

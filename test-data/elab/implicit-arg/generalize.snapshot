@@ -2,9 +2,9 @@ exit status: 0
 
 stdout = """
 id : forall(@A : Type) -> A -> A
-id ⇝ fun(@A : Type) => fun(x : #var(DeBruijnIndex(0))) => x
+id ⇝ fun(@A : Type) => fun(x : A) => x
 always : forall(@A : Type) -> forall(@B : Type, _ : A, _ : B) -> A
-always ⇝ fun(@A : Type) => fun(@B : Type, x : #var(DeBruijnIndex(1)), y : #var(DeBruijnIndex(1))) => x
+always ⇝ fun(@A : Type) => fun(@B : Type, x : A, y : B) => x
 
 """
 
