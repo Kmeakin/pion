@@ -63,7 +63,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 Pat::Var(name)
             }
             surface::Pat::Paren(pat) => self.check_pat(*pat, expected),
-            surface::Pat::TypeAnnotation { .. } => self.synth_and_coerce_pat(pat, expected),
+            surface::Pat::TypeAnnotation(..) => self.synth_and_coerce_pat(pat, expected),
         }
     }
 

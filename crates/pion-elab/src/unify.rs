@@ -86,13 +86,6 @@ impl PartialRenaming {
             target_var.to_index(self.target).unwrap(),
         ))
     }
-
-    fn len(&self) -> (EnvLen, EnvLen) { (self.source.len(), self.target) }
-
-    fn truncate(&mut self, (source_len, target_len): (EnvLen, EnvLen)) {
-        self.source.truncate(source_len);
-        self.target.truncate(target_len);
-    }
 }
 
 impl<'env, 'core> UnifyEnv<'env, 'core> {
