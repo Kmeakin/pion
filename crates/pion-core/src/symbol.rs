@@ -32,8 +32,8 @@ pub struct Interner<'text> {
 impl<'text> Interner<'text> {
     pub fn new(set: FxHashSet<&'text str>) -> Self { Self { set } }
 
-    pub fn intern(&mut self, value: &'text str) -> Symbol<'text> {
-        Symbol(self.set.get_or_insert(value))
+    pub fn intern<F: FnOnce(&str) -> &'text str>(&mut self, value: &str, f: F) -> Symbol<'text> {
+        Symbol(self.set.get_or_insert_with(value, f))
     }
 }
 

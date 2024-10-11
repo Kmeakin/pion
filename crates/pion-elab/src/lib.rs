@@ -4,6 +4,7 @@ use codespan_reporting::diagnostic::{Diagnostic, Label};
 use env::{ElabEnv, LocalInfo, MetaSource};
 use pion_core::env::{DeBruijn, DeBruijnLevel};
 use pion_core::semantics::{ElimEnv, EvalEnv, QuoteEnv, Type, UnfoldOpts, Value};
+use pion_core::symbol::Symbol;
 use pion_core::syntax::{Expr, FunArg, LocalVar, MetaVar, Plicity};
 use text_size::TextRange;
 use unify::UnifyEnv;
@@ -126,5 +127,9 @@ impl<'core> Elaborator<'core> {
             self.env.locals.len(),
             &mut self.env.metas.values,
         )
+    }
+
+    fn intern(&mut self, text: &str) -> Symbol<'core> {
+        self.interner.intern(text, |text| self.bump.alloc_str(text))
     }
 }

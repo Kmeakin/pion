@@ -35,8 +35,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 (Pat::Wildcard, r#type)
             }
             surface::Pat::Var(name) => {
-                let name = self.bump.alloc_str(name);
-                let name = self.interner.intern(name);
+                let name = self.intern(name);
                 let source = MetaSource::PatType(pat.range, Some(name));
                 let r#type = self.push_unsolved_type(source);
                 (Pat::Var(name), r#type)
@@ -60,8 +59,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             surface::Pat::Error => Pat::Error,
             surface::Pat::Underscore => Pat::Wildcard,
             surface::Pat::Var(name) => {
-                let name = self.bump.alloc_str(name);
-                let name = self.interner.intern(name);
+                let name = self.intern(name);
                 Pat::Var(name)
             }
             surface::Pat::Paren(pat) => self.check_pat(*pat, expected),

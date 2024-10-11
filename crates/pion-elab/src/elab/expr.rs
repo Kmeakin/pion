@@ -29,9 +29,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 (expr, r#type)
             }
             surface::Expr::Var(name) => {
-                let name = self.bump.alloc_str(name);
-                let name = self.interner.intern(name);
-
+                let name = self.intern(name);
                 if let Some((var, r#type, _)) = self.env.locals.lookup(name) {
                     return (Expr::LocalVar(var), r#type.clone());
                 }
