@@ -57,6 +57,11 @@ pub enum Expr<'text, 'surface> {
         &'surface [Stmt<'text, 'surface>],
         Option<Located<&'surface Expr<'text, 'surface>>>,
     ),
+    If(
+        Located<&'surface Expr<'text, 'surface>>,
+        Located<&'surface Expr<'text, 'surface>>,
+        Located<&'surface Expr<'text, 'surface>>,
+    ),
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -124,12 +129,12 @@ mod tests {
     #[cfg(target_pointer_width = "64")]
     fn type_sizes() {
         assert_eq!(size_of::<File>(), 16);
-        assert_eq!(size_of::<Expr>(), 40);
-        assert_eq!(size_of::<Stmt>(), 104);
+        assert_eq!(size_of::<Expr>(), 56);
+        assert_eq!(size_of::<Stmt>(), 120);
         assert_eq!(size_of::<Command>(), 24);
-        assert_eq!(size_of::<LetBinding>(), 96);
+        assert_eq!(size_of::<LetBinding>(), 112);
         assert_eq!(size_of::<Pat>(), 40);
-        assert_eq!(size_of::<FunArg>(), 56);
+        assert_eq!(size_of::<FunArg>(), 72);
         assert_eq!(size_of::<FunParam>(), 56);
         assert_eq!(size_of::<Lit>(), 24);
     }

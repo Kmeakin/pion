@@ -180,19 +180,25 @@ fn ident() {
 #[test]
 fn reserved_ident() {
     assert_lex(
-        "do false forall fun let true",
+        "do else false forall fun if let then true",
         expect![[r#"
             KwDo 0..2 "do"
             Whitespace 2..3 " "
-            KwFalse 3..8 "false"
-            Whitespace 8..9 " "
-            KwForall 9..15 "forall"
-            Whitespace 15..16 " "
-            KwFun 16..19 "fun"
-            Whitespace 19..20 " "
-            KwLet 20..23 "let"
-            Whitespace 23..24 " "
-            KwTrue 24..28 "true""#]],
+            KwElse 3..7 "else"
+            Whitespace 7..8 " "
+            KwFalse 8..13 "false"
+            Whitespace 13..14 " "
+            KwForall 14..20 "forall"
+            Whitespace 20..21 " "
+            KwFun 21..24 "fun"
+            Whitespace 24..25 " "
+            KwIf 25..27 "if"
+            Whitespace 27..28 " "
+            KwLet 28..31 "let"
+            Whitespace 31..32 " "
+            KwThen 32..36 "then"
+            Whitespace 36..37 " "
+            KwTrue 37..41 "true""#]],
     );
 }
 

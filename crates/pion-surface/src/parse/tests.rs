@@ -322,6 +322,51 @@ fn do_expr() {
 }
 
 #[test]
+fn if_expr() {
+    assert_parse_expr(
+        "if true then 1 else 0",
+        expect![[r#"
+            0..21 @ Expr::If
+             3..7 @ Expr::Lit(Bool(true))
+             13..14 @ Expr::Lit(Int("1"))
+             20..21 @ Expr::Lit(Int("0"))"#]],
+    );
+    assert_parse_expr(
+        "if if true then 1 else 0 then 'a' else 'b'",
+        expect![[r#"
+            0..42 @ Expr::If
+             3..29 @ Expr::If
+              6..10 @ Expr::Lit(Bool(true))
+              16..17 @ Expr::Lit(Int("1"))
+              23..24 @ Expr::Lit(Int("0"))
+             30..33 @ Expr::Lit(Char("'a'"))
+             39..42 @ Expr::Lit(Char("'b'"))"#]],
+    );
+    assert_parse_expr(
+        "if true then if false then 1 else 0 else 'a'",
+        expect![[r#"
+            0..44 @ Expr::If
+             3..7 @ Expr::Lit(Bool(true))
+             13..40 @ Expr::If
+              16..21 @ Expr::Lit(Bool(false))
+              27..28 @ Expr::Lit(Int("1"))
+              34..35 @ Expr::Lit(Int("0"))
+             41..44 @ Expr::Lit(Char("'a'"))"#]],
+    );
+    assert_parse_expr(
+        "if true then 'a' else if false then 1 else 0",
+        expect![[r#"
+            0..44 @ Expr::If
+             3..7 @ Expr::Lit(Bool(true))
+             13..16 @ Expr::Lit(Char("'a'"))
+             22..44 @ Expr::If
+              25..30 @ Expr::Lit(Bool(false))
+              36..37 @ Expr::Lit(Int("1"))
+              43..44 @ Expr::Lit(Int("0"))"#]],
+    );
+}
+
+#[test]
 fn commands() {
     assert_parse_expr(
         "do { #check 1; }",

@@ -16,6 +16,7 @@
     | "forall" ( <FunParam>","* ")" "->" <Expr>
     | "fun" "(" <FunParam>","* ")" "=>" <Expr>
     | "do" "{" <Stmt>* <Expr>? "}"
+    | "if" <Expr> "then" <Expr> "else" <Expr>
     | <Expr> ":" <Expr>
 
 <Stmt> ::=

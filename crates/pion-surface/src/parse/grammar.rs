@@ -124,6 +124,7 @@ where
             TokenKind::KwDo => self.do_expr(),
             TokenKind::KwForall => self.forall_expr(),
             TokenKind::KwFun => self.fun_expr(),
+            TokenKind::KwIf => self.if_expr(),
             got => {
                 self.diagnostic(
                     token.range,
@@ -392,6 +393,20 @@ where
         Located::new(
             TextRange::new(start_range.start(), end_range.end()),
             Expr::FunExpr(params, body.map(|expr| &*self.bump.alloc(expr))),
+        )
+    }
+
+    fn if_expr(&mut self) -> Located<Expr<'text, 'surface>> {
+        let start_range = self.range;
+        let cond = self.expr().map(|expr| &*self.bump.alloc(expr));
+        self.expect_token(TokenKind::KwThen);
+        let then = self.expr().map(|expr| &*self.bump.alloc(expr));
+        self.expect_token(TokenKind::KwElse);
+        let r#else = self.expr().map(|expr| &*self.bump.alloc(expr));
+        let end_range = self.range;
+        Located::new(
+            TextRange::new(start_range.start(), end_range.end()),
+            Expr::If(cond, then, r#else),
         )
     }
 

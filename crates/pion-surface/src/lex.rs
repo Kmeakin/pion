@@ -33,10 +33,13 @@ pub enum TokenKind {
     // Identifiers / keywords
     Ident,
     KwDo,
+    KwElse,
     KwFalse,
     KwForall,
     KwFun,
+    KwIf,
     KwLet,
+    KwThen,
     KwTrue,
 
     // Literals
@@ -53,10 +56,13 @@ impl TokenKind {
     pub fn from_reserved(reserved: ReservedIdent) -> Self {
         match reserved {
             ReservedIdent::Do => Self::KwDo,
+            ReservedIdent::Else => Self::KwElse,
             ReservedIdent::False => Self::KwFalse,
             ReservedIdent::Forall => Self::KwForall,
             ReservedIdent::Fun => Self::KwFun,
+            ReservedIdent::If => Self::KwIf,
             ReservedIdent::Let => Self::KwLet,
+            ReservedIdent::Then => Self::KwThen,
             ReservedIdent::True => Self::KwTrue,
         }
     }
@@ -82,10 +88,13 @@ impl fmt::Display for TokenKind {
 
             Self::Ident => write!(f, "identifier"),
             Self::KwDo => write!(f, "`do`"),
+            Self::KwElse => write!(f, "`else`"),
             Self::KwFalse => write!(f, "`false`"),
             Self::KwForall => write!(f, "`forall`"),
             Self::KwFun => write!(f, "`fun`"),
+            Self::KwIf => write!(f, "`if`"),
             Self::KwLet => write!(f, "`let`"),
+            Self::KwThen => write!(f, "`then`"),
             Self::KwTrue => write!(f, "`true`"),
 
             Self::Int => write!(f, "integer"),
@@ -101,8 +110,11 @@ pub enum ReservedIdent {
     False,
     Forall,
     Fun,
+    If,
     Let,
     True,
+    Then,
+    Else,
 }
 
 impl FromStr for ReservedIdent {
@@ -110,25 +122,15 @@ impl FromStr for ReservedIdent {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "do" => Ok(Self::Do),
+            "else" => Ok(Self::Else),
             "false" => Ok(Self::False),
             "forall" => Ok(Self::Forall),
             "fun" => Ok(Self::Fun),
+            "if" => Ok(Self::If),
             "let" => Ok(Self::Let),
+            "then" => Ok(Self::Then),
             "true" => Ok(Self::True),
             _ => Err(()),
-        }
-    }
-}
-
-impl fmt::Display for ReservedIdent {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Do => write!(f, "`do`"),
-            Self::False => write!(f, "`false`"),
-            Self::Forall => write!(f, "`forall`"),
-            Self::Fun => write!(f, "`fun`"),
-            Self::Let => write!(f, "`let`"),
-            Self::True => write!(f, "`true`"),
         }
     }
 }

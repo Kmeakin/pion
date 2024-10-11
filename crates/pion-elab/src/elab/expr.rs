@@ -95,6 +95,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     None => (Expr::Do(stmts, None), Type::UNIT_TYPE),
                 }
             }
+            surface::Expr::If(..) => todo!(),
         }
     }
 
@@ -132,6 +133,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     expected,
                 )
             }
+            surface::Expr::If(..) => todo!(),
         }
     }
 
