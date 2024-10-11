@@ -1,9 +1,9 @@
 exit status: 0
 
 stdout = """
-Eq : forall(@A : Type) -> A -> A -> Type
-refl : forall(@A : Type) -> forall(a : A) -> Eq(@A, a, a)
-subst : forall(@A : Type) -> forall(@p : A -> Type, a : A, b : A, _ : Eq(@A, a, b), _ : p(a)) -> p(b)
+Eq : forall(@A : Type, A : A, A : A) -> Type
+refl : forall(@A : Type, a : A) -> Eq(@A, a, a)
+subst : forall(@A : Type, @p : A -> Type, a : A, b : A, _ : Eq(@A, a, b), _ : p(a)) -> p(b)
 
 """
 

@@ -91,7 +91,10 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 // Unification may have unblocked some metas
                 let from = self.elim_env().subst_metas(from);
                 let to = self.elim_env().subst_metas(to);
-                self.diagnostic(pat.range, err.to_diagnostic(&from, &to));
+                self.diagnostic(
+                    pat.range,
+                    err.to_diagnostic(&self.quote_env().quote(&from), &self.quote_env().quote(&to)),
+                );
                 Pat::Error
             }
         }

@@ -1,12 +1,12 @@
 exit status: 0
 
 stdout = """
-(fun(x : Int) => #error) : forall(_ : Int) -> Bool
+(fun(x : Int) => #error) : Int -> Bool
 
 """
 
 stderr = """
-error: Type mismatch: expected `Bool`, found `forall(y : Bool) -> Char -> Char`
+error: Type mismatch: expected `Bool`, found `Bool -> Char -> Char`
   ┌─ test-data/elab/fun-expr/too-many-params.pion:1:43
   │
 1 │ #check (fun(x : Int, y: Bool, z: Char) => z) : Int -> Bool;

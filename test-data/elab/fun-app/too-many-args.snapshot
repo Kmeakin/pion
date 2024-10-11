@@ -13,7 +13,7 @@ error: Called function with too many arguments
 1 │ #check (fun(x: Int) => x)(1, 2, 3);
   │        ^^^^^^^^^^^^^^^^^^
   │
-  = Help: the type of the callee is `forall(x : Int) -> Int`
+  = Help: the type of the callee is `Int -> Int`
   = Help: the function expects 1 arguments, but received 3
 
 error: Called function with too many arguments
@@ -22,7 +22,7 @@ error: Called function with too many arguments
 2 │ #check (fun(x: Int, y: Int) => x)(1, 2, 3);
   │        ^^^^^^^^^^^^^^^^^^^^^^^^^^
   │
-  = Help: the type of the callee is `forall(x : Int) -> Int -> Int`
+  = Help: the type of the callee is `Int -> Int -> Int`
   = Help: the function expects 2 arguments, but received 3
 
 

@@ -1,12 +1,12 @@
 exit status: 0
 
 stdout = """
-#error : forall(_ : Int) -> Int
+#error : Int -> Int
 
 """
 
 stderr = """
-error: Type mismatch: expected `forall(_ : Int) -> Int`, found `Int`
+error: Type mismatch: expected `Int -> Int`, found `Int`
   ┌─ test-data/elab/implicit-arg/unify-plicity-mismatch.pion:3:9
   │
 3 │ #check (f : (Int -> Int));

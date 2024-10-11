@@ -1,12 +1,12 @@
 exit status: 0
 
 stdout = """
-#error : forall(x : Int) -> Bool
+#error : Int -> Bool
 
 """
 
 stderr = """
-error: Type mismatch: expected `forall(x : Int) -> Bool`, found `forall(@x : Int) -> Bool`
+error: Type mismatch: expected `Int -> Bool`, found `@Int -> Bool`
   ┌─ test-data/elab/fun-expr/plicity-mismatch.pion:1:25
   │
 1 │ #check (fun(@x: Int) => false) : forall(x: Int) -> Bool;

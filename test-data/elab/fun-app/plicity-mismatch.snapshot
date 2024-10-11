@@ -12,7 +12,7 @@ error: Applied implicit argument when explicit argument was expected
 1 │ #check (fun(x: Int) => x)(@5);
   │                           ^^^
   │
-  = Help: the type of the callee is `forall(x : Int) -> Int`
+  = Help: the type of the callee is `Int -> Int`
 
 
 """

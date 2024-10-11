@@ -1,7 +1,7 @@
 exit status: 0
 
 stdout = """
-x : ?0
+x : Int
 x ⇝ 5
 
 """

@@ -172,7 +172,10 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 // Unification may have unblocked some metas
                 let from = self.elim_env().subst_metas(&from);
                 let to = self.elim_env().subst_metas(to);
-                self.diagnostic(expr.range, err.to_diagnostic(&from, &to));
+                self.diagnostic(
+                    expr.range,
+                    err.to_diagnostic(&self.quote_env().quote(&from), &self.quote_env().quote(&to)),
+                );
                 Expr::Error
             }
         }
@@ -373,7 +376,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                             ))
                             .with_notes(vec![format!(
                                 "Help: the type of the callee is `{}`",
-                                callee_type
+                                self.quote_env().quote(&callee_type)
                             )]),
                     );
                     return (Expr::Error, Type::ERROR);
@@ -384,8 +387,10 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                         _ => Diagnostic::error()
                             .with_message("Called function with too many arguments"),
                     };
-                    let mut notes =
-                        vec![format!("Help: the type of the callee is `{callee_type}`")];
+                    let mut notes = vec![format!(
+                        "Help: the type of the callee is `{}`",
+                        self.quote_env().quote(&callee_type)
+                    )];
                     if arity > 0 {
                         notes.push(format!(
                             "Help: the function expects {arity} arguments, but received {}",

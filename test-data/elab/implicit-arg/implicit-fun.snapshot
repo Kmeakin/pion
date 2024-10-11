@@ -1,7 +1,7 @@
 exit status: 0
 
 stdout = """
-(fun(@x : Int) => x) : forall(@x : Int) -> Int
+(fun(@x : Int) => x) : @Int -> Int
 
 """
 

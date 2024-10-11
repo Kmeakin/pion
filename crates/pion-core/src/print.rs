@@ -2,7 +2,7 @@ use core::fmt;
 use std::fmt::Write;
 
 use crate::env::DeBruijnIndex;
-use crate::semantics::{Elim, Head, Value};
+use crate::semantics::Value;
 use crate::syntax::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -37,10 +37,10 @@ impl Prec {
     }
 }
 
-pub fn type_ann_expr(out: &mut impl Write, expr: &Expr, r#type: &Value) -> fmt::Result {
+pub fn type_ann_expr(out: &mut impl Write, expr: &Expr, r#type: &Expr) -> fmt::Result {
     expr_prec(out, expr, Prec::Call)?;
     write!(out, " : ")?;
-    value_prec(out, r#type, Prec::Fun)?;
+    expr_prec(out, r#type, Prec::Fun)?;
     Ok(())
 }
 
@@ -151,55 +151,6 @@ pub fn stmt(out: &mut impl Write, stmt: &Stmt) -> fmt::Result {
     }
 }
 
-pub fn value_prec(out: &mut impl Write, value: &Value, prec: Prec) -> fmt::Result {
-    let parens = Prec::of_value(value) > prec;
-    if parens {
-        write!(out, "(")?;
-    }
-    match value {
-        Value::Lit(lit) => write!(out, "{lit}")?,
-        Value::Neutral(head, spine) => {
-            match head {
-                Head::Error => write!(out, "#error")?,
-                Head::LocalVar(var) => match var.name {
-                    Some(name) => write!(out, "{name}")?,
-                    None => write!(out, "#var({:?})", var.de_bruijn)?,
-                },
-                Head::MetaVar(var) => write!(out, "?{}", var.de_bruijn)?,
-                Head::PrimVar(var) => write!(out, "{var}")?,
-            }
-
-            if spine.is_empty() {
-                return Ok(());
-            }
-
-            let args = spine.into_iter().map(|elim| match elim {
-                Elim::FunApp(arg) => arg,
-            });
-            write!(out, "(")?;
-            fun_args(out, args, |out, value| value_prec(out, value, Prec::MAX))?;
-            write!(out, ")")?;
-        }
-        Value::FunType(param, body) => {
-            write!(out, "forall(")?;
-            fun_param(out, param, |out, value| value_prec(out, value, Prec::MAX))?;
-            write!(out, ") -> ")?;
-            expr_prec(out, body.body, Prec::MAX)?;
-        }
-        Value::FunLit(param, body) => {
-            write!(out, "fun(")?;
-            fun_param(out, param, |out, value| value_prec(out, value, Prec::MAX))?;
-            write!(out, ") => ")?;
-            expr_prec(out, body.body, Prec::MAX)?;
-        }
-    }
-    if parens {
-        write!(out, ")")?;
-    }
-
-    Ok(())
-}
-
 fn fun_params<'a, W: Write, T: 'a>(
     out: &mut W,
     params: impl IntoIterator<Item = &'a FunParam<'a, T>>,
@@ -289,10 +240,6 @@ impl fmt::Display for Expr<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { expr_prec(f, self, Prec::MAX) }
 }
 
-impl fmt::Display for Value<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { value_prec(f, self, Prec::MAX) }
-}
-
 impl fmt::Display for Lit<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -307,26 +254,16 @@ impl fmt::Display for Lit<'_> {
 
 #[cfg(test)]
 mod tests {
-    use ecow::eco_vec;
     use expect_test::*;
 
     use super::*;
     use crate::env::{DeBruijnIndex, DeBruijnLevel};
-    use crate::semantics::Closure;
 
     #[track_caller]
     #[allow(clippy::needless_pass_by_value, reason = "It's only a test")]
     fn assert_print_expr(expr: &Expr, expected: Expect) {
         let mut actual = String::new();
         expr_prec(&mut actual, expr, Prec::MAX).unwrap();
-        expected.assert_eq(&actual);
-    }
-
-    #[track_caller]
-    #[allow(clippy::needless_pass_by_value, reason = "It's only a test")]
-    fn assert_print_value(value: &Value, expected: Expect) {
-        let mut actual = String::new();
-        value_prec(&mut actual, value, Prec::MAX).unwrap();
         expected.assert_eq(&actual);
     }
 
@@ -455,75 +392,5 @@ mod tests {
             &expr,
             expect!["do {let _ : Int = 1; let _ : Bool = true; #var(DeBruijnIndex(0))}"],
         );
-    }
-
-    #[test]
-    fn print_value_bool() {
-        assert_print_value(&Value::bool(true), expect!["true"]);
-        assert_print_value(&Value::bool(false), expect!["false"]);
-    }
-
-    #[test]
-    fn print_value_int() { assert_print_value(&Value::int(42), expect!["42"]); }
-
-    #[test]
-    fn print_value_char() { assert_print_value(&Value::char('a'), expect!["'a'"]); }
-
-    #[test]
-    fn print_value_string() { assert_print_value(&Value::string("hello"), expect!["\"hello\""]); }
-
-    #[test]
-    fn print_value_local_var() {
-        let value = Value::local_var(LocalVar::new(None, DeBruijnLevel::new(0)));
-        assert_print_value(&value, expect!["#var(DeBruijnLevel(0))"]);
-    }
-
-    #[test]
-    fn print_value_meta_var() {
-        let value = Value::meta_var(MetaVar::new(DeBruijnLevel::new(0)));
-        assert_print_value(&value, expect!["?0"]);
-    }
-
-    #[test]
-    fn print_value_prim_var() {
-        let value = Value::BOOL;
-        assert_print_value(&value, expect!["Bool"]);
-    }
-
-    #[test]
-    fn print_value_neutral() {
-        let value = Value::Neutral(
-            Head::LocalVar(LocalVar::new(None, DeBruijnLevel::new(0))),
-            eco_vec![Elim::FunApp(FunArg::explicit(Value::int(1)))],
-        );
-        assert_print_value(&value, expect!["#var(DeBruijnLevel(0))(1)"]);
-
-        let value = Value::Neutral(
-            Head::LocalVar(LocalVar::new(None, DeBruijnLevel::new(0))),
-            eco_vec![Elim::FunApp(FunArg::implicit(Value::int(1)))],
-        );
-        assert_print_value(&value, expect!["#var(DeBruijnLevel(0))(@1)"]);
-    }
-
-    #[test]
-    fn print_value_fun_type() {
-        let b = Expr::bool(true);
-        let int = Value::int(1);
-        let value = Value::FunType(FunParam::explicit(None, &int), Closure::empty(&b));
-        assert_print_value(&value, expect!["forall(_ : 1) -> true"]);
-
-        let value = Value::FunType(FunParam::implicit(None, &int), Closure::empty(&b));
-        assert_print_value(&value, expect!["forall(@_ : 1) -> true"]);
-    }
-
-    #[test]
-    fn print_value_fun_lit() {
-        let b = Expr::bool(true);
-        let int = Value::int(1);
-        let value = Value::FunLit(FunParam::explicit(None, &int), Closure::empty(&b));
-        assert_print_value(&value, expect!["fun(_ : 1) => true"]);
-
-        let value = Value::FunLit(FunParam::implicit(None, &int), Closure::empty(&b));
-        assert_print_value(&value, expect!["fun(@_ : 1) => true"]);
     }
 }

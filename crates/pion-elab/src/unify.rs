@@ -383,7 +383,7 @@ pub enum UnifyError<'core> {
 }
 
 impl<'core> UnifyError<'core> {
-    pub fn to_diagnostic(self, from: &Type<'core>, to: &Type<'core>) -> Diagnostic<usize> {
+    pub fn to_diagnostic(self, from: &Expr<'core>, to: &Expr<'core>) -> Diagnostic<usize> {
         match self {
             Self::Mismatch => Diagnostic::error()
                 .with_message(format!("Type mismatch: expected `{to}`, found `{from}`")),

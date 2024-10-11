@@ -64,17 +64,19 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             surface::Command::Check(expr) => {
                 let (expr, r#type) = self.synth_expr(*expr);
                 let mut out = String::new();
+                let r#type = self.quote_env().quote(&r#type);
                 pion_core::print::type_ann_expr(&mut out, &expr, &r#type).unwrap();
                 self.command_output.push(out);
             }
             surface::Command::Eval(expr) => {
                 let (expr, _type) = self.synth_expr(*expr);
                 let value = self.eval_env().eval(&expr);
+                let value = self.quote_env().quote(&value);
 
                 let mut out = String::new();
                 pion_core::print::expr_prec(&mut out, &expr, Prec::MAX).unwrap();
                 write!(out, " ⇝ ").unwrap();
-                pion_core::print::value_prec(&mut out, &value, Prec::MAX).unwrap();
+                pion_core::print::expr_prec(&mut out, &value, Prec::MAX).unwrap();
                 self.command_output.push(out);
             }
         }

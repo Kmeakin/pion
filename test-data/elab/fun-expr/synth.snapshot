@@ -2,8 +2,8 @@ exit status: 0
 
 stdout = """
 false : Bool
-(fun(x : Int) => x) : forall(x : Int) -> Int
-(fun(x : Int, y : Bool) => x) : forall(x : Int) -> Bool -> Int
+(fun(x : Int) => x) : Int -> Int
+(fun(x : Int, y : Bool) => x) : Int -> Bool -> Int
 
 """
 
