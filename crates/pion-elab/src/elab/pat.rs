@@ -1,5 +1,5 @@
 use pion_core::semantics::Type;
-use pion_interner::InternedStr;
+use pion_core::symbol::Symbol;
 use pion_surface::syntax::{self as surface, Located};
 
 use super::{Check, Synth};
@@ -13,11 +13,11 @@ pub type CheckPat<'core> = Check<Pat<'core>>;
 pub enum Pat<'core> {
     Error,
     Wildcard,
-    Var(InternedStr<'core>),
+    Var(Symbol<'core>),
 }
 
 impl<'core> Pat<'core> {
-    pub fn name(&self) -> Option<InternedStr<'core>> {
+    pub fn name(&self) -> Option<Symbol<'core>> {
         match self {
             Pat::Var(name) => Some(*name),
             _ => None,

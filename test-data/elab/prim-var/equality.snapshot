@@ -1,9 +1,9 @@
 exit status: 0
 
 stdout = """
-Eq : forall(@_ : Type) -> #var(DeBruijnIndex(0)) -> #var(DeBruijnIndex(1)) -> Type
-refl : forall(@_ : Type) -> forall(_ : #var(DeBruijnIndex(0))) -> Eq(@#var(DeBruijnIndex(1)), #var(DeBruijnIndex(0)), #var(DeBruijnIndex(0)))
-subst : forall(@_ : Type) -> forall(@_ : #var(DeBruijnIndex(0)) -> Type, _ : #var(DeBruijnIndex(1)), _ : #var(DeBruijnIndex(2)), _ : Eq(@#var(DeBruijnIndex(3)), #var(DeBruijnIndex(1)), #var(DeBruijnIndex(0))), _ : #var(DeBruijnIndex(3))(#var(DeBruijnIndex(2)))) -> #var(DeBruijnIndex(4))(#var(DeBruijnIndex(2)))
+Eq : forall(@A : Type) -> A -> A -> Type
+refl : forall(@A : Type) -> forall(a : A) -> Eq(@A, a, a)
+subst : forall(@A : Type) -> forall(@p : A -> Type, a : A, b : A, _ : Eq(@A, a, b), _ : p(a)) -> p(b)
 
 """
 

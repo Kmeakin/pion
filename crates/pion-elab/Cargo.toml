@@ -11,6 +11,5 @@ workspace = true
 bumpalo            = { workspace = true }
 codespan-reporting = { workspace = true }
 pion-core          = { workspace = true }
-pion-interner      = { workspace = true }
 pion-surface       = { workspace = true }
 text-size          = { workspace = true }

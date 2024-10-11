@@ -96,7 +96,7 @@ fn check(path: &PathOrStdin) {
         emit(diagnostic);
     }
 
-    let mut interner = pion_interner::Interner::default();
+    let mut interner = pion_core::symbol::Interner::default();
     let mut elab = pion_elab::Elaborator::new(&bump, &mut interner, file_id);
     elab.stmts(file.stmts);
     elab.report_unsolved_metas();

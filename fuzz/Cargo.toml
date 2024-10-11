@@ -11,8 +11,8 @@ cargo-fuzz = true
 [dependencies]
 bumpalo       = { workspace = true }
 libfuzzer-sys = { workspace = true }
+pion-core     = { workspace = true }
 pion-elab     = { workspace = true }
-pion-interner = { workspace = true }
 pion-surface  = { workspace = true }
 
 [[bin]]

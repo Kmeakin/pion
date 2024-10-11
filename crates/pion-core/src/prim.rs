@@ -2,6 +2,7 @@ use core::fmt;
 
 use crate::env::DeBruijnIndex;
 use crate::semantics::{Closure, Type};
+use crate::symbol::{sym, Symbol};
 use crate::syntax::*;
 
 macro_rules! define_prims {
@@ -62,11 +63,9 @@ impl fmt::Display for PrimVar {
 impl PrimVar {
     #[rustfmt::skip]
     pub const fn r#type(&self) -> Type<'static> {
-        const VAR0: Expr = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
-        const VAR1: Expr = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(1)));
-        const VAR2: Expr = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(2)));
-        const VAR3: Expr = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(3)));
-        const VAR4: Expr = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(4)));
+        pub const fn var(name: Option<Symbol<'static>>, index: usize) -> Expr<'static> {
+            Expr::LocalVar(LocalVar::new(name, DeBruijnIndex::new(index)))
+        }
 
         match self {
             // `Type: Type`
@@ -92,12 +91,12 @@ impl PrimVar {
 
             // `Eq: forall(@A: Type) -> A -> A -> Type``
             Self::Eq => Type::FunType(
-                FunParam::implicit(None, const { &Type::TYPE }),
+                FunParam::implicit(Some(sym::A), const { &Type::TYPE }),
                 Closure::empty(
                     &const {
                         Expr::FunType(
-                            FunParam::explicit(None, &VAR0),
-                            &const { Expr::FunType(FunParam::explicit(None, &VAR1), &Expr::TYPE) },
+                            FunParam::explicit(Some(sym::A), &const { var(Some(sym::A),0) }),
+                            &const { Expr::FunType(FunParam::explicit(Some(sym::A), &const { var(Some(sym::A), 1) }), &Expr::TYPE) },
                         )
                     },
                 ),
@@ -105,20 +104,20 @@ impl PrimVar {
 
             // `refl: forall(@A: Type, a: A) -> Eq(@A, a, a)`
             Self::refl => Type::FunType(
-                FunParam::implicit(None, const { &Type::TYPE }),
+                FunParam::implicit(Some(sym::A), const { &Type::TYPE }),
                 Closure::empty(
                     &const {
                         Expr::FunType(
-                            FunParam::explicit(None, &VAR0),
+                            FunParam::explicit(Some(sym::a), &const { var(Some(sym::A), 0) }),
                             &const {
                                 Expr::FunApp(
                                     &const {
                                         Expr::FunApp(
-                                            &const { Expr::FunApp(&Expr::PrimVar(Self::Eq), FunArg::implicit(&VAR1)) },
-                                            FunArg::explicit(&VAR0),
+                                            &const { Expr::FunApp(&Expr::PrimVar(Self::Eq), FunArg::implicit(&const { var(Some(sym::A), 1) })) },
+                                            FunArg::explicit(&const { var(Some(sym::a), 0) }),
                                         )
                                     },
-                                    FunArg::explicit(&VAR0),
+                                    FunArg::explicit(&const { var(Some(sym::a), 0) }),
                                 )
                             },
                         )
@@ -128,17 +127,17 @@ impl PrimVar {
 
             // `subst: forall(@A: Type, @p: A -> Type, @a: A, @b: A) -> Eq(@A, a, b) -> p(a) -> p(b)`
             Self::subst => Type::FunType(
-                FunParam::implicit(None, const { &Type::TYPE }),
+                FunParam::implicit(Some(sym::A), const { &Type::TYPE }),
                 Closure::empty(
                     &const {
                         Expr::FunType(
-                            FunParam::implicit(None, &const { Expr::FunType(FunParam::explicit(None, &VAR0), &Expr::TYPE) }),
+                            FunParam::implicit(Some(sym::p), &const { Expr::FunType(FunParam::explicit(None, &const { var(Some(sym::A), 0) }), &Expr::TYPE) }),
                             &const {
                                 Expr::FunType(
-                                    FunParam::explicit(None, &VAR1),
+                                    FunParam::explicit(Some(sym::a), &const { var(Some(sym::A), 1) }),
                                     &const {
                                         Expr::FunType(
-                                            FunParam::explicit(None, &VAR2),
+                                            FunParam::explicit(Some(sym::b), &const { var(Some(sym::A), 2) }),
                                             &const {
                                                 Expr::FunType(
                                                     FunParam::explicit(
@@ -147,18 +146,18 @@ impl PrimVar {
                                                             Expr::FunApp(
                                                                 &const {
                                                                     Expr::FunApp(
-                                                                        &const { Expr::FunApp(&Expr::PrimVar(Self::Eq), FunArg::implicit(&VAR3)) },
-                                                                        FunArg::explicit(&VAR1),
+                                                                        &const { Expr::FunApp(&Expr::PrimVar(Self::Eq), FunArg::implicit(&const { var(Some(sym::A), 3) })) },
+                                                                        FunArg::explicit(&const { var(Some(sym::a), 1) }),
                                                                     )
                                                                 },
-                                                                FunArg::explicit(&VAR0),
+                                                                FunArg::explicit(&const { var(Some(sym::b), 0) }),
                                                             )
                                                         },
                                                     ),
                                                     &const {
                                                         Expr::FunType(
-                                                            FunParam::explicit(None, &const { Expr::FunApp(&VAR3, FunArg::explicit(&VAR2)) }),
-                                                            &const { Expr::FunApp(&VAR4, FunArg::explicit(&VAR2)) },
+                                                            FunParam::explicit(None, &const { Expr::FunApp(&const { var(Some(sym::p), 3) }, FunArg::explicit(&const { var(Some(sym::a), 2) })) }),
+                                                            &const { Expr::FunApp(&const { var(Some(sym::p), 4) }, FunArg::explicit(&const { var(Some(sym::b), 2) })) },
                                                         )
                                                     },
                                                 )

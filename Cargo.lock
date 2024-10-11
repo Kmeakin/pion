@@ -506,7 +506,6 @@ dependencies = [
  "libtest-mimic",
  "pion-core",
  "pion-elab",
- "pion-interner",
  "pion-surface",
  "similar-asserts",
  "walkdir",
@@ -519,7 +518,7 @@ dependencies = [
  "bumpalo",
  "ecow",
  "expect-test",
- "pion-interner",
+ "fxhash",
 ]
 
 [[package]]
@@ -529,7 +528,6 @@ dependencies = [
  "bumpalo",
  "codespan-reporting",
  "pion-core",
- "pion-interner",
  "pion-surface",
  "text-size",
 ]
@@ -540,16 +538,9 @@ version = "0.1.0"
 dependencies = [
  "bumpalo",
  "libfuzzer-sys",
+ "pion-core",
  "pion-elab",
- "pion-interner",
  "pion-surface",
-]
-
-[[package]]
-name = "pion-interner"
-version = "0.1.0"
-dependencies = [
- "fxhash",
 ]
 
 [[package]]

@@ -1,7 +1,6 @@
-use pion_interner::InternedStr;
-
 use crate::env::{DeBruijn, DeBruijnIndex, DeBruijnLevel, EnvLen};
 use crate::prim::PrimVar;
+use crate::symbol::Symbol;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Expr<'core> {
@@ -54,7 +53,7 @@ impl DeBruijn for MetaVar {
     fn to_index(self, len: EnvLen) -> Option<DeBruijnIndex> { self.de_bruijn.to_index(len) }
 }
 
-pub type Name<'core> = Option<InternedStr<'core>>;
+pub type Name<'core> = Option<Symbol<'core>>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Lit<'core> {

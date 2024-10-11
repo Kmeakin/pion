@@ -15,7 +15,7 @@ mod unify;
 
 pub struct Elaborator<'core> {
     bump: &'core bumpalo::Bump,
-    interner: &'core mut pion_interner::Interner<'core, str>,
+    interner: &'core mut pion_core::symbol::Interner<'core>,
     env: ElabEnv<'core>,
 
     file_id: usize,
@@ -26,7 +26,7 @@ pub struct Elaborator<'core> {
 impl<'core> Elaborator<'core> {
     pub fn new(
         bump: &'core bumpalo::Bump,
-        interner: &'core mut pion_interner::Interner<'core, str>,
+        interner: &'core mut pion_core::symbol::Interner<'core>,
         file_id: usize,
     ) -> Self {
         Self {

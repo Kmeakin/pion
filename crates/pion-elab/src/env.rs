@@ -1,7 +1,7 @@
 use pion_core::env::{DeBruijnIndex, EnvLen, SharedEnv, UniqueEnv};
 use pion_core::semantics::{Type, Value};
+use pion_core::symbol::Symbol;
 use pion_core::syntax::{LocalVar, Name};
-use pion_interner::InternedStr;
 use text_size::TextRange;
 
 use crate::unify::PartialRenaming;
@@ -15,7 +15,7 @@ pub struct ElabEnv<'core> {
 
 #[derive(Default)]
 pub struct LocalEnv<'core> {
-    pub names: UniqueEnv<Option<InternedStr<'core>>>,
+    pub names: UniqueEnv<Name<'core>>,
     pub infos: UniqueEnv<LocalInfo>,
     pub types: UniqueEnv<Type<'core>>,
     pub values: SharedEnv<Value<'core>>,
@@ -32,7 +32,7 @@ impl<'core> LocalEnv<'core> {
 
     pub fn lookup(
         &self,
-        name: InternedStr<'core>,
+        name: Symbol<'core>,
     ) -> Option<(LocalVar<'core, DeBruijnIndex>, &Type<'core>, &Value<'core>)> {
         let index = self.names.find(&Some(name))?;
         Some((

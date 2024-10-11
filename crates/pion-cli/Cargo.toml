@@ -16,7 +16,6 @@ clap               = { workspace = true }
 codespan-reporting = { workspace = true }
 pion-core          = { workspace = true }
 pion-elab          = { workspace = true }
-pion-interner      = { workspace = true }
 pion-surface       = { workspace = true }
 
 [dev-dependencies]
