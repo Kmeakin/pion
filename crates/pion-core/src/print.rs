@@ -67,7 +67,7 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
         Expr::FunType(..) => {
             let mut expr = expr;
             let params = std::iter::from_fn(|| match expr {
-                Expr::FunType(param, body) => {
+                Expr::FunType(param, body) if body.binds_local(DeBruijnIndex::new(0)) => {
                     expr = body;
                     Some(param)
                 }

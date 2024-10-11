@@ -1,9 +1,9 @@
 exit status: 0
 
 stdout = """
-id : forall(@A : Type, _ : A) -> A
+id : forall(@A : Type) -> A -> A
 id ⇝ fun(@A : Type, x : A) => x
-always : forall(@A : Type, @B : Type, _ : A, _ : B) -> A
+always : forall(@A : Type, @B : Type) -> A -> B -> A
 always ⇝ fun(@A : Type, @B : Type, x : A, y : B) => x
 
 """

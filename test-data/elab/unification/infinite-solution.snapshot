@@ -1,7 +1,7 @@
 exit status: 0
 
 stdout = """
-it : forall(Wrap : Type -> Type, f : forall(A : Type, _ : A -> Wrap(A)) -> Type) -> Type
+it : forall(Wrap : Type -> Type) -> (forall(A : Type) -> (A -> Wrap(A)) -> Type) -> Type
 
 """
 
