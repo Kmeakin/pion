@@ -79,13 +79,6 @@ fn prim_app<'core>(var: PrimVar, spine: Spine<'core>, arg: FunArg<Value<'core>>)
     }
 
     match var {
-        PrimVar::Type
-        | PrimVar::Bool
-        | PrimVar::Int
-        | PrimVar::Char
-        | PrimVar::String
-        | PrimVar::Unit
-        | PrimVar::unit => neutral(var, spine, arg),
         PrimVar::add => match_args! {
             let 1 = spine.len();
             let Some(Elim::FunApp(FunArg { plicity:Plicity::Explicit, expr: Value::Lit(Lit::Int(lhs)) })) = spine.first();
@@ -104,6 +97,17 @@ fn prim_app<'core>(var: PrimVar, spine: Spine<'core>, arg: FunArg<Value<'core>>)
             let FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(rhs)) } = arg;
             Value::int(u32::wrapping_mul(*lhs, rhs))
         },
+
+        PrimVar::Type
+        | PrimVar::Bool
+        | PrimVar::Int
+        | PrimVar::Char
+        | PrimVar::String
+        | PrimVar::Unit
+        | PrimVar::unit
+        | PrimVar::Eq
+        | PrimVar::refl
+        | PrimVar::subst => neutral(var, spine, arg),
     }
 }
 

@@ -6,7 +6,7 @@
     * [x] `fun` expressions
     * [x] `forall` expressions
     * [x] function application expressions
-    * [ ] propositional equality
+    * [x] propositional equality
     * [ ] type universes
 
 * [ ] unification
