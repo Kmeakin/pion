@@ -1,0 +1,7 @@
+#check add;
+#check sub;
+#check mul;
+
+#eval add(1, 2);
+#eval sub(2, 1);
+#eval mul(2, 3);

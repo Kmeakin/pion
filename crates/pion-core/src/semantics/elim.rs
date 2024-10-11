@@ -1,6 +1,7 @@
 //! Elimination rules
 
 use super::*;
+use crate::syntax::Plicity;
 
 #[derive(Debug, Copy, Clone)]
 pub struct ElimEnv<'env, 'core> {
@@ -55,6 +56,57 @@ fn apply_spine<'core>(
     })
 }
 
+fn prim_app<'core>(var: PrimVar, spine: Spine<'core>, arg: FunArg<Value<'core>>) -> Value<'core> {
+    fn neutral<'core>(
+        var: PrimVar,
+        mut spine: Spine<'core>,
+        arg: FunArg<Value<'core>>,
+    ) -> Value<'core> {
+        spine.push(Elim::FunApp(arg));
+        Value::Neutral(Head::PrimVar(var), spine)
+    }
+
+    macro_rules! match_args {
+        ($(let $pat:pat = $place:expr ;)* $body:expr) => {{
+            $(
+                let $pat = $place else {
+                    return neutral(var, spine, arg);
+                };
+            )*
+
+            $body
+        }};
+    }
+
+    match var {
+        PrimVar::Type
+        | PrimVar::Bool
+        | PrimVar::Int
+        | PrimVar::Char
+        | PrimVar::String
+        | PrimVar::Unit
+        | PrimVar::unit => neutral(var, spine, arg),
+        PrimVar::add => match_args! {
+            let 1 = spine.len();
+            let Some(Elim::FunApp(FunArg { plicity:Plicity::Explicit, expr: Value::Lit(Lit::Int(lhs)) })) = spine.first();
+            let FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(rhs)) } = arg;
+            Value::int(u32::wrapping_add(*lhs, rhs))
+        },
+        PrimVar::sub => match_args! {
+            let 1 = spine.len();
+            let Some(Elim::FunApp(FunArg { plicity:Plicity::Explicit, expr: Value::Lit(Lit::Int(lhs)) })) = spine.first();
+            let FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(rhs)) } = arg;
+            Value::int(u32::wrapping_sub(*lhs, rhs))
+        },
+        PrimVar::mul => match_args! {
+            let 1 = spine.len();
+            let Some(Elim::FunApp(FunArg { plicity:Plicity::Explicit, expr: Value::Lit(Lit::Int(lhs)) })) = spine.first();
+            let FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(rhs)) } = arg;
+            Value::int(u32::wrapping_mul(*lhs, rhs))
+        },
+    }
+}
+
 /// Apply `arg` to `callee`.
 /// Performs beta reduction if `callee` is a lambda.
 pub(super) fn fun_app<'core>(
@@ -65,6 +117,7 @@ pub(super) fn fun_app<'core>(
     metas: &MetaValues<'core>,
 ) -> Value<'core> {
     match callee {
+        Value::Neutral(Head::PrimVar(var), spine) => prim_app(var, spine, arg),
         Value::Neutral(head, mut spine) => {
             spine.push(Elim::FunApp(arg));
             Value::Neutral(head, spine)

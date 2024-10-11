@@ -1,0 +1,15 @@
+exit status: 0
+
+stdout = """
+add : forall(_ : Int) -> Int -> Int
+sub : forall(_ : Int) -> Int -> Int
+mul : forall(_ : Int) -> Int -> Int
+add(1, 2) ⇝ 3
+sub(2, 1) ⇝ 1
+mul(2, 3) ⇝ 6
+
+"""
+
+stderr = """
+
+"""
