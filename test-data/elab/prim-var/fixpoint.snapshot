@@ -1,0 +1,12 @@
+exit status: 0
+
+stdout = """
+fix : forall(@A : Type, @B : Type) -> ((A -> B) -> A -> B) -> A -> B
+fact : Int -> Int
+fact(5) ⇝ 5
+
+"""
+
+stderr = """
+
+"""

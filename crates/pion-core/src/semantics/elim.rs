@@ -56,7 +56,14 @@ fn apply_spine<'core>(
     })
 }
 
-fn prim_app<'core>(var: PrimVar, spine: Spine<'core>, arg: FunArg<Value<'core>>) -> Value<'core> {
+fn prim_app<'core>(
+    var: PrimVar,
+    spine: Spine<'core>,
+    arg: FunArg<Value<'core>>,
+    bump: &'core bumpalo::Bump,
+    opts: UnfoldOpts,
+    metas: &MetaValues<'core>,
+) -> Value<'core> {
     fn neutral<'core>(
         var: PrimVar,
         mut spine: Spine<'core>,
@@ -81,23 +88,36 @@ fn prim_app<'core>(var: PrimVar, spine: Spine<'core>, arg: FunArg<Value<'core>>)
     match var {
         PrimVar::add => match_args! {
             let 1 = spine.len();
-            let Some(Elim::FunApp(FunArg { plicity:Plicity::Explicit, expr: Value::Lit(Lit::Int(lhs)) })) = spine.first();
+            let Some(Elim::FunApp(FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(lhs)) })) = spine.first();
             let FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(rhs)) } = arg;
             Value::int(u32::wrapping_add(*lhs, rhs))
         },
         PrimVar::sub => match_args! {
             let 1 = spine.len();
-            let Some(Elim::FunApp(FunArg { plicity:Plicity::Explicit, expr: Value::Lit(Lit::Int(lhs)) })) = spine.first();
+            let Some(Elim::FunApp(FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(lhs)) })) = spine.first();
             let FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(rhs)) } = arg;
             Value::int(u32::wrapping_sub(*lhs, rhs))
         },
         PrimVar::mul => match_args! {
             let 1 = spine.len();
-            let Some(Elim::FunApp(FunArg { plicity:Plicity::Explicit, expr: Value::Lit(Lit::Int(lhs)) })) = spine.first();
+            let Some(Elim::FunApp(FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(lhs)) })) = spine.first();
             let FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(rhs)) } = arg;
             Value::int(u32::wrapping_mul(*lhs, rhs))
         },
-
+        // fix(@A, @B, f, x) = f(fix(@A, @B, f), x)
+        PrimVar::fix => match_args! {
+            let true = opts.unfold_fix;
+            let 3 = spine.len();
+            let Some(Elim::FunApp(FunArg { plicity: Plicity::Implicit, expr: _ })) = spine.first();
+            let Some(Elim::FunApp(FunArg { plicity: Plicity::Implicit, expr: _ })) = spine.get(1);
+            let Some(Elim::FunApp(FunArg { plicity: Plicity::Explicit, expr: f })) = spine.get(2);
+            let FunArg { plicity: Plicity::Explicit, expr: _ } = arg;
+            {
+                let f = f.clone();
+                let neutral_fix = Value::Neutral(Head::PrimVar(PrimVar::fix), spine);
+                fun_app(fun_app(f, FunArg::explicit(neutral_fix), bump, opts, metas), arg, bump, opts, metas)
+            }
+        },
         PrimVar::Type
         | PrimVar::Bool
         | PrimVar::Int
@@ -121,7 +141,7 @@ pub(super) fn fun_app<'core>(
     metas: &MetaValues<'core>,
 ) -> Value<'core> {
     match callee {
-        Value::Neutral(Head::PrimVar(var), spine) => prim_app(var, spine, arg),
+        Value::Neutral(Head::PrimVar(var), spine) => prim_app(var, spine, arg, bump, opts, metas),
         Value::Neutral(head, mut spine) => {
             spine.push(Elim::FunApp(arg));
             Value::Neutral(head, spine)

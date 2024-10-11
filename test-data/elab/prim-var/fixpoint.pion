@@ -1,0 +1,6 @@
+#check fix;
+
+let fact = fix(fun(fact, n: Int) => n);
+
+#check fact;
+#eval fact(5);

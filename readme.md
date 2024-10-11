@@ -18,7 +18,7 @@
     * [ ] pruning
 
 * [ ] recursion
-    * [ ] `fix`
+    * [x] `fix`
     * [ ] `let rec`
         * [ ] single recursive value binding
         * [ ] mutually recursive value bindings
