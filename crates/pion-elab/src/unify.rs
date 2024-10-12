@@ -275,6 +275,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                     }
                     _ => return Err(SpineError::NonLocalFunApp),
                 },
+                Elim::If(..) => todo!(),
             }
         }
         Ok(())
@@ -288,6 +289,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                 FunParam::new(arg.plicity, None, &Expr::Error),
                 self.bump.alloc(expr),
             ),
+            Elim::If(..) => unreachable!("should have been caight by `init_renaming`"),
         })
     }
 
@@ -327,6 +329,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                         let arg = FunArg::new(arg.plicity, &*arg_expr);
                         Ok(Expr::FunApp(fun, arg))
                     }
+                    Elim::If(..) => todo!(),
                 })
             }
             Value::FunType(param, closure) => {

@@ -41,6 +41,9 @@ fn apply_eliminator<'core>(
 ) -> Value<'core> {
     match elim {
         Elim::FunApp(arg) => fun_app(head, arg, bump, opts, metas),
+        Elim::If(mut locals, then, r#else) => {
+            match_bool(head, then, r#else, bump, opts, &mut locals, metas)
+        }
     }
 }
 
@@ -171,8 +174,8 @@ pub(super) fn apply_closure<'core>(
 
 pub(super) fn match_bool<'core>(
     cond: Value<'core>,
-    then: &Expr<'core>,
-    r#else: &Expr<'core>,
+    then: &'core Expr<'core>,
+    r#else: &'core Expr<'core>,
     bump: &'core bumpalo::Bump,
     opts: UnfoldOpts,
     locals: &mut LocalValues<'core>,
@@ -181,6 +184,10 @@ pub(super) fn match_bool<'core>(
     match cond {
         Value::Lit(Lit::Bool(true)) => eval::eval(then, bump, opts, locals, metas),
         Value::Lit(Lit::Bool(false)) => eval::eval(r#else, bump, opts, locals, metas),
+        Value::Neutral(head, mut spine) => {
+            spine.push(Elim::If(locals.clone(), then, r#else));
+            Value::Neutral(head, spine)
+        }
         _ => Value::ERROR,
     }
 }

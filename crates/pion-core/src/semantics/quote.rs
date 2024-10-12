@@ -32,7 +32,7 @@ pub fn quote<'core>(
     let value = elim::subst_metas(value, bump, UnfoldOpts::for_quote(), metas);
     match value {
         Value::Lit(lit) => Expr::Lit(lit),
-        Value::Neutral(head, spine) => quote_neutral(head, &spine, bump, locals, metas),
+        Value::Neutral(head, spine) => quote_neutral(head, spine, bump, locals, metas),
         Value::FunType(param, body) => {
             let (param, body) = quote_funs(&param, &body, bump, locals, metas);
             Expr::FunType(param, body)
@@ -67,18 +67,30 @@ fn quote_head<'core>(
 
 fn quote_neutral<'core>(
     head: Head<'core>,
-    spine: &EcoVec<Elim<'core>>,
+    spine: Spine<'core>,
     bump: &'core bumpalo::Bump,
     locals: EnvLen,
     metas: &MetaValues<'core>,
 ) -> Expr<'core> {
     let head = quote_head(head, bump, locals, metas);
-    spine.iter().fold(head, |head, elim| match elim {
+    spine.into_iter().fold(head, |head, elim| match elim {
         Elim::FunApp(arg) => {
             let arg_expr = quote(&arg.expr, bump, locals, metas);
             let (fun, arg_expr) = bump.alloc((head, arg_expr));
             let arg = FunArg::new(arg.plicity, &*arg_expr);
             Expr::FunApp(fun, arg)
+        }
+        Elim::If(mut values, then, r#else) => {
+            let then = {
+                let expr = eval::eval(then, bump, UnfoldOpts::for_quote(), &mut values, metas);
+                quote(&expr, bump, locals, metas)
+            };
+            let r#else = {
+                let expr = eval::eval(r#else, bump, UnfoldOpts::for_quote(), &mut values, metas);
+                quote(&expr, bump, locals, metas)
+            };
+            let (cond, then, r#else) = bump.alloc((head, then, r#else));
+            Expr::If(&*cond, &*then, &*r#else)
         }
     })
 }

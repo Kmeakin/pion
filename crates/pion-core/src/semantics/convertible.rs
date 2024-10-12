@@ -79,6 +79,8 @@ fn convertible_elim<'core>(
         (Elim::FunApp(lhs), Elim::FunApp(rhs)) => {
             lhs.plicity == rhs.plicity && convertible(&lhs.expr, &rhs.expr, bump, locals, metas)
         }
+        (Elim::If(..), Elim::If(..)) => todo!(),
+        _ => todo!(),
     }
 }
 
