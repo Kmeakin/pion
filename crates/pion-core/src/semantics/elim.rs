@@ -107,6 +107,42 @@ fn prim_app<'core>(
             let FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(rhs)) } = arg;
             Value::int(u32::wrapping_mul(*lhs, rhs))
         },
+        PrimVar::eq => match_args! {
+            let 1 = spine.len();
+            let Some(Elim::FunApp(FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(lhs)) })) = spine.first();
+            let FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(rhs)) } = arg;
+            Value::Lit(Lit::Bool(*lhs == rhs))
+        },
+        PrimVar::ne => match_args! {
+            let 1 = spine.len();
+            let Some(Elim::FunApp(FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(lhs)) })) = spine.first();
+            let FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(rhs)) } = arg;
+            Value::Lit(Lit::Bool(*lhs != rhs))
+        },
+        PrimVar::lt => match_args! {
+            let 1 = spine.len();
+            let Some(Elim::FunApp(FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(lhs)) })) = spine.first();
+            let FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(rhs)) } = arg;
+            Value::Lit(Lit::Bool(*lhs < rhs))
+        },
+        PrimVar::gt => match_args! {
+            let 1 = spine.len();
+            let Some(Elim::FunApp(FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(lhs)) })) = spine.first();
+            let FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(rhs)) } = arg;
+            Value::Lit(Lit::Bool(*lhs > rhs))
+        },
+        PrimVar::le => match_args! {
+            let 1 = spine.len();
+            let Some(Elim::FunApp(FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(lhs)) })) = spine.first();
+            let FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(rhs)) } = arg;
+            Value::Lit(Lit::Bool(*lhs <= rhs))
+        },
+        PrimVar::ge => match_args! {
+            let 1 = spine.len();
+            let Some(Elim::FunApp(FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(lhs)) })) = spine.first();
+            let FunArg { plicity: Plicity::Explicit, expr: Value::Lit(Lit::Int(rhs)) } = arg;
+            Value::Lit(Lit::Bool(*lhs >= rhs))
+        },
         // fix(@A, @B, f, x) = f(fix(@A, @B, f), x)
         PrimVar::fix => match_args! {
             let true = opts.unfold_fix;

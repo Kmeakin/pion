@@ -1,6 +1,7 @@
 #check fix;
 
-let fact = fix(fun(fact, n: Int) => n);
+let fact = fix(fun(fact, n: Int) => if eq(n, 0) then 1 else mul(n, fact(sub(n, 1))));
 
 #check fact;
 #eval fact(5);
+#eval fact;

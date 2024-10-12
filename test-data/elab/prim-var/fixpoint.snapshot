@@ -3,7 +3,8 @@ exit status: 0
 stdout = """
 fix : forall(@A : Type, @B : Type) -> ((A -> B) -> A -> B) -> A -> B
 fact : Int -> Int
-fact(5) ⇝ 5
+fact(5) ⇝ 120
+fact ⇝ fix(@Int, @Int, fun(fact : Int -> Int, n : Int) => if eq(n, 0) then 1 else mul(n, fact(sub(n, 1))))
 
 """
 

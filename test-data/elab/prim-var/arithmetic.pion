@@ -5,3 +5,17 @@
 #eval add(1, 2);
 #eval sub(2, 1);
 #eval mul(2, 3);
+
+#check eq;
+#check ne;
+#check lt;
+#check gt;
+#check le;
+#check ge;
+
+#eval eq(1, 1);
+#eval ne(1, 1);
+#eval lt(1, 1);
+#eval gt(1, 1);
+#eval le(1, 1);
+#eval ge(1, 1);

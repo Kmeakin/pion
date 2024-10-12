@@ -7,6 +7,18 @@ mul : Int -> Int -> Int
 add(1, 2) ⇝ 3
 sub(2, 1) ⇝ 1
 mul(2, 3) ⇝ 6
+eq : Int -> Int -> Bool
+ne : Int -> Int -> Bool
+lt : Int -> Int -> Bool
+gt : Int -> Int -> Bool
+le : Int -> Int -> Bool
+ge : Int -> Int -> Bool
+eq(1, 1) ⇝ true
+ne(1, 1) ⇝ false
+lt(1, 1) ⇝ false
+gt(1, 1) ⇝ false
+le(1, 1) ⇝ true
+ge(1, 1) ⇝ true
 
 """
 

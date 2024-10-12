@@ -46,6 +46,12 @@ define_prims!(PrimVar {
     add = "add",
     sub = "sub",
     mul = "mul",
+    eq = "eq",
+    ne = "ne",
+    lt = "lt",
+    gt = "gt",
+    le = "le",
+    ge = "ge",
 
     Eq = "Eq",
     refl = "refl",
@@ -89,6 +95,19 @@ impl PrimVar {
                 FunParam::explicit(None, const { &Type::INT }),
                 Closure::empty(
                     const { &Expr::FunType(FunParam::explicit(None, &Expr::INT), &Expr::INT) },
+                ),
+            ),
+
+            // `eq: Int -> Int -> Bool`
+            // `ne: Int -> Int -> Bool`
+            // `lt: Int -> Int -> Bool`
+            // `gt: Int -> Int -> Bool`
+            // `le: Int -> Int -> Bool`
+            // `ge: Int -> Int -> Bool`
+            Self::eq | Self::ne | Self::lt | Self::gt | Self::le | Self::ge => Type::FunType(
+                FunParam::explicit(None, const { &Type::INT }),
+                Closure::empty(
+                    const { &Expr::FunType(FunParam::explicit(None, &Expr::INT), &Expr::BOOL) },
                 ),
             ),
 
