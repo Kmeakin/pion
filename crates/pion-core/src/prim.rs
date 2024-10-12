@@ -180,13 +180,13 @@ impl PrimVar {
                             ),
                             &const {
                                 Expr::FunType(
-                                    FunParam::explicit(
+                                    FunParam::implicit(
                                         Some(sym::a),
                                         &const { var(Some(sym::A), 1) },
                                     ),
                                     &const {
                                         Expr::FunType(
-                                            FunParam::explicit(
+                                            FunParam::implicit(
                                                 Some(sym::b),
                                                 &const { var(Some(sym::A), 2) },
                                             ),

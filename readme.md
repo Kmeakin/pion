@@ -31,7 +31,7 @@
     * [ ] row types
 
 * [ ] pattern matching
-    * [ ] `if` expressions
+    * [x] `if` expressions
         * [ ] dependent `if` expressions
     * [ ] single-layer pattern matching over integers and booleans
     * [ ] multi-layer pattern matching compilation w/ coverage checking

@@ -3,7 +3,16 @@ exit status: 0
 stdout = """
 Eq : forall(@A : Type) -> A -> A -> Type
 refl : forall(@A : Type, a : A) -> Eq(@A, a, a)
-subst : forall(@A : Type, @p : A -> Type, a : A, b : A) -> Eq(@A, a, b) -> p(a) -> p(b)
+subst : forall(@A : Type, @p : A -> Type, @a : A, @b : A) -> Eq(@A, a, b) -> p(a) -> p(b)
+sym : forall(@A : Type, @a : A, @b : A) -> Eq(@A, a, b) -> Eq(@A, b, a)
+sym ⇝ fun(@A : Type, @a : A, @b : A, a_eq_b : Eq(@A, a, b)) => subst(@A, @fun(x : A) => Eq(@A, x, a), @a, @b, a_eq_b, refl(@A, a))
+trans : forall(@A : Type, @a : A, @b : A, @c : A) -> Eq(@A, a, b) -> Eq(@A, b, c) -> Eq(@A, a, c)
+trans ⇝ fun(@A : Type, @a : A, @b : A, @c : A, a_eq_b : Eq(@A, a, b), b_eq_c : Eq(@A, b, c)) => subst(@A, @fun(x : A) => Eq(@A, a, x), @b, @c, b_eq_c, a_eq_b)
+cong : forall(@A : Type, @B : Type, @a : A, @b : A, f : A -> B) -> Eq(@A, a, b) -> Eq(@B, f(a), f(b))
+cong ⇝ fun(@A : Type, @B : Type, @a : A, @b : A, f : A -> B, a_eq_b : Eq(@A, a, b)) => subst(@A, @fun(x : A) => Eq(@B, f(a), f(x)), @a, @b, a_eq_b, refl(@B, f(a)))
+cong-app : forall(@A : Type, @B : Type, a : A, f : A -> B, g : A -> B) -> Eq(@A -> B, f, g) -> Eq(@B, f(a), g(a))
+cong-app ⇝ fun(@A : Type, @B : Type, a : A, f : A -> B, g : A -> B, f_eq_g : Eq(@A -> B, f, g)) => subst(@A -> B, @fun(x : A -> B) => Eq(@B, f(a), x(a)), @f, @g, f_eq_g, refl(@B, f(a)))
+not : Bool -> Bool
 
 """
 
