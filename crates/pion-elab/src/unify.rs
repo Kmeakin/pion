@@ -2,7 +2,9 @@ use codespan_reporting::diagnostic::Diagnostic;
 use pion_core::env::{
     DeBruijn, DeBruijnIndex, DeBruijnLevel, EnvLen, SharedEnv, SliceEnv, UniqueEnv,
 };
-use pion_core::semantics::{self, Closure, Elim, Head, MetaValues, Type, UnfoldOpts, Value};
+use pion_core::semantics::{
+    self, Closure, Elim, Head, LocalValues, MetaValues, Type, UnfoldOpts, Value,
+};
 use pion_core::syntax::{Expr, FunArg, FunParam, LocalVar, MetaVar, Name};
 
 /// Unification environment.
@@ -105,6 +107,13 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
 
     fn elim_env(&self) -> semantics::ElimEnv<'_, 'core> {
         semantics::ElimEnv::new(self.bump, UnfoldOpts::for_eval(), self.metas)
+    }
+
+    fn eval_env(
+        &'env self,
+        locals: &'env mut LocalValues<'core>,
+    ) -> semantics::EvalEnv<'env, 'core> {
+        semantics::EvalEnv::new(self.bump, UnfoldOpts::for_eval(), locals, self.metas)
     }
 
     /// Unify two values, updating the solution environment if necessary.
@@ -248,13 +257,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
         let expr = self.rename(meta_var, value)?;
         let fun_expr = self.fun_intros(spine, expr);
         let mut local_values = SharedEnv::new();
-        let solution = semantics::EvalEnv::new(
-            self.bump,
-            UnfoldOpts::for_eval(),
-            &mut local_values,
-            self.metas,
-        )
-        .eval(&fun_expr);
+        let solution = self.eval_env(&mut local_values).eval(&fun_expr);
         self.metas.set(meta_var, Some(solution));
         Ok(())
     }
@@ -275,7 +278,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                     }
                     _ => return Err(SpineError::NonLocalFunApp),
                 },
-                Elim::If(..) => todo!(),
+                Elim::If(..) => return Err(SpineError::If),
             }
         }
         Ok(())
@@ -289,7 +292,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                 FunParam::new(arg.plicity, None, &Expr::Error),
                 self.bump.alloc(expr),
             ),
-            Elim::If(..) => unreachable!("should have been caight by `init_renaming`"),
+            Elim::If(..) => unreachable!("should have been caught by `init_renaming`"),
         })
     }
 
@@ -329,7 +332,19 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                         let arg = FunArg::new(arg.plicity, &*arg_expr);
                         Ok(Expr::FunApp(fun, arg))
                     }
-                    Elim::If(..) => todo!(),
+                    Elim::If(locals, then, r#else) => {
+                        let mut locals = locals.clone();
+                        let then = {
+                            let value = self.eval_env(&mut locals).eval(then);
+                            self.rename(meta_var, &value)?
+                        };
+                        let r#else = {
+                            let value = self.eval_env(&mut locals).eval(r#else);
+                            self.rename(meta_var, &value)?
+                        };
+                        let (cond, then, r#else) = self.bump.alloc((head, then, r#else));
+                        Ok(Expr::If(cond, then, r#else))
+                    }
                 })
             }
             Value::FunType(param, closure) => {
@@ -388,6 +403,9 @@ impl<'core> UnifyError<'core> {
                 .with_message("variable appeared more than once in problem spine"),
             Self::Spine(SpineError::NonLocalFunApp) => Diagnostic::error()
                 .with_message("non-variable function application in problem spine"),
+            Self::Spine(SpineError::If) => {
+                Diagnostic::error().with_message("`if` expression in problem spine")
+            }
 
             Self::Rename(RenameError::EscapingLocalVar(_)) => {
                 Diagnostic::error().with_message("escaping local variable in problem spine")
@@ -455,6 +473,7 @@ pub enum SpineError<'core> {
     /// A function application was in the problem spine, but it wasn't a local
     /// variable.
     NonLocalFunApp,
+    If,
 }
 
 /// An error that occurred when renaming the solution.

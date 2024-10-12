@@ -54,8 +54,8 @@ fn convertible<'core>(
 }
 
 fn convertible_neutral<'core>(
-    (lhs_head, lhs_spine): (Head, &EcoVec<Elim<'core>>),
-    (rhs_head, rhs_spine): (Head, &EcoVec<Elim<'core>>),
+    (lhs_head, lhs_spine): (Head<'core>, &Spine<'core>),
+    (rhs_head, rhs_spine): (Head<'core>, &Spine<'core>),
     bump: &'core bumpalo::Bump,
     locals: EnvLen,
     metas: &MetaValues<'core>,
@@ -79,8 +79,24 @@ fn convertible_elim<'core>(
         (Elim::FunApp(lhs), Elim::FunApp(rhs)) => {
             lhs.plicity == rhs.plicity && convertible(&lhs.expr, &rhs.expr, bump, locals, metas)
         }
-        (Elim::If(..), Elim::If(..)) => todo!(),
-        _ => todo!(),
+        (Elim::If(lhs_locals, lhs_then, lhs_else), Elim::If(rhs_locals, rhs_then, rhs_else)) => {
+            let opts = UnfoldOpts::for_eval();
+
+            let mut lhs_locals = lhs_locals.clone();
+            let mut rhs_locals = rhs_locals.clone();
+
+            let lhs_then = eval::eval(lhs_then, bump, opts, &mut lhs_locals, metas);
+            let rhs_then = eval::eval(rhs_then, bump, opts, &mut rhs_locals, metas);
+            if !convertible(&lhs_then, &rhs_then, bump, locals, metas) {
+                return false;
+            }
+
+            let lhs_else = eval::eval(lhs_else, bump, opts, &mut lhs_locals, metas);
+            let rhs_else = eval::eval(rhs_else, bump, opts, &mut rhs_locals, metas);
+
+            convertible(&lhs_else, &rhs_else, bump, locals, metas)
+        }
+        _ => false,
     }
 }
 
