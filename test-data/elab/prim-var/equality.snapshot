@@ -13,6 +13,10 @@ cong ⇝ fun(@A : Type, @B : Type, @a : A, @b : A, f : A -> B, a_eq_b : Eq(@A, a
 cong-app : forall(@A : Type, @B : Type, a : A, f : A -> B, g : A -> B) -> Eq(@A -> B, f, g) -> Eq(@B, f(a), g(a))
 cong-app ⇝ fun(@A : Type, @B : Type, a : A, f : A -> B, g : A -> B, f_eq_g : Eq(@A -> B, f, g)) => subst(@A -> B, @fun(x : A -> B) => Eq(@B, f(a), x(a)), @f, @g, f_eq_g, refl(@B, f(a)))
 not : Bool -> Bool
+not-true-is-false : Eq(@Bool, false, false)
+not-true-is-false ⇝ refl(@Bool, false)
+not-false-is-true : Eq(@Bool, true, true)
+not-false-is-true ⇝ refl(@Bool, true)
 
 """
 
