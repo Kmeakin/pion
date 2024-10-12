@@ -12,11 +12,15 @@ cong : forall(@A : Type, @B : Type, @a : A, @b : A, f : A -> B) -> Eq(@A, a, b) 
 cong ⇝ fun(@A : Type, @B : Type, @a : A, @b : A, f : A -> B, a_eq_b : Eq(@A, a, b)) => subst(@A, @fun(x : A) => Eq(@B, f(a), f(x)), @a, @b, a_eq_b, refl(@B, f(a)))
 cong-app : forall(@A : Type, @B : Type, a : A, f : A -> B, g : A -> B) -> Eq(@A -> B, f, g) -> Eq(@B, f(a), g(a))
 cong-app ⇝ fun(@A : Type, @B : Type, a : A, f : A -> B, g : A -> B, f_eq_g : Eq(@A -> B, f, g)) => subst(@A -> B, @fun(x : A -> B) => Eq(@B, f(a), x(a)), @f, @g, f_eq_g, refl(@B, f(a)))
+cast : forall(@T : Type, @V : Type) -> Eq(@Type, T, V) -> T -> V
+cast ⇝ fun(@T : Type, @V : Type, t-eq-v : Eq(@Type, T, V), t : T) => subst(@Type, @fun(x : Type) => x, @T, @V, t-eq-v, t)
 not : Bool -> Bool
 not-true-is-false : Eq(@Bool, false, false)
 not-true-is-false ⇝ refl(@Bool, false)
 not-false-is-true : Eq(@Bool, true, true)
 not-false-is-true ⇝ refl(@Bool, true)
+not_self_inverse : forall(b : Bool) -> Eq(@Bool, if if b then false else true then false else true, b)
+not_self_inverse ⇝ fun(b : Bool) => bool_rec(@fun(a : Bool) => Eq(@Bool, if if a then false else true then false else true, a), b, refl(@Bool, true), refl(@Bool, false))
 
 """
 

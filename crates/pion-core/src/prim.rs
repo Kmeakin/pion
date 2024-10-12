@@ -58,6 +58,7 @@ define_prims!(PrimVar {
     subst = "subst",
 
     fix = "fix",
+    bool_rec = "bool_rec",
 });
 
 impl fmt::Debug for PrimVar {
@@ -309,6 +310,59 @@ impl PrimVar {
                     },
                 ),
             ),
+
+            // bool_rec : forall (@p: Bool -> Type) (b: Bool) -> p true -> p false -> p b
+            Self::bool_rec => {
+                const P: &Type = &Type::FunType(
+                    FunParam::explicit(None, const { &Type::BOOL }),
+                    Closure::empty(&Expr::TYPE),
+                );
+
+                Type::FunType(
+                    FunParam::implicit(Some(sym::p), P),
+                    Closure::empty(
+                        &const {
+                            Expr::FunType(
+                                FunParam::explicit(Some(sym::b), &Expr::BOOL),
+                                &const {
+                                    Expr::FunType(
+                                        FunParam::explicit(
+                                            None,
+                                            &const {
+                                                Expr::FunApp(
+                                                    &const { var(None, 1) },
+                                                    FunArg::explicit(&const { Expr::bool(true) }),
+                                                )
+                                            },
+                                        ),
+                                        &const {
+                                            Expr::FunType(
+                                                FunParam::explicit(
+                                                    None,
+                                                    &const {
+                                                        Expr::FunApp(
+                                                            &const { var(None, 2) },
+                                                            FunArg::explicit(
+                                                                &const { Expr::bool(false) },
+                                                            ),
+                                                        )
+                                                    },
+                                                ),
+                                                &const {
+                                                    Expr::FunApp(
+                                                        &const { var(None, 3) },
+                                                        FunArg::explicit(&const { var(None, 2) }),
+                                                    )
+                                                },
+                                            )
+                                        },
+                                    )
+                                },
+                            )
+                        },
+                    ),
+                )
+            }
         }
     }
 }

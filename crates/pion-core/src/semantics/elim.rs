@@ -166,7 +166,8 @@ fn prim_app<'core>(
         | PrimVar::unit
         | PrimVar::Eq
         | PrimVar::refl
-        | PrimVar::subst => neutral(var, spine, arg),
+        | PrimVar::subst
+        | PrimVar::bool_rec => neutral(var, spine, arg),
     }
 }
 

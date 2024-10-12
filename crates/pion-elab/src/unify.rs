@@ -202,6 +202,23 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                 {
                     self.unify(&left_arg.expr, &right_arg.expr)?;
                 }
+                (
+                    Elim::If(lhs_locals, lhs_then, lhs_else),
+                    Elim::If(rhs_locals, rhs_then, rhs_else),
+                ) => {
+                    let mut lhs_locals = lhs_locals.clone();
+                    let mut rhs_locals = rhs_locals.clone();
+
+                    let lhs_then = self.eval_env(&mut lhs_locals).eval(lhs_then);
+                    let rhs_then = self.eval_env(&mut rhs_locals).eval(rhs_then);
+
+                    self.unify(&lhs_then, &rhs_then)?;
+
+                    let lhs_else = self.eval_env(&mut lhs_locals).eval(lhs_else);
+                    let rhs_else = self.eval_env(&mut rhs_locals).eval(rhs_else);
+
+                    self.unify(&lhs_else, &rhs_else)?;
+                }
                 _ => return Err(UnifyError::Mismatch),
             }
         }
