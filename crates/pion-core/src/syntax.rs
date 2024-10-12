@@ -17,6 +17,7 @@ pub enum Expr<'core> {
     FunApp(&'core Self, FunArg<&'core Self>),
 
     Do(&'core [Stmt<'core>], Option<&'core Self>),
+    If(&'core Self, &'core Self, &'core Self),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -97,6 +98,9 @@ impl<'core> Expr<'core> {
                     }
                 }) || expr.map_or(false, |expr| expr.binds_local(var))
             }
+            Expr::If(cond, then, r#else) => [cond, then, r#else]
+                .iter()
+                .any(|expr| expr.binds_local(var)),
         }
     }
 }

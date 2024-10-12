@@ -2,13 +2,13 @@ use core::fmt;
 use std::fmt::Write;
 
 use crate::env::DeBruijnIndex;
-use crate::semantics::Value;
 use crate::syntax::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Prec {
     Atom,
     Call,
+    If,
     Fun,
 }
 
@@ -25,14 +25,7 @@ impl Prec {
             | Expr::Do(..) => Self::Atom,
             Expr::FunType(..) | Expr::FunLit(..) => Self::Fun,
             Expr::FunApp(..) => Self::Call,
-        }
-    }
-
-    pub fn of_value(value: &Value) -> Self {
-        match value {
-            Value::Lit(_) => Self::Atom,
-            Value::Neutral(..) => Self::Call,
-            Value::FunType(..) | Value::FunLit(..) => Self::Fun,
+            Expr::If(..) => Self::If,
         }
     }
 }
@@ -130,6 +123,14 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
                 expr_prec(out, expr, prec)?;
             }
             write!(out, "}}")?;
+        }
+        Expr::If(cond, then, r#else) => {
+            write!(out, "if ")?;
+            expr_prec(out, cond, Prec::MAX)?;
+            write!(out, " then ")?;
+            expr_prec(out, then, Prec::MAX)?;
+            write!(out, " else ")?;
+            expr_prec(out, r#else, Prec::MAX)?;
         }
     }
     if parens {
@@ -392,5 +393,15 @@ mod tests {
             &expr,
             expect!["do {let _ : Int = 1; let _ : Bool = true; #var(DeBruijnIndex(0))}"],
         );
+    }
+
+    #[test]
+    fn print_expr_if() {
+        let expr = Expr::If(
+            &const { Expr::bool(true) },
+            &const { Expr::int(1) },
+            &const { Expr::int(2) },
+        );
+        assert_print_expr(&expr, expect!["if true then 1 else 2"]);
     }
 }

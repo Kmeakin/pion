@@ -169,6 +169,22 @@ pub(super) fn apply_closure<'core>(
     eval::eval(body, bump, opts, &mut local_values, metas)
 }
 
+pub(super) fn match_bool<'core>(
+    cond: Value<'core>,
+    then: &Expr<'core>,
+    r#else: &Expr<'core>,
+    bump: &'core bumpalo::Bump,
+    opts: UnfoldOpts,
+    locals: &mut LocalValues<'core>,
+    metas: &MetaValues<'core>,
+) -> Value<'core> {
+    match cond {
+        Value::Lit(Lit::Bool(true)) => eval::eval(then, bump, opts, locals, metas),
+        Value::Lit(Lit::Bool(false)) => eval::eval(r#else, bump, opts, locals, metas),
+        _ => Value::ERROR,
+    }
+}
+
 /// Substitute meta variables in neutral spines with their values, and reduce
 /// further if possible.
 pub(super) fn subst_metas<'core>(

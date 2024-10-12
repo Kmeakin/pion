@@ -1,0 +1,1 @@
+#check (if true then (fun(x) => x) else (fun(x) => x)) : Int -> Int;

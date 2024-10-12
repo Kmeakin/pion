@@ -1,0 +1,12 @@
+exit status: 0
+
+stdout = """
+if true then 1 else 0 ⇝ 1
+if false then 1 else 0 ⇝ 0
+fun(b : ?0) => if b then 1 else 0 ⇝ fun(b : Bool) => #error
+
+"""
+
+stderr = """
+
+"""

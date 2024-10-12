@@ -95,7 +95,14 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     None => (Expr::Do(stmts, None), Type::UNIT_TYPE),
                 }
             }
-            surface::Expr::If(..) => todo!(),
+            surface::Expr::If(cond, then, r#else) => {
+                let cond = self.check_expr(*cond, &Type::BOOL);
+                let (then, r#type) = self.synth_expr(*then);
+                let r#else = self.check_expr(*r#else, &r#type);
+                let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
+                let expr = Expr::If(cond, then, r#else);
+                (expr, r#type)
+            }
         }
     }
 
@@ -133,7 +140,13 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     expected,
                 )
             }
-            surface::Expr::If(..) => todo!(),
+            surface::Expr::If(cond, then, r#else) => {
+                let cond = self.check_expr(*cond, &Type::BOOL);
+                let then = self.check_expr(*then, expected);
+                let r#else = self.check_expr(*r#else, expected);
+                let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
+                Expr::If(cond, then, r#else)
+            }
         }
     }
 

@@ -87,6 +87,10 @@ pub(super) fn eval<'core, 'env>(
             locals.truncate(len);
             result
         }
+        Expr::If(cond, then, r#else) => {
+            let cond = eval(cond, bump, opts, locals, metas);
+            elim::match_bool(cond, then, r#else, bump, opts, locals, metas)
+        }
     }
 }
 

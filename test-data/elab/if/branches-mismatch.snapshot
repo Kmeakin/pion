@@ -1,0 +1,16 @@
+exit status: 0
+
+stdout = """
+(if true then 1 else #error) : Int
+
+"""
+
+stderr = """
+error: Type mismatch: expected `Int`, found `Char`
+  ┌─ test-data/elab/if/branches-mismatch.pion:1:28
+  │
+1 │ #check if true then 1 else 'a';
+  │                            ^^^
+
+
+"""
