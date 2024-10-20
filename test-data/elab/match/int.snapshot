@@ -1,7 +1,7 @@
 exit status: 0
 
 stdout = """
-let is-zero : Int -> Bool = fun(n : ?1) => #error;
+let is-zero : Int -> Bool = fun(n : ?1) => match n { 0 => true,  _ => false, };
 
 """
 

@@ -155,20 +155,18 @@ impl<'core> PatternCompiler<'core> {
                 let (cond, then, r#else) = self.bump.alloc((*scrut, true_branch, false_branch));
                 Expr::MatchBool(cond, then, r#else)
             }
-            Constructors::Ints(ref ints) => {
-                let bump = self.bump;
-                let mut cases = Vec::with_capacity_in(ints.len(), self.bump);
-                for int in ints {
+            Constructors::Ints(ref cases) => {
+                let cases = self.bump.alloc_slice_fill_iter(cases.iter().map(|int| {
                     let mut matrix = matrix.specialize(self.bump, Constructor::Lit(Lit::Int(*int)));
                     let expr = self.compile_match(&mut matrix, bodies);
-                    cases.push((*int, expr));
-                }
+                    (*int, expr)
+                }));
                 let default = {
                     let mut matrix = matrix.default(self.bump);
                     self.compile_match(&mut matrix, bodies)
                 };
                 let (scrut, default) = self.bump.alloc((*scrut, default));
-                Expr::Error
+                Expr::MatchInt(scrut, cases, default)
             }
         }
     }

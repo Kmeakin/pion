@@ -4,7 +4,7 @@ stdout = """
 let f1 : Bool -> Int = fun(b : ?1) => if b then 1 else 2;
 let f2 : Bool -> Int = fun(b : ?4) => if b then 1 else 2;
 let f2 : Bool -> Int = fun(b : ?4) => if b then 1 else 2;
-let f4 : Int -> Bool = fun(n : ?10) => #error;
+let f4 : Int -> Bool = fun(n : ?10) => match n { 1 => false,  _ => true, };
 
 """
 

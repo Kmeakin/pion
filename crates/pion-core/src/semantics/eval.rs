@@ -91,6 +91,7 @@ pub(super) fn eval<'core, 'env>(
             let cond = eval(cond, bump, opts, locals, metas);
             elim::match_bool(cond, then, r#else, bump, opts, locals, metas)
         }
+        Expr::MatchInt(scrut, cases, default) => todo!(),
     }
 }
 

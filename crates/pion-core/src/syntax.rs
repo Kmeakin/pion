@@ -18,6 +18,7 @@ pub enum Expr<'core> {
 
     Do(&'core [Stmt<'core>], Option<&'core Self>),
     MatchBool(&'core Self, &'core Self, &'core Self),
+    MatchInt(&'core Self, &'core [(u32, Self)], &'core Self),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -101,6 +102,10 @@ impl<'core> Expr<'core> {
             Expr::MatchBool(cond, then, r#else) => [cond, then, r#else]
                 .iter()
                 .any(|expr| expr.binds_local(var)),
+            Expr::MatchInt(scrut, cases, default) => std::iter::once(*scrut)
+                .chain(cases.iter().map(|(_, expr)| expr))
+                .chain(std::iter::once(*default))
+                .any(|expr| expr.binds_local(var)),
         }
     }
 
@@ -154,14 +159,6 @@ impl<'core> Expr<'core> {
                     let (fun, arg_expr) = bump.alloc((fun, arg_expr));
                     Expr::FunApp(fun, FunArg::new(arg.plicity, arg_expr))
                 }
-
-                Expr::MatchBool(cond, then, r#else) => {
-                    let cond = recur(cond, bump, min, amount);
-                    let then = recur(then, bump, min, amount);
-                    let r#else = recur(r#else, bump, min, amount);
-                    let (cond, then, r#else) = bump.alloc((cond, then, r#else));
-                    Expr::MatchBool(cond, then, r#else)
-                }
                 Expr::Do(stmts, expr) => {
                     let mut min = min;
                     let stmts = bump.alloc_slice_fill_iter(stmts.iter().map(|stmt| match stmt {
@@ -176,6 +173,24 @@ impl<'core> Expr<'core> {
                     let trailing_expr =
                         expr.map(|expr| &*bump.alloc(recur(expr, bump, min, amount)));
                     Expr::Do(stmts, trailing_expr)
+                }
+                Expr::MatchBool(cond, then, r#else) => {
+                    let cond = recur(cond, bump, min, amount);
+                    let then = recur(then, bump, min, amount);
+                    let r#else = recur(r#else, bump, min, amount);
+                    let (cond, then, r#else) = bump.alloc((cond, then, r#else));
+                    Expr::MatchBool(cond, then, r#else)
+                }
+                Expr::MatchInt(scrut, cases, default) => {
+                    let scrut = recur(scrut, bump, min, amount);
+                    let cases = bump.alloc_slice_fill_iter(
+                        cases
+                            .iter()
+                            .map(|(n, expr)| (*n, recur(expr, bump, min, amount))),
+                    );
+                    let default = recur(default, bump, min, amount);
+                    let (scrut, default) = bump.alloc((scrut, default));
+                    Expr::MatchInt(scrut, cases, default)
                 }
             }
         }
