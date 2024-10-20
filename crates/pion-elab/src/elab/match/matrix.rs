@@ -127,7 +127,7 @@ pub type BorrowedPatRow<'core, 'row> = PatRow<&'row [PatPair<'core>]>;
 
 pub type BorrowedMutPatRow<'core, 'row> = PatRow<&'row mut [PatPair<'core>]>;
 
-impl<'core, 'row> BorrowedPatRow<'core, 'row> {
+impl<'core> BorrowedPatRow<'core, '_> {
     pub fn split_first(&self) -> Option<(&PatPair<'core>, Self)> {
         let (first, rest) = self.pairs.split_first()?;
         Some((first, Self::new(rest, self.body)))

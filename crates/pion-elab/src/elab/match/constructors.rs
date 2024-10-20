@@ -1,7 +1,6 @@
 use std::ops::ControlFlow;
 
 use internal_iterator::InternalIterator;
-use pion_core::symbol::Symbol;
 use pion_core::syntax::Lit;
 use smallvec::{smallvec, SmallVec};
 
@@ -12,10 +11,11 @@ use crate::elab::pat::Pat;
 #[derive(Debug, Copy, Clone)]
 pub enum Constructor<'core> {
     Lit(Lit<'core>),
+    #[cfg(false)]
     Record(&'core [(Symbol<'core>, Pat<'core>)]),
 }
 
-impl<'core> PartialEq for Constructor<'core> {
+impl PartialEq for Constructor<'_> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Lit(left_lit), Self::Lit(right_lit)) => left_lit == right_lit,
@@ -28,13 +28,14 @@ impl<'core> PartialEq for Constructor<'core> {
     }
 }
 
-impl<'core> Eq for Constructor<'core> {}
+impl Eq for Constructor<'_> {}
 
-impl<'core> Constructor<'core> {
+impl Constructor<'_> {
     /// Return number of fields `self` carries
     pub const fn arity(&self) -> usize {
         match self {
             Constructor::Lit(_) => 0,
+            #[cfg(false)]
             Constructor::Record(labels) => labels.len(),
         }
     }
@@ -97,7 +98,8 @@ impl Constructors<'_> {
             #[cfg(false)]
             Constructors::Record(_) => true,
             Constructors::Bools(bools) => bools.is_full(),
-            Constructors::Ints(ints) => (ints.len()) >= u32::MAX as usize,
+            #[allow(clippy::as_conversions, reason = "usize will always fit in u128")]
+            Constructors::Ints(ints) => ints.len() as u128 >= u128::from(u32::MAX),
             Constructors::Phantom(d, _) => match *d {},
         }
     }
