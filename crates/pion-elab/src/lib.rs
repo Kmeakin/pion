@@ -1,4 +1,4 @@
-#![feature(allocator_api)]
+#![feature(allocator_api, cfg_boolean_literals)]
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use env::{ElabEnv, LocalInfo, MetaSource};

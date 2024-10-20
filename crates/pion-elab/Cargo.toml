@@ -10,6 +10,8 @@ workspace = true
 [dependencies]
 bumpalo            = { workspace = true }
 codespan-reporting = { workspace = true }
+internal-iterator  = { workspace = true }
 pion-core          = { workspace = true }
 pion-surface       = { workspace = true }
+smallvec           = { workspace = true }
 text-size          = { workspace = true }

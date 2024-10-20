@@ -94,6 +94,10 @@ impl Add for EnvLen {
     fn add(self, rhs: Self) -> Self::Output { Self(self.0 + rhs.0) }
 }
 
+impl From<usize> for EnvLen {
+    fn from(value: usize) -> Self { Self(value) }
+}
+
 pub trait DeBruijn: Copy + fmt::Debug {
     fn to_level(self, len: EnvLen) -> Option<DeBruijnLevel>;
     fn to_index(self, len: EnvLen) -> Option<DeBruijnIndex>;

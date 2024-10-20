@@ -1,6 +1,7 @@
+use pion_core::env::EnvLen;
 use pion_core::semantics::Type;
 use pion_core::symbol::Symbol;
-use pion_core::syntax::Lit;
+use pion_core::syntax::{Expr, LetBinding, Lit};
 use pion_surface::syntax::{self as surface, Located};
 
 use super::{Check, Synth};
@@ -24,6 +25,10 @@ impl<'core> Pat<'core> {
             Pat::Var(name) => Some(*name),
             _ => None,
         }
+    }
+
+    pub const fn is_wildcard(&self) -> bool {
+        matches!(self, Self::Error | Self::Wildcard | Self::Var(_))
     }
 }
 
@@ -109,5 +114,60 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 Pat::Error
             }
         }
+    }
+
+    pub(super) fn destruct_pat(
+        &mut self,
+        pat: &Pat<'core>,
+        expr: &Expr<'core>,
+        r#type: &Type<'core>,
+        toplevel_param: bool,
+    ) -> Vec<LetBinding<'core, Expr<'core>>> {
+        fn recur<'core>(
+            ctx: &mut Elaborator<'core>,
+            pat: &Pat<'core>,
+            expr: &Expr<'core>,
+            r#type: &Type<'core>,
+            bindings: &mut Vec<LetBinding<'core, Expr<'core>>>,
+            toplevel_param: bool,
+        ) {
+            match pat {
+                Pat::Error | Pat::Wildcard | Pat::Lit(_) => {}
+                Pat::Var(..) if toplevel_param => {}
+                Pat::Var(..) => {
+                    let name = pat.name();
+                    let r#type = ctx
+                        .quote_env()
+                        .quote_offset(r#type, EnvLen::from(bindings.len()));
+                    let expr = expr.shift(ctx.bump, EnvLen::from(bindings.len()));
+                    bindings.push(LetBinding::new(name, r#type, expr));
+                }
+                #[cfg(false)]
+                Pat::RecordLit(pat_fields) => {
+                    let r#type = ctx.elim_env().update_metas(r#type);
+                    let Type::RecordType(mut telescope) = r#type else {
+                        unreachable!("expected record type, got {type:?}")
+                    };
+                    for (pat_name, pat) in *pat_fields {
+                        let (telescope_name, r#type, update_telescope) =
+                            ctx.elim_env().split_telescope(&mut telescope).unwrap();
+                        debug_assert_eq!(*pat_name, telescope_name);
+
+                        let expr = Expr::RecordProj(ctx.bump.alloc(*expr), *pat_name);
+
+                        recur(ctx, pat, &expr, &r#type, bindings, false);
+                        update_telescope(ctx.env.locals.next_var());
+                    }
+                }
+                #[cfg(false)]
+                Pat::Or(pats) => {
+                    recur(ctx, &pats[0], expr, r#type, bindings, toplevel_param);
+                }
+            }
+        }
+
+        let mut bindings = Vec::new();
+        recur(self, pat, expr, r#type, &mut bindings, toplevel_param);
+        bindings
     }
 }

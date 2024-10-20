@@ -144,7 +144,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
                 Expr::If(cond, then, r#else)
             }
-            surface::Expr::Match(located, _) => todo!(),
+            surface::Expr::Match(scrut, cases) => self.check_match_expr(*scrut, cases, expected),
         }
     }
 

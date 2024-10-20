@@ -103,6 +103,83 @@ impl<'core> Expr<'core> {
                 .any(|expr| expr.binds_local(var)),
         }
     }
+
+    #[must_use]
+    pub fn shift(&self, bump: &'core bumpalo::Bump, amount: EnvLen) -> Self {
+        return recur(self, bump, DeBruijnIndex::default(), amount);
+
+        /// Increment all `LocalVar`s greater than or equal to `min` by
+        /// `amount`.
+        /// See <https://github.com/dhall-lang/dhall-lang/blob/master/standard/shift.md>.
+        fn recur<'core>(
+            expr: &Expr<'core>,
+            bump: &'core bumpalo::Bump,
+            min: DeBruijnIndex,
+            amount: EnvLen,
+        ) -> Expr<'core> {
+            // Skip traversing and rebuilding the term if it would make no change.
+            // Increases sharing.
+            if amount == EnvLen::default() {
+                return *expr;
+            }
+
+            match expr {
+                Expr::LocalVar(var) if var.de_bruijn >= min => {
+                    Expr::LocalVar(LocalVar::new(var.name, var.de_bruijn + amount))
+                }
+
+                Expr::Error
+                | Expr::Lit(..)
+                | Expr::PrimVar(..)
+                | Expr::LocalVar(..)
+                | Expr::MetaVar(..) => *expr,
+
+                Expr::FunLit { 0: param, 1: body } => {
+                    let r#type = recur(param.r#type, bump, min, amount);
+                    let body = recur(body, bump, min.succ(), amount);
+                    let (r#type, body) = bump.alloc((r#type, body));
+                    let param = FunParam::new(param.plicity, param.name, &*r#type);
+                    Expr::FunLit(param, body)
+                }
+                Expr::FunType { 0: param, 1: body } => {
+                    let r#type = recur(param.r#type, bump, min, amount);
+                    let body = recur(body, bump, min.succ(), amount);
+                    let (r#type, body) = bump.alloc((r#type, body));
+                    let param = FunParam::new(param.plicity, param.name, &*r#type);
+                    Expr::FunType(param, body)
+                }
+                Expr::FunApp { 0: fun, 1: arg } => {
+                    let fun = recur(fun, bump, min, amount);
+                    let arg_expr = recur(arg.expr, bump, min, amount);
+                    let (fun, arg_expr) = bump.alloc((fun, arg_expr));
+                    Expr::FunApp(fun, FunArg::new(arg.plicity, arg_expr))
+                }
+
+                Expr::If(cond, then, r#else) => {
+                    let cond = recur(cond, bump, min, amount);
+                    let then = recur(then, bump, min, amount);
+                    let r#else = recur(r#else, bump, min, amount);
+                    let (cond, then, r#else) = bump.alloc((cond, then, r#else));
+                    Expr::If(cond, then, r#else)
+                }
+                Expr::Do(stmts, expr) => {
+                    let mut min = min;
+                    let stmts = bump.alloc_slice_fill_iter(stmts.iter().map(|stmt| match stmt {
+                        Stmt::Expr(expr) => Stmt::Expr(recur(expr, bump, min, amount)),
+                        Stmt::Let(let_binding) => {
+                            let r#type = recur(&let_binding.r#type, bump, min, amount);
+                            let init = recur(&let_binding.init, bump, min, amount);
+                            min = min.succ();
+                            Stmt::Let(LetBinding::new(let_binding.name, r#type, init))
+                        }
+                    }));
+                    let trailing_expr =
+                        expr.map(|expr| &*bump.alloc(recur(expr, bump, min, amount)));
+                    Expr::Do(stmts, trailing_expr)
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

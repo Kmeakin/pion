@@ -20,6 +20,10 @@ impl<'env, 'core> QuoteEnv<'env, 'core> {
     pub fn quote(&self, value: &Value<'core>) -> Expr<'core> {
         quote(value, self.bump, self.locals, self.metas)
     }
+
+    pub fn quote_offset(&self, value: &Value<'core>, offset: EnvLen) -> Expr<'core> {
+        quote(value, self.bump, self.locals + offset, self.metas)
+    }
 }
 
 /// Quote a value back to an expression.
