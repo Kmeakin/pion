@@ -6,7 +6,7 @@ use pion_core::prim::PrimVar;
 use pion_core::semantics::{Closure, Type, Value};
 use pion_core::syntax::{Expr, FunArg, FunParam, LocalVar, Plicity};
 use pion_surface::syntax::{self as surface, Located};
-use text_size::{TextRange, TextSize};
+use text_size::TextRange;
 
 use super::{Check, Synth};
 use crate::env::MetaSource;
@@ -45,19 +45,15 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
 
                 (Expr::Error, Type::ERROR)
             }
-            surface::Expr::Lit(lit) => match lit {
-                surface::Lit::Bool(b) => (Expr::bool(*b), Type::BOOL),
-                surface::Lit::Int(text) => {
-                    (self.synth_int(Located::new(expr.range, text)), Type::INT)
-                }
-                surface::Lit::Char(text) => {
-                    (self.synth_char(Located::new(expr.range, text)), Type::CHAR)
-                }
-                surface::Lit::String(text) => (
-                    self.synth_string(Located::new(expr.range, text)),
-                    Type::STRING,
-                ),
-            },
+            surface::Expr::Lit(lit) => {
+                let lit = Located::new(expr.range, *lit);
+                let (lit, r#type) = self.synth_lit(lit);
+                let expr = match lit {
+                    Ok(lit) => Expr::Lit(lit),
+                    Err(()) => Expr::Error,
+                };
+                (expr, r#type)
+            }
             surface::Expr::Paren(expr) => self.synth_expr(*expr),
             surface::Expr::TypeAnnotation(expr, r#type) => {
                 let r#type = self.check_expr(*r#type, &Type::TYPE);
@@ -448,125 +444,6 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             }
         }
         (expr, r#type)
-    }
-
-    fn synth_int(&mut self, text: Located<&str>) -> Expr<'core> {
-        let range = text.range;
-        let text = match text.data.contains('_') {
-            false => Cow::Borrowed(text.data),
-            true => Cow::Owned(text.data.replace('_', "")),
-        };
-
-        let res = match () {
-            () if text.starts_with("0b") || text.starts_with("0B") => {
-                u32::from_str_radix(&text[2..], 16)
-            }
-            () if text.starts_with("0o") || text.starts_with("0O") => {
-                u32::from_str_radix(&text[2..], 16)
-            }
-            () if text.starts_with("0x") || text.starts_with("0X") => {
-                u32::from_str_radix(&text[2..], 16)
-            }
-            () => u32::from_str(&text),
-        };
-
-        match res {
-            Ok(n) => Expr::int(n),
-            Err(error) => {
-                self.diagnostic(
-                    range,
-                    Diagnostic::error().with_message(format!("Invalid integer literal: {error}")),
-                );
-                Expr::Error
-            }
-        }
-    }
-
-    fn synth_string(&mut self, text: Located<&str>) -> Expr<'core> {
-        let range = text.range;
-        let text = text.data;
-
-        let text = text.strip_prefix('"').expect("Guaranteed by lexer");
-
-        let (text, mut terminated) = match text.strip_suffix('"') {
-            Some(text) => (text, true),
-            None => (text, false),
-        };
-
-        let mut error = false;
-        let text = match text.contains('\\') {
-            false => Cow::Borrowed(text),
-            true => {
-                let mut result = String::with_capacity(text.len());
-                let mut chars = text.char_indices();
-
-                while let Some((idx1, c)) = chars.next() {
-                    match c {
-                        '\\' => {
-                            let Some((idx2, c)) = chars.next() else {
-                                terminated = false;
-                                break;
-                            };
-                            match c {
-                                'n' => result.push('\n'),
-                                'r' => result.push('\r'),
-                                't' => result.push('\t'),
-                                '\\' => result.push('\\'),
-                                '"' => result.push('"'),
-                                c => {
-                                    error = true;
-                                    let range = range + TextSize::from(1); // add 1 to skip past the leading '"'
-                                    let idx1 = TextSize::try_from(idx1).unwrap();
-                                    let idx2 = TextSize::try_from(idx2 + c.len_utf8()).unwrap();
-
-                                    debug_assert_eq!(
-                                        text[TextRange::new(idx1, idx2)],
-                                        format!("\\{c}")
-                                    );
-
-                                    let range =
-                                        TextRange::new(range.start() + idx1, range.start() + idx2);
-                                    self.diagnostic(
-                                        range,
-                                        Diagnostic::error().with_message(format!(
-                                            "Unknown escape character: `{c}`"
-                                        )),
-                                    );
-                                }
-                            }
-                        }
-                        c => result.push(c),
-                    }
-                }
-                Cow::Owned(result)
-            }
-        };
-
-        if !terminated {
-            error = true;
-            self.diagnostic(
-                range,
-                Diagnostic::error().with_message("Unterminated string literal"),
-            );
-        }
-
-        if error {
-            return Expr::Error;
-        }
-
-        Expr::string(self.bump.alloc_str(&text))
-    }
-
-    #[allow(
-        unused_variables,
-        clippy::unused_self,
-        clippy::needless_pass_by_ref_mut,
-        reason = "not implemented yet"
-    )]
-    fn synth_char(&mut self, text: Located<&str>) -> Expr<'core> {
-        // TODO: Handle escape sequences, check string is terminated, check for invalid
-        // characters
-        Expr::char('\0')
     }
 }
 
