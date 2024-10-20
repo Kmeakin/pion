@@ -84,7 +84,7 @@ fn quote_neutral<'core>(
             let arg = FunArg::new(arg.plicity, &*arg_expr);
             Expr::FunApp(fun, arg)
         }
-        Elim::If(mut values, then, r#else) => {
+        Elim::MatchBool(mut values, then, r#else) => {
             let then = {
                 let value = eval::eval(then, bump, UnfoldOpts::for_quote(), &mut values, metas);
                 quote(&value, bump, locals, metas)

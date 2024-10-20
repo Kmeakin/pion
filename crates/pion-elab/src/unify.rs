@@ -203,8 +203,8 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                     self.unify(&left_arg.expr, &right_arg.expr)?;
                 }
                 (
-                    Elim::If(lhs_locals, lhs_then, lhs_else),
-                    Elim::If(rhs_locals, rhs_then, rhs_else),
+                    Elim::MatchBool(lhs_locals, lhs_then, lhs_else),
+                    Elim::MatchBool(rhs_locals, rhs_then, rhs_else),
                 ) => {
                     let mut lhs_locals = lhs_locals.clone();
                     let mut rhs_locals = rhs_locals.clone();
@@ -324,7 +324,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                     }
                     _ => return Err(SpineError::NonLocalFunApp),
                 },
-                Elim::If(..) | Elim::MatchInt(..) => return Err(SpineError::Match),
+                Elim::MatchBool(..) | Elim::MatchInt(..) => return Err(SpineError::Match),
             }
         }
         Ok(())
@@ -378,7 +378,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                         let arg = FunArg::new(arg.plicity, &*arg_expr);
                         Ok(Expr::FunApp(fun, arg))
                     }
-                    Elim::If(locals, then, r#else) => {
+                    Elim::MatchBool(locals, then, r#else) => {
                         let mut locals = locals.clone();
                         let then = {
                             let value = self.eval_env(&mut locals).eval(then);
@@ -465,7 +465,7 @@ impl<'core> UnifyError<'core> {
             Self::Spine(SpineError::NonLocalFunApp) => Diagnostic::error()
                 .with_message("non-variable function application in problem spine"),
             Self::Spine(SpineError::Match) => {
-                Diagnostic::error().with_message("`if` expression in problem spine")
+                Diagnostic::error().with_message("`match` expression in problem spine")
             }
 
             Self::Rename(RenameError::EscapingLocalVar(_)) => {

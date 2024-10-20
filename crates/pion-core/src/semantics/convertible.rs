@@ -79,7 +79,10 @@ fn convertible_elim<'core>(
         (Elim::FunApp(lhs), Elim::FunApp(rhs)) => {
             lhs.plicity == rhs.plicity && convertible(&lhs.expr, &rhs.expr, bump, locals, metas)
         }
-        (Elim::If(lhs_locals, lhs_then, lhs_else), Elim::If(rhs_locals, rhs_then, rhs_else)) => {
+        (
+            Elim::MatchBool(lhs_locals, lhs_then, lhs_else),
+            Elim::MatchBool(rhs_locals, rhs_then, rhs_else),
+        ) => {
             let opts = UnfoldOpts::for_eval();
 
             let mut lhs_locals = lhs_locals.clone();
