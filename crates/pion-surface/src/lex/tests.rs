@@ -180,7 +180,7 @@ fn ident() {
 #[test]
 fn reserved_ident() {
     assert_lex(
-        "do else false forall fun if let then true",
+        "do else false forall fun if let match then true",
         expect![[r#"
             KwDo 0..2 "do"
             Whitespace 2..3 " "
@@ -196,9 +196,11 @@ fn reserved_ident() {
             Whitespace 27..28 " "
             KwLet 28..31 "let"
             Whitespace 31..32 " "
-            KwThen 32..36 "then"
-            Whitespace 36..37 " "
-            KwTrue 37..41 "true""#]],
+            KwMatch 32..37 "match"
+            Whitespace 37..38 " "
+            KwThen 38..42 "then"
+            Whitespace 42..43 " "
+            KwTrue 43..47 "true""#]],
     );
 }
 

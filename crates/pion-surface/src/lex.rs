@@ -39,6 +39,7 @@ pub enum TokenKind {
     KwFun,
     KwIf,
     KwLet,
+    KwMatch,
     KwThen,
     KwTrue,
 
@@ -62,6 +63,7 @@ impl TokenKind {
             ReservedIdent::Fun => Self::KwFun,
             ReservedIdent::If => Self::KwIf,
             ReservedIdent::Let => Self::KwLet,
+            ReservedIdent::Match => Self::KwMatch,
             ReservedIdent::Then => Self::KwThen,
             ReservedIdent::True => Self::KwTrue,
         }
@@ -94,6 +96,7 @@ impl fmt::Display for TokenKind {
             Self::KwFun => write!(f, "`fun`"),
             Self::KwIf => write!(f, "`if`"),
             Self::KwLet => write!(f, "`let`"),
+            Self::KwMatch => write!(f, "`match`"),
             Self::KwThen => write!(f, "`then`"),
             Self::KwTrue => write!(f, "`true`"),
 
@@ -107,14 +110,15 @@ impl fmt::Display for TokenKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReservedIdent {
     Do,
+    Else,
     False,
     Forall,
     Fun,
     If,
     Let,
-    True,
+    Match,
     Then,
-    Else,
+    True,
 }
 
 impl FromStr for ReservedIdent {
@@ -128,6 +132,7 @@ impl FromStr for ReservedIdent {
             "fun" => Ok(Self::Fun),
             "if" => Ok(Self::If),
             "let" => Ok(Self::Let),
+            "match" => Ok(Self::Match),
             "then" => Ok(Self::Then),
             "true" => Ok(Self::True),
             _ => Err(()),
