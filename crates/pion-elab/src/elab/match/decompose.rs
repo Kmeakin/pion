@@ -19,7 +19,7 @@ impl<'core> PatMatrix<'core> {
             let ((pat, expr), rest) = row.split_first().unwrap();
             recur(bump, *pat, *expr, rest, ctor, &mut matrix);
 
-            #[allow(clippy::items_after_statements)]
+            #[allow(clippy::items_after_statements, reason = "Clarity")]
             fn recur<'core>(
                 bump: &'core bumpalo::Bump,
                 pat: Pat<'core>,

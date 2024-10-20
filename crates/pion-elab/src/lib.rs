@@ -5,7 +5,7 @@ use env::{ElabEnv, LocalInfo, MetaSource};
 use pion_core::env::{DeBruijn, DeBruijnLevel};
 use pion_core::semantics::{ElimEnv, EvalEnv, QuoteEnv, Type, UnfoldOpts, Value};
 use pion_core::symbol::Symbol;
-use pion_core::syntax::{Expr, FunArg, LocalVar, MetaVar, Plicity};
+use pion_core::syntax::{Expr, FunArg, LetBinding, LocalVar, MetaVar, Plicity};
 use text_size::TextRange;
 use unify::UnifyEnv;
 
@@ -64,7 +64,7 @@ impl<'core> Elaborator<'core> {
             .zip(self.env.locals.names.iter())
         {
             match info {
-                LocalInfo::Let => {}
+                LocalInfo::Let(..) => {}
                 LocalInfo::Param => {
                     let index = level.to_index(self.env.locals.len()).unwrap();
                     let arg = Expr::LocalVar(LocalVar::new(*name, index));
@@ -93,6 +93,7 @@ impl<'core> Elaborator<'core> {
                     MetaSource::HoleExpr(_) => String::from("expression to solve hole"),
                     MetaSource::ImplicitArg(_, Some(name)) => format!("implicit argument `{name}`"),
                     MetaSource::ImplicitArg(_, None) => String::from("implicit argument"),
+                    MetaSource::MatchType(_) => String::from("result type of match expression"),
                 };
                 self.diagnostic(
                     source.range(),
@@ -131,5 +132,13 @@ impl<'core> Elaborator<'core> {
 
     fn intern(&mut self, text: &str) -> Symbol<'core> {
         self.interner.intern(text, |text| self.bump.alloc_str(text))
+    }
+
+    fn push_let_bindings(&mut self, bindings: &[LetBinding<'core, Expr<'core>>]) {
+        for LetBinding { name, r#type, init } in bindings {
+            let value = self.eval_env().eval(init);
+            let r#type = self.eval_env().eval(r#type);
+            self.env.locals.push_let(*name, r#type, *init, value);
+        }
     }
 }

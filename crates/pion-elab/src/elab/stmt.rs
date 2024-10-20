@@ -5,6 +5,7 @@ use pion_core::syntax::*;
 use pion_surface::syntax as surface;
 
 use super::Synth;
+use crate::env::LocalInfo;
 use crate::Elaborator;
 
 impl<'text, 'surface, 'core> Elaborator<'core> {
@@ -37,7 +38,9 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             surface::Stmt::Let(binding) => {
                 let (binding, r#type) = self.let_binding(binding.as_ref());
                 let value = self.eval_env().eval(&binding.init);
-                self.env.locals.push_let(binding.name, r#type, value);
+                self.env
+                    .locals
+                    .push_let(binding.name, r#type, binding.init, value);
                 Some(Stmt::Let(binding))
             }
             surface::Stmt::Command(command) => {
@@ -78,6 +81,35 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 write!(out, " ⇝ ").unwrap();
                 pion_core::print::expr_prec(&mut out, &value, Prec::MAX).unwrap();
                 self.command_output.push(out);
+            }
+            surface::Command::Show(expr) => {
+                let (expr, r#type) = self.synth_expr(*expr);
+                let r#type = self.quote_env().quote(&r#type);
+                match expr {
+                    Expr::LocalVar(var) => {
+                        match self.env.locals.infos.get(var.de_bruijn).unwrap() {
+                            LocalInfo::Param => {
+                                self.command_output.push(format!(
+                                    "parameter {} : {}",
+                                    var.name.unwrap(),
+                                    r#type
+                                ));
+                            }
+                            LocalInfo::Let(init) => {
+                                let mut out = String::new();
+                                let init = init.shift(self.bump, self.env.locals.len());
+                                let binding = LetBinding::new(var.name, r#type, init);
+                                pion_core::print::let_stmt(&mut out, &binding).unwrap();
+                                self.command_output.push(out);
+                            }
+                        }
+                    }
+                    _ => {
+                        let mut out = String::new();
+                        pion_core::print::type_ann_expr(&mut out, &expr, &r#type).unwrap();
+                        self.command_output.push(out);
+                    }
+                }
             }
         }
     }

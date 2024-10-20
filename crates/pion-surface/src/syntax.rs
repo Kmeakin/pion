@@ -85,6 +85,7 @@ pub enum Stmt<'text, 'surface> {
 pub enum Command<'text, 'surface> {
     Check(Located<&'surface Expr<'text, 'surface>>),
     Eval(Located<&'surface Expr<'text, 'surface>>),
+    Show(Located<&'surface Expr<'text, 'surface>>),
 }
 
 #[derive(Debug, Copy, Clone)]

@@ -99,7 +99,11 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let expr = Expr::If(cond, then, r#else);
                 (expr, r#type)
             }
-            surface::Expr::Match(located, _) => todo!(),
+            surface::Expr::Match(scrut, cases) => {
+                let r#type = self.push_unsolved_type(MetaSource::MatchType(expr.range));
+                let expr = self.check_match_expr(*scrut, cases, &r#type);
+                (expr, r#type)
+            }
         }
     }
 

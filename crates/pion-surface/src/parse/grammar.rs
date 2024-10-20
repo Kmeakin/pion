@@ -246,6 +246,14 @@ where
                                     expr.map(|expr| &*self.bump.alloc(expr)),
                                 )));
                             }
+                            TokenKind::Ident if token.text() == "show" => {
+                                self.next_token();
+                                let expr = self.expr();
+                                self.expect_token(TokenKind::Punct(';'));
+                                stmts.push(Stmt::Command(Command::Show(
+                                    expr.map(|expr| &*self.bump.alloc(expr)),
+                                )));
+                            }
                             _ => {
                                 self.diagnostic(
                                     token.range,
@@ -328,6 +336,14 @@ where
                                 let expr = self.expr();
                                 self.expect_token(TokenKind::Punct(';'));
                                 stmts.push(Stmt::Command(Command::Eval(
+                                    expr.map(|expr| &*self.bump.alloc(expr)),
+                                )));
+                            }
+                            TokenKind::Ident if token.text() == "show" => {
+                                self.next_token();
+                                let expr = self.expr();
+                                self.expect_token(TokenKind::Punct(';'));
+                                stmts.push(Stmt::Command(Command::Show(
                                     expr.map(|expr| &*self.bump.alloc(expr)),
                                 )));
                             }

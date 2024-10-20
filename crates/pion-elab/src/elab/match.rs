@@ -30,7 +30,10 @@ impl<'core> Elaborator<'core> {
         for (index, case) in cases.iter().enumerate() {
             let len = self.env.locals.len();
             let pat = self.check_pat(case.data.pat.as_ref(), &scrut_type);
+            let bindings = self.destruct_pat(&pat, &scrut_expr, &scrut_type, false);
+            self.push_let_bindings(&bindings);
             let expr = self.check_expr(case.data.expr.as_ref(), expected);
+            let expr = Expr::wrap_in_lets(self.bump, &bindings, expr);
             self.env.locals.truncate(len);
 
             matrix.push_row(PatRow::new(&[(pat, scrut_expr)], index));

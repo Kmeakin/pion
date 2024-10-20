@@ -141,10 +141,7 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
 
 pub fn stmt(out: &mut impl Write, stmt: &Stmt) -> fmt::Result {
     match stmt {
-        Stmt::Let(binding) => {
-            write!(out, "let ")?;
-            let_binding(out, binding)
-        }
+        Stmt::Let(binding) => let_stmt(out, binding),
         Stmt::Expr(expr) => {
             expr_prec(out, expr, Prec::MAX)?;
             write!(out, ";")
@@ -226,8 +223,9 @@ fn pat(out: &mut impl Write, name: Name) -> fmt::Result {
     }
 }
 
-fn let_binding(out: &mut impl Write, binding: &LetBinding<Expr>) -> fmt::Result {
+pub fn let_stmt(out: &mut impl Write, binding: &LetBinding<Expr>) -> fmt::Result {
     let LetBinding { name, r#type, init } = binding;
+    write!(out, "let ")?;
     pat(out, *name)?;
     write!(out, " : ")?;
     expr_prec(out, r#type, Prec::Fun)?;

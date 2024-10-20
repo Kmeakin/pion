@@ -1,0 +1,32 @@
+let not1 = fun(b) => match b {
+    true => false,
+    false => true,
+};
+#show not1;
+
+let not2 = fun(b) => match b {
+    true => false,
+    _ => true,
+};
+#show not2;
+
+let not3 = fun(b) => match b {
+    false => true,
+    _ => false,
+};
+#show not3;
+
+let bool-to-int = fun(b) => match b {
+    true => 1,
+    false => 0,
+};
+#show bool-to-int;
+
+// regression test: dont bind `z` twice (once as the default branch of the
+// match, then again as a `let` in RHS). This required removing the ability of
+// core `match` exprs to bind variables in their default branch.
+let apply = fun(x: Bool, f: Bool -> Int) => match x {
+    true => 1,
+    z => f(z),
+};
+#show apply;

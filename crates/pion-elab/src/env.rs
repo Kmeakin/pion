@@ -1,7 +1,7 @@
 use pion_core::env::{DeBruijnIndex, EnvLen, SharedEnv, UniqueEnv};
 use pion_core::semantics::{Type, Value};
 use pion_core::symbol::Symbol;
-use pion_core::syntax::{LocalVar, Name};
+use pion_core::syntax::{Expr, LocalVar, Name};
 use text_size::TextRange;
 
 use crate::unify::PartialRenaming;
@@ -16,14 +16,14 @@ pub struct ElabEnv<'core> {
 #[derive(Default)]
 pub struct LocalEnv<'core> {
     pub names: UniqueEnv<Name<'core>>,
-    pub infos: UniqueEnv<LocalInfo>,
+    pub infos: UniqueEnv<LocalInfo<'core>>,
     pub types: UniqueEnv<Type<'core>>,
     pub values: SharedEnv<Value<'core>>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum LocalInfo {
-    Let,
+pub enum LocalInfo<'core> {
+    Let(Expr<'core>),
     Param,
 }
 
@@ -45,7 +45,7 @@ impl<'core> LocalEnv<'core> {
     pub fn push(
         &mut self,
         name: Name<'core>,
-        info: LocalInfo,
+        info: LocalInfo<'core>,
         r#type: Type<'core>,
         value: Value<'core>,
     ) {
@@ -60,8 +60,14 @@ impl<'core> LocalEnv<'core> {
         self.push(name, LocalInfo::Param, r#type, value);
     }
 
-    pub fn push_let(&mut self, name: Name<'core>, r#type: Type<'core>, value: Value<'core>) {
-        self.push(name, LocalInfo::Let, r#type, value);
+    pub fn push_let(
+        &mut self,
+        name: Name<'core>,
+        r#type: Type<'core>,
+        init: Expr<'core>,
+        value: Value<'core>,
+    ) {
+        self.push(name, LocalInfo::Let(init), r#type, value);
     }
 
     pub fn pop(&mut self) {
@@ -112,6 +118,7 @@ pub enum MetaSource<'core> {
     HoleType(TextRange),
     HoleExpr(TextRange),
     ImplicitArg(TextRange, Name<'core>),
+    MatchType(TextRange),
 }
 
 impl MetaSource<'_> {
@@ -120,7 +127,8 @@ impl MetaSource<'_> {
             MetaSource::PatType(range, ..)
             | MetaSource::HoleExpr(range, ..)
             | MetaSource::HoleType(range, ..)
-            | MetaSource::ImplicitArg(range, ..) => *range,
+            | MetaSource::ImplicitArg(range, ..)
+            | MetaSource::MatchType(range, ..) => *range,
         }
     }
 }

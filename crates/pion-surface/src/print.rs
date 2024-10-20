@@ -170,6 +170,10 @@ impl<W: Write> Printer<W> {
                 writeln!(self, "Stmt::Eval")?;
                 self.with_indent(|this| this.located(expr))
             }
+            Command::Show(expr) => {
+                writeln!(self, "Stmt::Show")?;
+                self.with_indent(|this| this.located(expr))
+            }
         }
     }
 

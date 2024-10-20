@@ -180,6 +180,20 @@ impl<'core> Expr<'core> {
             }
         }
     }
+
+    pub fn wrap_in_lets(
+        bump: &'core bumpalo::Bump,
+        bindings: &[LetBinding<'core, Self>],
+        body: Self,
+    ) -> Self {
+        match bindings {
+            [] => body,
+            [..] => Expr::Do(
+                bump.alloc_slice_fill_iter(bindings.iter().map(|binding| Stmt::Let(*binding))),
+                Some(bump.alloc(body)),
+            ),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
