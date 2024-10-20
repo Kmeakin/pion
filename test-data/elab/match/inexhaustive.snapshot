@@ -1,0 +1,36 @@
+exit status: 0
+
+stdout = """
+let f1 : forall(b : Bool) -> ?1(b) = fun(b : Bool) => #error;
+let f2 : Bool -> Bool = fun(b : Bool) => if b then false else #error;
+let f3 : Int -> Bool = fun(n : Int) => #error;
+
+"""
+
+stderr = """
+error: Inexhaustive match expression
+  ┌─ test-data/elab/match/inexhaustive.pion:1:32
+  │
+1 │ let f1 = fun(b: Bool) => match b {};
+  │                                ^
+
+error: Inexhaustive match expression
+  ┌─ test-data/elab/match/inexhaustive.pion:4:32
+  │
+4 │ let f2 = fun(b: Bool) => match b {
+  │                                ^
+
+error: Inexhaustive match expression
+  ┌─ test-data/elab/match/inexhaustive.pion:9:31
+  │
+9 │ let f3 = fun(n: Int) => match n {
+  │                               ^
+
+error: Could not infer result type of match expression
+  ┌─ test-data/elab/match/inexhaustive.pion:1:26
+  │
+1 │ let f1 = fun(b: Bool) => match b {};
+  │                          ^^^^^^^^^^
+
+
+"""

@@ -1,0 +1,27 @@
+let f1 = fun(b) => match b {
+    true => 1,
+    false => 2,
+    true => 3,
+};
+#show f1;
+
+let f2 = fun(b) => match b {
+    true => 1,
+    false => 2,
+    false => 3,
+};
+#show f2;
+
+let f3 = fun(b) => match b {
+    true => 1,
+    _ => 3,
+    _ => 4,
+};
+#show f2;
+
+let f4 = fun(n) => match n {
+    1 => false,
+    _ => true,
+    _ => true,
+};
+#show f4;

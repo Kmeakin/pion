@@ -1,0 +1,10 @@
+exit status: 0
+
+stdout = """
+let is-zero : Int -> Bool = fun(n : ?1) => #error;
+
+"""
+
+stderr = """
+
+"""

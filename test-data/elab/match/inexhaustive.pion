@@ -1,0 +1,13 @@
+let f1 = fun(b: Bool) => match b {};
+#show f1;
+
+let f2 = fun(b: Bool) => match b {
+    true => false,
+};
+#show f2;
+
+let f3 = fun(n: Int) => match n {
+    1 => false,
+    2 => true,
+};
+#show f3;

@@ -1,0 +1,37 @@
+exit status: 0
+
+stdout = """
+let f1 : Bool -> Int = fun(b : ?1) => if b then 1 else 2;
+let f2 : Bool -> Int = fun(b : ?4) => if b then 1 else 2;
+let f2 : Bool -> Int = fun(b : ?4) => if b then 1 else 2;
+let f4 : Int -> Bool = fun(n : ?10) => #error;
+
+"""
+
+stderr = """
+warning: Unreachable match case
+  ┌─ test-data/elab/match/unreachable.pion:4:5
+  │
+4 │     true => 3,
+  │     ^^^^
+
+warning: Unreachable match case
+   ┌─ test-data/elab/match/unreachable.pion:11:5
+   │
+11 │     false => 3,
+   │     ^^^^^
+
+warning: Unreachable match case
+   ┌─ test-data/elab/match/unreachable.pion:18:5
+   │
+18 │     _ => 4,
+   │     ^
+
+warning: Unreachable match case
+   ┌─ test-data/elab/match/unreachable.pion:25:5
+   │
+25 │     _ => true,
+   │     ^
+
+
+"""

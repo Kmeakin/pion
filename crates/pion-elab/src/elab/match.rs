@@ -49,7 +49,7 @@ impl<'core> Elaborator<'core> {
         for (idx, is_reachable) in reachable_rows.iter().enumerate() {
             if !is_reachable {
                 self.diagnostic(
-                    cases[idx].data.expr.range,
+                    cases[idx].data.pat.range,
                     Diagnostic::warning().with_message("Unreachable match case"),
                 );
             }

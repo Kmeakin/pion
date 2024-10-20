@@ -1,0 +1,5 @@
+let is-zero = fun(n) => match n {
+    0 => true,
+    _ => false,
+};
+#show is-zero;
