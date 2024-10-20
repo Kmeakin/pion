@@ -96,7 +96,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let (then, r#type) = self.synth_expr(*then);
                 let r#else = self.check_expr(*r#else, &r#type);
                 let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
-                let expr = Expr::If(cond, then, r#else);
+                let expr = Expr::MatchBool(cond, then, r#else);
                 (expr, r#type)
             }
             surface::Expr::Match(scrut, cases) => {
@@ -146,7 +146,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let then = self.check_expr(*then, expected);
                 let r#else = self.check_expr(*r#else, expected);
                 let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
-                Expr::If(cond, then, r#else)
+                Expr::MatchBool(cond, then, r#else)
             }
             surface::Expr::Match(scrut, cases) => self.check_match_expr(*scrut, cases, expected),
         }

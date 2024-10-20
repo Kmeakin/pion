@@ -153,7 +153,7 @@ impl<'core> PatternCompiler<'core> {
                 let true_branch = do_branch(true);
                 let false_branch = do_branch(false);
                 let (cond, then, r#else) = self.bump.alloc((*scrut, true_branch, false_branch));
-                Expr::If(cond, then, r#else)
+                Expr::MatchBool(cond, then, r#else)
             }
             Constructors::Ints(ref ints) => {
                 let bump = self.bump;

@@ -25,7 +25,7 @@ impl Prec {
             | Expr::Do(..) => Self::Atom,
             Expr::FunType(..) | Expr::FunLit(..) => Self::Fun,
             Expr::FunApp(..) => Self::Call,
-            Expr::If(..) => Self::If,
+            Expr::MatchBool(..) => Self::If,
         }
     }
 }
@@ -124,7 +124,7 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
             }
             write!(out, "}}")?;
         }
-        Expr::If(cond, then, r#else) => {
+        Expr::MatchBool(cond, then, r#else) => {
             write!(out, "if ")?;
             expr_prec(out, cond, Prec::MAX)?;
             write!(out, " then ")?;
@@ -395,7 +395,7 @@ mod tests {
 
     #[test]
     fn print_expr_if() {
-        let expr = Expr::If(
+        let expr = Expr::MatchBool(
             &const { Expr::bool(true) },
             &const { Expr::int(1) },
             &const { Expr::int(2) },

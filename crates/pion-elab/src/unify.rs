@@ -360,7 +360,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                             self.rename(meta_var, &value)?
                         };
                         let (cond, then, r#else) = self.bump.alloc((head, then, r#else));
-                        Ok(Expr::If(cond, then, r#else))
+                        Ok(Expr::MatchBool(cond, then, r#else))
                     }
                 })
             }

@@ -94,7 +94,7 @@ fn quote_neutral<'core>(
                 quote(&expr, bump, locals, metas)
             };
             let (cond, then, r#else) = bump.alloc((head, then, r#else));
-            Expr::If(&*cond, &*then, &*r#else)
+            Expr::MatchBool(&*cond, &*then, &*r#else)
         }
     })
 }
