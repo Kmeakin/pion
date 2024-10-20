@@ -86,15 +86,28 @@ fn quote_neutral<'core>(
         }
         Elim::If(mut values, then, r#else) => {
             let then = {
-                let expr = eval::eval(then, bump, UnfoldOpts::for_quote(), &mut values, metas);
-                quote(&expr, bump, locals, metas)
+                let value = eval::eval(then, bump, UnfoldOpts::for_quote(), &mut values, metas);
+                quote(&value, bump, locals, metas)
             };
             let r#else = {
-                let expr = eval::eval(r#else, bump, UnfoldOpts::for_quote(), &mut values, metas);
-                quote(&expr, bump, locals, metas)
+                let value = eval::eval(r#else, bump, UnfoldOpts::for_quote(), &mut values, metas);
+                quote(&value, bump, locals, metas)
             };
             let (cond, then, r#else) = bump.alloc((head, then, r#else));
             Expr::MatchBool(&*cond, &*then, &*r#else)
+        }
+        Elim::MatchInt(mut values, cases, default) => {
+            let cases = bump.alloc_slice_fill_iter(cases.iter().map(|(n, expr)| {
+                let value = eval::eval(expr, bump, UnfoldOpts::for_quote(), &mut values, metas);
+                let expr = quote(&value, bump, locals, metas);
+                (*n, expr)
+            }));
+            let default = {
+                let value = eval::eval(default, bump, UnfoldOpts::for_quote(), &mut values, metas);
+                quote(&value, bump, locals, metas)
+            };
+            let (head, default) = bump.alloc((head, default));
+            Expr::MatchInt(head, cases, default)
         }
     })
 }

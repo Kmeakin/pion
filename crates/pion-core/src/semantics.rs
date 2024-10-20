@@ -67,6 +67,11 @@ pub enum Head<'core> {
 pub enum Elim<'core> {
     FunApp(FunArg<Value<'core>>),
     If(LocalValues<'core>, &'core Expr<'core>, &'core Expr<'core>),
+    MatchInt(
+        LocalValues<'core>,
+        &'core [(u32, Expr<'core>)],
+        &'core Expr<'core>,
+    ),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

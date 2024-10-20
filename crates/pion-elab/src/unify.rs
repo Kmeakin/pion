@@ -219,6 +219,35 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
 
                     self.unify(&lhs_else, &rhs_else)?;
                 }
+                (
+                    Elim::MatchInt(lhs_locals, lhs_cases, lhs_default),
+                    Elim::MatchInt(rhs_locals, rhs_cases, rhs_default),
+                ) => {
+                    if lhs_cases.len() != rhs_cases.len() {
+                        return Err(UnifyError::Mismatch);
+                    }
+
+                    let mut lhs_locals = lhs_locals.clone();
+                    let mut rhs_locals = rhs_locals.clone();
+
+                    for ((lhs_n, lhs_expr), (rhs_n, rhs_expr)) in
+                        Iterator::zip(lhs_cases.iter(), rhs_cases.iter())
+                    {
+                        if lhs_n != rhs_n {
+                            return Err(UnifyError::Mismatch);
+                        }
+
+                        let lhs_expr = self.eval_env(&mut lhs_locals).eval(lhs_expr);
+                        let rhs_expr = self.eval_env(&mut rhs_locals).eval(rhs_expr);
+
+                        self.unify(&lhs_expr, &rhs_expr)?;
+                    }
+
+                    let lhs_default = self.eval_env(&mut lhs_locals).eval(lhs_default);
+                    let rhs_default = self.eval_env(&mut rhs_locals).eval(rhs_default);
+
+                    self.unify(&lhs_default, &rhs_default)?;
+                }
                 _ => return Err(UnifyError::Mismatch),
             }
         }
@@ -295,7 +324,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                     }
                     _ => return Err(SpineError::NonLocalFunApp),
                 },
-                Elim::If(..) => return Err(SpineError::If),
+                Elim::If(..) | Elim::MatchInt(..) => return Err(SpineError::Match),
             }
         }
         Ok(())
@@ -309,7 +338,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                 FunParam::new(arg.plicity, None, &Expr::Error),
                 self.bump.alloc(expr),
             ),
-            Elim::If(..) => unreachable!("should have been caught by `init_renaming`"),
+            _ => unreachable!("should have been caught by `init_renaming`"),
         })
     }
 
@@ -361,6 +390,21 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                         };
                         let (cond, then, r#else) = self.bump.alloc((head, then, r#else));
                         Ok(Expr::MatchBool(cond, then, r#else))
+                    }
+                    Elim::MatchInt(locals, cases, default) => {
+                        let mut locals = locals.clone();
+                        let mut out_cases = Vec::with_capacity_in(cases.len(), self.bump);
+                        for (n, expr) in *cases {
+                            let value = self.eval_env(&mut locals).eval(expr);
+                            let expr = self.rename(meta_var, &value)?;
+                            out_cases.push((*n, expr));
+                        }
+                        let default = {
+                            let value = self.eval_env(&mut locals).eval(default);
+                            self.rename(meta_var, &value)?
+                        };
+                        let (scrut, default) = self.bump.alloc((head, default));
+                        Ok(Expr::MatchInt(scrut, out_cases.leak(), default))
                     }
                 })
             }
@@ -420,7 +464,7 @@ impl<'core> UnifyError<'core> {
                 .with_message("variable appeared more than once in problem spine"),
             Self::Spine(SpineError::NonLocalFunApp) => Diagnostic::error()
                 .with_message("non-variable function application in problem spine"),
-            Self::Spine(SpineError::If) => {
+            Self::Spine(SpineError::Match) => {
                 Diagnostic::error().with_message("`if` expression in problem spine")
             }
 
@@ -490,7 +534,7 @@ pub enum SpineError<'core> {
     /// A function application was in the problem spine, but it wasn't a local
     /// variable.
     NonLocalFunApp,
-    If,
+    Match,
 }
 
 /// An error that occurred when renaming the solution.

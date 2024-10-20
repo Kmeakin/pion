@@ -8,7 +8,7 @@ use crate::syntax::*;
 pub enum Prec {
     Atom,
     Call,
-    If,
+    Match,
     Fun,
 }
 
@@ -25,8 +25,7 @@ impl Prec {
             | Expr::Do(..) => Self::Atom,
             Expr::FunType(..) | Expr::FunLit(..) => Self::Fun,
             Expr::FunApp(..) => Self::Call,
-            Expr::MatchBool(..) => Self::If,
-            Expr::MatchInt(..) => Self::If,
+            Expr::MatchBool(..) | Expr::MatchInt(..) => Self::Match,
         }
     }
 }
@@ -142,7 +141,6 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
                 expr_prec(out, expr, Prec::MAX)?;
                 write!(out, ", ")?;
             }
-
             write!(out, " _ => ")?;
             expr_prec(out, default, Prec::MAX)?;
             write!(out, ", ")?;

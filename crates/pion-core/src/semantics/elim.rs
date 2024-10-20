@@ -44,6 +44,9 @@ fn apply_eliminator<'core>(
         Elim::If(mut locals, then, r#else) => {
             match_bool(head, then, r#else, bump, opts, &mut locals, metas)
         }
+        Elim::MatchInt(mut locals, cases, default) => {
+            match_int(head, cases, default, bump, opts, &mut locals, metas)
+        }
     }
 }
 
@@ -223,6 +226,32 @@ pub(super) fn match_bool<'core>(
         Value::Lit(Lit::Bool(false)) => eval::eval(r#else, bump, opts, locals, metas),
         Value::Neutral(head, mut spine) => {
             spine.push(Elim::If(locals.clone(), then, r#else));
+            Value::Neutral(head, spine)
+        }
+        _ => Value::ERROR,
+    }
+}
+
+pub(super) fn match_int<'core>(
+    scrut: Value<'core>,
+    cases: &'core [(u32, Expr<'core>)],
+    default: &'core Expr<'core>,
+    bump: &'core bumpalo::Bump,
+    opts: UnfoldOpts,
+    locals: &mut LocalValues<'core>,
+    metas: &MetaValues<'core>,
+) -> Value<'core> {
+    match scrut {
+        Value::Lit(Lit::Int(n)) => {
+            for (int, expr) in cases {
+                if n == *int {
+                    return eval::eval(expr, bump, opts, locals, metas);
+                }
+            }
+            eval::eval(default, bump, opts, locals, metas)
+        }
+        Value::Neutral(head, mut spine) => {
+            spine.push(Elim::MatchInt(locals.clone(), cases, default));
             Value::Neutral(head, spine)
         }
         _ => Value::ERROR,
