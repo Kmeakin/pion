@@ -93,15 +93,15 @@ fn paren_pat() {
 fn bool_pat() {
     assert_parse_pat(
         "true",
-        expect![[r#"
+        expect![[r"
         0..4 @ Pat::Lit(Bool(true))
-    "#]],
+    "]],
     );
     assert_parse_pat(
         "false",
-        expect![[r#"
+        expect![[r"
         0..5 @ Pat::Lit(Bool(false))
-    "#]],
+    "]],
     );
 }
 
