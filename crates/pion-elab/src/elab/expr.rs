@@ -103,6 +103,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let expr = Expr::If(cond, then, r#else);
                 (expr, r#type)
             }
+            surface::Expr::Match(located, _) => todo!(),
         }
     }
 
@@ -147,6 +148,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
                 Expr::If(cond, then, r#else)
             }
+            surface::Expr::Match(located, _) => todo!(),
         }
     }
 

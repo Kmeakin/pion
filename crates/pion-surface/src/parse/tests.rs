@@ -367,6 +367,38 @@ fn if_expr() {
 }
 
 #[test]
+fn match_expr() {
+    assert_parse_expr(
+        "match x {}",
+        expect![[r#"
+    0..10 @ Expr::Match
+     6..7 @ Expr::Var("x")"#]],
+    );
+
+    assert_parse_expr(
+        "match x {y => false,}",
+        expect![[r#"
+            0..21 @ Expr::Match
+             6..7 @ Expr::Var("x")
+             9..20 @ MatchCase
+              9..10 @ Pat::Var("y")
+              14..19 @ Expr::Lit(Bool(false))"#]],
+    );
+    assert_parse_expr(
+        "match x {y => false,z => true,}",
+        expect![[r#"
+            0..31 @ Expr::Match
+             6..7 @ Expr::Var("x")
+             9..20 @ MatchCase
+              9..10 @ Pat::Var("y")
+              14..19 @ Expr::Lit(Bool(false))
+             20..30 @ MatchCase
+              20..21 @ Pat::Var("z")
+              25..29 @ Expr::Lit(Bool(true))"#]],
+    );
+}
+
+#[test]
 fn commands() {
     assert_parse_expr(
         "do { #check 1; }",

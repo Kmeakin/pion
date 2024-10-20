@@ -121,7 +121,26 @@ impl<W: Write> Printer<W> {
                     this.located(r#else)
                 })
             }
+            Expr::Match(scrut, cases) => {
+                writeln!(self, "Expr::Match")?;
+                self.with_indent(|this| {
+                    this.located(scrut)?;
+                    for case in *cases {
+                        this.located(case)?;
+                    }
+                    Ok(())
+                })
+            }
         }
+    }
+
+    fn match_case(&mut self, case: &MatchCase) -> fmt::Result {
+        writeln!(self, "MatchCase")?;
+        let MatchCase { pat, expr } = case;
+        self.with_indent(|this| {
+            this.located(pat)?;
+            this.located(expr)
+        })
     }
 
     fn stmt(&mut self, stmt: &Stmt) -> fmt::Result {
@@ -217,6 +236,10 @@ impl Display for File<'_, '_> {
 
 impl Display for Expr<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).expr(self) }
+}
+
+impl Display for MatchCase<'_, '_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Printer::new(f).match_case(self) }
 }
 
 impl Display for Stmt<'_, '_> {

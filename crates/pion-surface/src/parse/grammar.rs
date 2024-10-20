@@ -125,6 +125,7 @@ where
             TokenKind::KwForall => self.forall_expr(),
             TokenKind::KwFun => self.fun_expr(),
             TokenKind::KwIf => self.if_expr(),
+            TokenKind::KwMatch => self.match_expr(),
             got => {
                 self.diagnostic(
                     token.range,
@@ -407,6 +408,37 @@ where
         Located::new(
             TextRange::new(start_range.start(), end_range.end()),
             Expr::If(cond, then, r#else),
+        )
+    }
+
+    fn match_expr(&mut self) -> Located<Expr<'text, 'surface>> {
+        let start_range = self.range;
+        let scrut = self.expr().map(|expr| &*self.bump.alloc(expr));
+        self.expect_token(TokenKind::LCurly);
+
+        let mut cases = Vec::new_in(self.bump);
+        while let Some(token) = self.peek_token() {
+            if token.kind == TokenKind::RCurly {
+                break;
+            }
+
+            let start_range = self.range;
+            let pat = self.pat();
+            self.expect_token(TokenKind::DoubleArrow);
+            let expr = self.expr();
+            let end_range = self.range;
+            cases.push(Located::new(
+                TextRange::new(start_range.start(), end_range.end()),
+                MatchCase { pat, expr },
+            ));
+            self.expect_token(TokenKind::Punct(','));
+        }
+
+        self.expect_token(TokenKind::RCurly);
+        let end_range = self.range;
+        Located::new(
+            TextRange::new(start_range.start(), end_range.end()),
+            Expr::Match(scrut, cases.leak()),
         )
     }
 

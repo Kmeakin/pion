@@ -62,6 +62,16 @@ pub enum Expr<'text, 'surface> {
         Located<&'surface Expr<'text, 'surface>>,
         Located<&'surface Expr<'text, 'surface>>,
     ),
+    Match(
+        Located<&'surface Expr<'text, 'surface>>,
+        &'surface [Located<MatchCase<'text, 'surface>>],
+    ),
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct MatchCase<'text, 'surface> {
+    pub pat: Located<Pat<'text, 'surface>>,
+    pub expr: Located<Expr<'text, 'surface>>,
 }
 
 #[derive(Debug, Copy, Clone)]
