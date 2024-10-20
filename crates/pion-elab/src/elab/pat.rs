@@ -63,6 +63,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 };
                 (pat, r#type)
             }
+            surface::Pat::Witness(located, located1) => todo!(),
         }
     }
 
@@ -82,6 +83,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             surface::Pat::TypeAnnotation(..) | surface::Pat::Lit(..) => {
                 self.synth_and_coerce_pat(pat, expected)
             }
+            surface::Pat::Witness(located, located1) => todo!(),
         }
     }
 

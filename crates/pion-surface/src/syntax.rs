@@ -105,6 +105,9 @@ pub enum Pat<'text, 'surface> {
         Located<&'surface Self>,
         Located<&'surface Expr<'text, 'surface>>,
     ),
+    /// `witness <Pat> as <Pat>` matches if the first pattern matches, and
+    /// then binds the proof to the second pattern.
+    Witness(Located<&'surface Self>, Located<&'surface Self>),
 }
 
 #[derive(Debug, Copy, Clone)]

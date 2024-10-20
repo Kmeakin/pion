@@ -148,6 +148,13 @@ fn string_pat() {
 }
 
 #[test]
+fn witness_pat() { assert_parse_pat("witness true as p-true", expect![[r#"
+    0..22 @ Pat::Witness
+     8..12 @ Pat::Lit(Bool(true))
+     16..22 @ Pat::Var("p-true")
+"#]]); }
+
+#[test]
 fn paren_expr() {
     assert_parse_expr(
         "(abc)",

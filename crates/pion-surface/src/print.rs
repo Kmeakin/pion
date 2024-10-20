@@ -194,6 +194,13 @@ impl<W: Write> Printer<W> {
                     this.located(r#type)
                 })
             }
+            Pat::Witness(test, proof) => {
+                writeln!(self, "Pat::Witness")?;
+                self.with_indent(|this| {
+                    this.located(test)?;
+                    this.located(proof)
+                })
+            }
         }
     }
 

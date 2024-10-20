@@ -29,12 +29,17 @@ MatchCase ::=
     | "#check" <Expr>
     | "#eval" <Expr>
 
+<Name> ::=
+    | <Ident>
+    | "_"
+
 <Pat> ::=
     | "_"
     | <Ident>
     | <Literal>
     | "(" <Pat> ")"
     | <Pat> ":" <Expr>
+    | "witness" <Pat> "as" <Pat>
 
 <Literal> ::=
     | <Bool>

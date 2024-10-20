@@ -60,6 +60,17 @@ where
                     Pat::Paren(pat),
                 )
             }
+            TokenKind::KwWitness => {
+                let start_range = token.range;
+                let pat = self.pat().map(|pat| &*self.bump.alloc(pat));
+                self.expect_token(TokenKind::KwAs);
+                let proof = self.pat().map(|pat| &*self.bump.alloc(pat));
+                let end_range = self.range;
+                Located::new(
+                    TextRange::new(start_range.start(), end_range.end()),
+                    Pat::Witness(pat, proof),
+                )
+            }
             got => {
                 self.diagnostic(
                     token.range,

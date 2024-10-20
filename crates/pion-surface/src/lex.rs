@@ -32,6 +32,7 @@ pub enum TokenKind {
 
     // Identifiers / keywords
     Ident,
+    KwAs,
     KwDo,
     KwElse,
     KwFalse,
@@ -42,6 +43,7 @@ pub enum TokenKind {
     KwMatch,
     KwThen,
     KwTrue,
+    KwWitness,
 
     // Literals
     Int,
@@ -56,6 +58,7 @@ impl TokenKind {
 
     pub fn from_reserved(reserved: ReservedIdent) -> Self {
         match reserved {
+            ReservedIdent::As => Self::KwAs,
             ReservedIdent::Do => Self::KwDo,
             ReservedIdent::Else => Self::KwElse,
             ReservedIdent::False => Self::KwFalse,
@@ -66,6 +69,7 @@ impl TokenKind {
             ReservedIdent::Match => Self::KwMatch,
             ReservedIdent::Then => Self::KwThen,
             ReservedIdent::True => Self::KwTrue,
+            ReservedIdent::Witness => Self::KwWitness,
         }
     }
 }
@@ -89,6 +93,7 @@ impl fmt::Display for TokenKind {
             Self::Punct(c) => write!(f, "`{c}`"),
 
             Self::Ident => write!(f, "identifier"),
+            Self::KwAs => write!(f, "`as`"),
             Self::KwDo => write!(f, "`do`"),
             Self::KwElse => write!(f, "`else`"),
             Self::KwFalse => write!(f, "`false`"),
@@ -99,6 +104,7 @@ impl fmt::Display for TokenKind {
             Self::KwMatch => write!(f, "`match`"),
             Self::KwThen => write!(f, "`then`"),
             Self::KwTrue => write!(f, "`true`"),
+            Self::KwWitness => write!(f, "`witness`"),
 
             Self::Int => write!(f, "integer"),
             Self::Char => write!(f, "character"),
@@ -109,6 +115,7 @@ impl fmt::Display for TokenKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReservedIdent {
+    As,
     Do,
     Else,
     False,
@@ -119,12 +126,14 @@ pub enum ReservedIdent {
     Match,
     Then,
     True,
+    Witness,
 }
 
 impl FromStr for ReservedIdent {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
+            "as" => Ok(Self::As),
             "do" => Ok(Self::Do),
             "else" => Ok(Self::Else),
             "false" => Ok(Self::False),
@@ -135,6 +144,7 @@ impl FromStr for ReservedIdent {
             "match" => Ok(Self::Match),
             "then" => Ok(Self::Then),
             "true" => Ok(Self::True),
+            "witness" => Ok(Self::Witness),
             _ => Err(()),
         }
     }
