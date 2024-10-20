@@ -44,6 +44,11 @@ where
         match token.kind {
             TokenKind::Punct('_') => Located::new(token.range, Pat::Underscore),
             TokenKind::Ident => Located::new(token.range, Pat::Var(token.text())),
+            TokenKind::KwFalse => Located::new(token.range, Pat::Lit(Lit::Bool(false))),
+            TokenKind::KwTrue => Located::new(token.range, Pat::Lit(Lit::Bool(true))),
+            TokenKind::Int => Located::new(token.range, Pat::Lit(Lit::Int(token.text()))),
+            TokenKind::Char => Located::new(token.range, Pat::Lit(Lit::Char(token.text()))),
+            TokenKind::String => Located::new(token.range, Pat::Lit(Lit::String(token.text()))),
             TokenKind::LParen => {
                 let start_range = token.range;
                 let pat = self.pat();

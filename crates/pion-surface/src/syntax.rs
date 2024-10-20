@@ -98,6 +98,7 @@ pub enum Pat<'text, 'surface> {
     Error,
     Underscore,
     Var(&'text str),
+    Lit(Lit<'text>),
     Paren(Located<&'surface Self>),
     TypeAnnotation(
         Located<&'surface Self>,

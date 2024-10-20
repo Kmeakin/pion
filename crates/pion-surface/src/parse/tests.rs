@@ -90,7 +90,62 @@ fn paren_pat() {
 }
 
 #[test]
-fn var_expr() { assert_parse_expr("abc", expect![[r#"0..3 @ Expr::Var("abc")"#]]); }
+fn bool_pat() {
+    assert_parse_pat(
+        "true",
+        expect![[r#"
+        0..4 @ Pat::Lit(Bool(true))
+    "#]],
+    );
+    assert_parse_pat(
+        "false",
+        expect![[r#"
+        0..5 @ Pat::Lit(Bool(false))
+    "#]],
+    );
+}
+
+#[test]
+fn int_pat() {
+    assert_parse_pat(
+        "1234",
+        expect![[r#"
+        0..4 @ Pat::Lit(Int("1234"))
+    "#]],
+    );
+    assert_parse_pat(
+        "0x1234",
+        expect![[r#"
+        0..6 @ Pat::Lit(Int("0x1234"))
+    "#]],
+    );
+    assert_parse_pat(
+        "0x1010",
+        expect![[r#"
+        0..6 @ Pat::Lit(Int("0x1010"))
+    "#]],
+    );
+}
+
+#[test]
+fn char_pat() {
+    assert_parse_pat(
+        "'a'",
+        expect![[r#"
+    0..3 @ Pat::Lit(Char("'a'"))
+"#]],
+    );
+}
+
+#[test]
+fn string_pat() {
+    assert_parse_pat(
+        r#""a""#,
+        expect![[r#"
+    0..3 @ Pat::Lit(String("\"a\""))
+"#]],
+    );
+}
 
 #[test]
 fn paren_expr() {

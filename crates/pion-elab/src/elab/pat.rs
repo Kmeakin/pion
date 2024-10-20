@@ -47,6 +47,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let pat = self.check_pat(*pat, &type_value);
                 (pat, type_value)
             }
+            surface::Pat::Lit(lit) => todo!(),
         }
     }
 
@@ -64,6 +65,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             }
             surface::Pat::Paren(pat) => self.check_pat(*pat, expected),
             surface::Pat::TypeAnnotation(..) => self.synth_and_coerce_pat(pat, expected),
+            surface::Pat::Lit(lit) => todo!(),
         }
     }
 

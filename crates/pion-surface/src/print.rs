@@ -178,6 +178,7 @@ impl<W: Write> Printer<W> {
             Pat::Error => writeln!(self, "Pat::Error"),
             Pat::Underscore => writeln!(self, "Pat::Underscore"),
             Pat::Var(name) => writeln!(self, "Pat::Var({name:?})"),
+            Pat::Lit(lit) => writeln!(self, "Pat::Lit({lit:?})"),
             Pat::Paren(pat) => {
                 writeln!(self, "Pat::Paren")?;
                 self.with_indent(|this| this.located(pat))
