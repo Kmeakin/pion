@@ -97,8 +97,9 @@ impl<'core> Elaborator<'core> {
                                 'n' => result.push('\n'),
                                 'r' => result.push('\r'),
                                 't' => result.push('\t'),
+                                '\"' => result.push('"'),
+                                '\'' => result.push('\''),
                                 '\\' => result.push('\\'),
-                                '"' => result.push('"'),
                                 c => {
                                     error = true;
                                     let range = range + TextSize::from(1); // add 1 to skip past the leading '"'
@@ -143,15 +144,55 @@ impl<'core> Elaborator<'core> {
         Ok(self.bump.alloc_str(&text))
     }
 
-    #[allow(
-        unused_variables,
-        clippy::unused_self,
-        clippy::needless_pass_by_ref_mut,
-        reason = "not implemented yet"
-    )]
     fn synth_char(&mut self, text: Located<&str>) -> Result<char, ()> {
-        // TODO: Handle escape sequences, check string is terminated, check for invalid
-        // characters
-        Ok('\0')
+        let range = text.range;
+        let text = text.data;
+        let text = text.strip_prefix('\'').expect("Guaranteed by lexer");
+
+        let mut chars = text.chars();
+        match chars.next() {
+            None => todo!("Unterminated character"),
+            Some('\'') => {
+                self.diagnostic(
+                    range,
+                    Diagnostic::error().with_message("Empty character literal"),
+                );
+                Err(())
+            }
+            Some('\\') => match chars.next() {
+                None => {
+                    self.diagnostic(
+                        range,
+                        Diagnostic::error().with_message("Unterminated character literal"),
+                    );
+                    Err(())
+                }
+                Some('n') => Ok('\n'),
+                Some('r') => Ok('\r'),
+                Some('t') => Ok('\t'),
+                Some('\"') => Ok('\"'),
+                Some('\'') => Ok('\''),
+                Some('\\') => Ok('\\'),
+                Some(c) => {
+                    self.diagnostic(
+                        range,
+                        Diagnostic::error()
+                            .with_message(format!("Unknown escape character: `{c}`")),
+                    );
+                    Err(())
+                }
+            },
+            Some(c) => match chars.next() {
+                None => todo!("Unterminated character"),
+                Some('\'') => Ok(c),
+                Some(_) => {
+                    self.diagnostic(
+                        range,
+                        Diagnostic::error().with_message("Character literal too long"),
+                    );
+                    Err(())
+                }
+            },
+        }
     }
 }

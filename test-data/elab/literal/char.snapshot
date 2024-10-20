@@ -1,10 +1,31 @@
 exit status: 0
 
 stdout = """
-'\0' : Char
+'a' : Char
+'z' : Char
+'\n' : Char
+'\t' : Char
+'\t' : Char
+'"' : Char
+'\'' : Char
+'\\' : Char
+#error : Char
+#error : Char
 
 """
 
 stderr = """
+error: Unknown escape character: `a`
+  ┌─ test-data/elab/literal/char.pion:9:8
+  │
+9 │ #check '\a';
+  │        ^^^^
+
+error: Empty character literal
+   ┌─ test-data/elab/literal/char.pion:10:8
+   │
+10 │ #check '';
+   │        ^^
+
 
 """

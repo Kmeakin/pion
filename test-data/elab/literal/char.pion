@@ -1,1 +1,10 @@
 #check 'a';
+#check 'z';
+#check '\n';
+#check '\t';
+#check '\t';
+#check '\"';
+#check '\'';
+#check '\\';
+#check '\a';
+#check '';
