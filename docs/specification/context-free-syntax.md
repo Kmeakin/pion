@@ -6,10 +6,7 @@
 <Expr> ::=
     | "_"
     | <Ident>
-    | "true" | "false"
-    | <Number>
-    | <Char>
-    | <String>
+    | <Literal>
     | "(" <Expr> ")"
     | <Expr> "(" <FunArg>,* ")"
     | <Expr> "->" <Expr>
@@ -35,8 +32,15 @@ MatchCase ::=
 <Pat> ::=
     | "_"
     | <Ident>
+    | <Literal>
     | "(" <Pat> ")"
     | <Pat> ":" <Expr>
+
+<Literal> ::=
+    | <Bool>
+    | <Int>
+    | <Char>
+    | <String>
 
 <FunArg> ::= <Plicity> <Expr>
 <FunParam> ::= <Plicity> <Pat>

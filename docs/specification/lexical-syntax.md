@@ -40,9 +40,9 @@
     | <XID_Start> (<XID_Continue> | '-')*
     | '_' <XID_Continue> (<XID_Continue> | '-')*
 
-<Literal> ::= <Number> | <Char> | <String>
+<Literal> ::= <Int> | <Char> | <String>
 
-<Number> ::= <BinInt> | <OctInt> | <DecInt> | <HexInt>
+<Int> ::= <BinInt> | <OctInt> | <DecInt> | <HexInt>
 <BinInt> ::= "0b" | "0B" ('0' ..= '1' | '_')+
 <OctInt> ::= "0o" | "0O" ('0' ..= '7' | '_')+
 <DecInt> ::=             ('0' ..= '9' | '_')+
