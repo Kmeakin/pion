@@ -1,5 +1,6 @@
 use pion_core::semantics::Type;
 use pion_core::symbol::Symbol;
+use pion_core::syntax::Lit;
 use pion_surface::syntax::{self as surface, Located};
 
 use super::{Check, Synth};
@@ -14,6 +15,7 @@ pub enum Pat<'core> {
     Error,
     Wildcard,
     Var(Symbol<'core>),
+    Lit(Lit<'core>),
 }
 
 impl<'core> Pat<'core> {
@@ -47,7 +49,15 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let pat = self.check_pat(*pat, &type_value);
                 (pat, type_value)
             }
-            surface::Pat::Lit(lit) => todo!(),
+            surface::Pat::Lit(lit) => {
+                let lit = Located::new(pat.range, *lit);
+                let (lit, r#type) = self.synth_lit(lit);
+                let pat = match lit {
+                    Ok(lit) => Pat::Lit(lit),
+                    Err(()) => Pat::Error,
+                };
+                (pat, r#type)
+            }
         }
     }
 
@@ -64,8 +74,9 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 Pat::Var(name)
             }
             surface::Pat::Paren(pat) => self.check_pat(*pat, expected),
-            surface::Pat::TypeAnnotation(..) => self.synth_and_coerce_pat(pat, expected),
-            surface::Pat::Lit(lit) => todo!(),
+            surface::Pat::TypeAnnotation(..) | surface::Pat::Lit(..) => {
+                self.synth_and_coerce_pat(pat, expected)
+            }
         }
     }
 
