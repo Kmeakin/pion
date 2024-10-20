@@ -17,7 +17,11 @@
     | "fun" "(" <FunParam>","* ")" "=>" <Expr>
     | "do" "{" <Stmt>* <Expr>? "}"
     | "if" <Expr> "then" <Expr> "else" <Expr>
+    | "match" <Expr> "{" <MatchCase>,* "}"
     | <Expr> ":" <Expr>
+
+MatchCase ::=
+    | <Pat> "=>" <Expr>
 
 <Stmt> ::=
     | "let" <Pat> "=" <Expr> ";"
