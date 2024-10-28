@@ -66,6 +66,34 @@ pub enum Expr<'text, 'surface> {
         Located<&'surface Expr<'text, 'surface>>,
         &'surface [Located<MatchCase<'text, 'surface>>],
     ),
+
+    RecordLit(&'surface [RecordLitField<'text, 'surface>]),
+    RecordType(&'surface [RecordTypeField<'text, 'surface>]),
+    Unit,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct RecordLitField<'text, 'surface> {
+    pub label: Located<&'text str>,
+    pub expr: Located<Expr<'text, 'surface>>,
+}
+
+impl<'text, 'surface> RecordLitField<'text, 'surface> {
+    pub fn new(label: Located<&'text str>, expr: Located<Expr<'text, 'surface>>) -> Self {
+        Self { label, expr }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct RecordTypeField<'text, 'surface> {
+    pub label: Located<&'text str>,
+    pub expr: Located<Expr<'text, 'surface>>,
+}
+
+impl<'text, 'surface> RecordTypeField<'text, 'surface> {
+    pub fn new(label: Located<&'text str>, expr: Located<Expr<'text, 'surface>>) -> Self {
+        Self { label, expr }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]

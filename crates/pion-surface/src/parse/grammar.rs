@@ -120,6 +120,7 @@ where
                     Expr::Paren(expr),
                 )
             }
+            TokenKind::LCurly => self.record_expr(),
             TokenKind::KwFalse => Located::new(token.range, Expr::Lit(Lit::Bool(false))),
             TokenKind::KwTrue => Located::new(token.range, Expr::Lit(Lit::Bool(true))),
             TokenKind::Int => Located::new(token.range, Expr::Lit(Lit::Int(token.text()))),
@@ -286,6 +287,145 @@ where
 
         let stmts = stmts.leak();
         File { stmts }
+    }
+
+    fn record_expr(&mut self) -> Located<Expr<'text, 'surface>> {
+        let start_range = self.range;
+
+        let first_label = match self.next_token() {
+            Some(token) if token.kind == TokenKind::RCurly => {
+                let end_range = self.range;
+                return Located::new(
+                    TextRange::new(start_range.start(), end_range.end()),
+                    Expr::Unit,
+                );
+            }
+            Some(token) if token.kind == TokenKind::Ident => {
+                let text = token.text();
+                Located::new(token.range, text)
+            }
+            _ => {
+                self.diagnostic(
+                    self.range,
+                    Diagnostic::error().with_message(
+                        "Syntax error: expected `}` or field name while parsing record",
+                    ),
+                );
+                return Located::new(self.range, Expr::Error);
+            }
+        };
+
+        match self.next_token() {
+            Some(token) if token.kind == TokenKind::Punct('=') => {
+                let expr = self.record_lit_expr(first_label);
+                let end_range = self.range;
+                Located::new(TextRange::new(start_range.start(), end_range.end()), expr)
+            }
+            Some(token) if token.kind == TokenKind::Punct(':') => {
+                let expr = self.record_type_expr(first_label);
+                let end_range = self.range;
+                Located::new(TextRange::new(start_range.start(), end_range.end()), expr)
+            }
+            _ => {
+                self.diagnostic(
+                    self.range,
+                    Diagnostic::error().with_message(
+                        "Syntax error: expected `=` or `:` while parsing record field",
+                    ),
+                );
+                Located::new(self.range, Expr::Error)
+            }
+        }
+    }
+
+    fn record_lit_expr(&mut self, first_label: Located<&'text str>) -> Expr<'text, 'surface> {
+        let mut fields = Vec::new_in(self.bump);
+        let expr = self.expr();
+        fields.push(RecordLitField::new(first_label, expr));
+
+        loop {
+            match self.next_token() {
+                Some(token) if token.kind == TokenKind::RCurly => break,
+                Some(token) if token.kind == TokenKind::Punct(',') => {}
+                _ => {
+                    self.diagnostic(
+                        self.range,
+                        Diagnostic::error().with_message(
+                            "Syntax error: expected ',' or '}' while parsing record literal",
+                        ),
+                    );
+                    break;
+                }
+            }
+
+            let label = match self.next_token() {
+                Some(token) if token.kind == TokenKind::RCurly => break,
+                Some(token) if token.kind == TokenKind::Ident => {
+                    let text = token.text();
+                    Located::new(token.range, text)
+                }
+                _ => {
+                    self.diagnostic(
+                        self.range,
+                        Diagnostic::error().with_message(
+                            "Syntax error: expected field name while parsing record literal",
+                        ),
+                    );
+                    break;
+                }
+            };
+
+            self.expect_token(TokenKind::Punct('='));
+            let expr = self.expr();
+            fields.push(RecordLitField::new(label, expr));
+        }
+
+        Expr::RecordLit(fields.leak())
+    }
+
+    fn record_type_expr(&mut self, first_label: Located<&'text str>) -> Expr<'text, 'surface> {
+        let mut fields = Vec::new_in(self.bump);
+        let expr = self.expr();
+        fields.push(RecordTypeField::new(first_label, expr));
+
+        loop {
+            match self.next_token() {
+                Some(token) if token.kind == TokenKind::RCurly => break,
+                Some(token) if token.kind == TokenKind::Punct(',') => {}
+                _ => {
+                    self.diagnostic(
+                        self.range,
+                        Diagnostic::error().with_message(
+                            "Syntax error: expected ',' or '}' while parsing record type",
+                        ),
+                    );
+                    break;
+                }
+            }
+
+            let label = match self.next_token() {
+                Some(token) if token.kind == TokenKind::RCurly => break,
+                Some(token) if token.kind == TokenKind::Ident => {
+                    let text = token.text();
+                    Located::new(token.range, text)
+                }
+                _ => {
+                    self.diagnostic(
+                        self.range,
+                        Diagnostic::error().with_message(
+                            "Syntax error: expected field name while parsing record type",
+                        ),
+                    );
+                    break;
+                }
+            };
+
+            self.expect_token(TokenKind::Punct(':'));
+            let expr = self.expr();
+            fields.push(RecordTypeField::new(label, expr));
+        }
+
+        Expr::RecordType(fields.leak())
     }
 
     fn do_expr(&mut self) -> Located<Expr<'text, 'surface>> {

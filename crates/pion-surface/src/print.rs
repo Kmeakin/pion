@@ -131,7 +131,44 @@ impl<W: Write> Printer<W> {
                     Ok(())
                 })
             }
+            Expr::Unit => writeln!(self, "Expr::Unit"),
+            Expr::RecordLit(fields) => {
+                writeln!(self, "Expr::RecordLit")?;
+                self.with_indent(|this| {
+                    for field in *fields {
+                        this.record_lit_field(field)?;
+                    }
+                    Ok(())
+                })
+            }
+            Expr::RecordType(fields) => {
+                writeln!(self, "Expr::RecordType")?;
+                self.with_indent(|this| {
+                    for field in *fields {
+                        this.record_type_field(field)?;
+                    }
+                    Ok(())
+                })
+            }
         }
+    }
+
+    fn record_lit_field(&mut self, field: &RecordLitField) -> fmt::Result {
+        writeln!(self, "RecordTypeField")?;
+        let RecordLitField { label, expr } = field;
+        self.with_indent(|this| {
+            writeln!(this, "{label:?}")?;
+            this.located(expr)
+        })
+    }
+
+    fn record_type_field(&mut self, field: &RecordTypeField) -> fmt::Result {
+        writeln!(self, "RecordTypeField")?;
+        let RecordTypeField { label, expr } = field;
+        self.with_indent(|this| {
+            writeln!(this, "{label:?}")?;
+            this.located(expr)
+        })
     }
 
     fn match_case(&mut self, case: &MatchCase) -> fmt::Result {

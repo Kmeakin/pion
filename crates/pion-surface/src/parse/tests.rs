@@ -454,6 +454,66 @@ fn match_expr() {
 }
 
 #[test]
+fn record_expr() {
+    assert_parse_expr("{}", expect!["0..2 @ Expr::Unit"]);
+    assert_parse_expr(
+        "{x=1}",
+        expect![[r#"
+            0..5 @ Expr::RecordLit
+             RecordTypeField
+              Located(1..2, "x")
+              3..4 @ Expr::Lit(Int("1"))"#]],
+    );
+    assert_parse_expr(
+        "{x=1,}",
+        expect![[r#"
+            0..6 @ Expr::RecordLit
+             RecordTypeField
+              Located(1..2, "x")
+              3..4 @ Expr::Lit(Int("1"))"#]],
+    );
+    assert_parse_expr(
+        "{x=1,y=2}",
+        expect![[r#"
+            0..9 @ Expr::RecordLit
+             RecordTypeField
+              Located(1..2, "x")
+              3..4 @ Expr::Lit(Int("1"))
+             RecordTypeField
+              Located(5..6, "y")
+              7..8 @ Expr::Lit(Int("2"))"#]],
+    );
+
+    assert_parse_expr(
+        "{x:1}",
+        expect![[r#"
+            0..5 @ Expr::RecordType
+             RecordTypeField
+              Located(1..2, "x")
+              3..4 @ Expr::Lit(Int("1"))"#]],
+    );
+    assert_parse_expr(
+        "{x:1,}",
+        expect![[r#"
+            0..6 @ Expr::RecordType
+             RecordTypeField
+              Located(1..2, "x")
+              3..4 @ Expr::Lit(Int("1"))"#]],
+    );
+    assert_parse_expr(
+        "{x:1,y:2}",
+        expect![[r#"
+            0..9 @ Expr::RecordType
+             RecordTypeField
+              Located(1..2, "x")
+              3..4 @ Expr::Lit(Int("1"))
+             RecordTypeField
+              Located(5..6, "y")
+              7..8 @ Expr::Lit(Int("2"))"#]],
+    );
+}
+
+#[test]
 fn commands() {
     assert_parse_expr(
         "do { #check 1; }",

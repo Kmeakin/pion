@@ -104,6 +104,9 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let expr = self.check_match_expr(*scrut, cases, &r#type);
                 (expr, r#type)
             }
+            surface::Expr::RecordLit(_) => todo!(),
+            surface::Expr::RecordType(_) => todo!(),
+            surface::Expr::Unit => todo!(),
         }
     }
 
@@ -149,6 +152,9 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 Expr::MatchBool(cond, then, r#else)
             }
             surface::Expr::Match(scrut, cases) => self.check_match_expr(*scrut, cases, expected),
+            surface::Expr::RecordLit(_) => todo!(),
+            surface::Expr::RecordType(_) => todo!(),
+            surface::Expr::Unit => todo!(),
         }
     }
 
