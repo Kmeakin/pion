@@ -88,6 +88,13 @@ impl PartialRenaming {
             target_var.to_index(self.target).unwrap(),
         ))
     }
+
+    fn len(&self) -> (EnvLen, EnvLen) { (self.source.len(), self.target) }
+
+    fn truncate(&mut self, (source_len, target_len): (EnvLen, EnvLen)) {
+        self.source.truncate(source_len);
+        self.target.truncate(target_len);
+    }
 }
 
 impl<'env, 'core> UnifyEnv<'env, 'core> {
@@ -174,6 +181,55 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                 self.locals.pop();
 
                 result
+            }
+
+            (Value::RecordLit(lhs_fields), Value::RecordLit(rhs_fields)) => {
+                if !pion_core::syntax::record_labels_equal(lhs_fields, rhs_fields) {
+                    return Err(UnifyError::Mismatch);
+                }
+
+                let lhs = lhs_fields.iter().map(|(_, expr)| expr);
+                let rhs = rhs_fields.iter().map(|(_, expr)| expr);
+
+                for (lhs, rhs) in std::iter::zip(lhs, rhs) {
+                    self.unify(lhs, rhs)?;
+                }
+
+                Ok(())
+            }
+
+            (Value::RecordType(mut lhs_telescope), Value::RecordType(mut rhs_telescope)) => {
+                if !pion_core::syntax::record_labels_equal(
+                    lhs_telescope.fields,
+                    rhs_telescope.fields,
+                ) {
+                    return Err(UnifyError::Mismatch);
+                }
+
+                let local_len = self.locals;
+
+                while let Some((
+                    (lhs_label, lhs_value, lhs_update_telescope),
+                    (rhs_label, rhs_value, rhs_update_telescope),
+                )) = Option::zip(
+                    self.elim_env().split_telescope(&mut lhs_telescope),
+                    self.elim_env().split_telescope(&mut rhs_telescope),
+                ) {
+                    if let Err(error) = self.unify(&lhs_value, &rhs_value) {
+                        self.locals.truncate(local_len);
+                        return Err(error);
+                    }
+
+                    let left_var =
+                        Value::local_var(LocalVar::new(Some(lhs_label), self.locals.to_level()));
+                    let right_var =
+                        Value::local_var(LocalVar::new(Some(rhs_label), self.locals.to_level()));
+                    lhs_update_telescope(left_var);
+                    rhs_update_telescope(right_var);
+                    self.locals.push();
+                }
+
+                Ok(())
             }
 
             // One of the values has a metavariable at its head, so we
@@ -416,8 +472,40 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                 let (param, body) = self.rename_closure(meta_var, param, closure)?;
                 Ok(Expr::FunLit(param, body))
             }
-            Value::RecordType(_) => todo!(),
-            Value::RecordLit(_) => todo!(),
+            Value::RecordType(mut telescope) => {
+                // FIXME: leaks on error
+                let mut result_fields = Vec::new_in(self.bump);
+                let initial_renaming_len = self.renaming.len();
+
+                while let Some((label, value, update_telescope)) =
+                    self.elim_env().split_telescope(&mut telescope)
+                {
+                    match self.rename(meta_var, &value) {
+                        Ok(expr) => {
+                            result_fields.push((label, expr));
+                            let source_var = self.renaming.next_local_var(Some(label));
+                            update_telescope(source_var);
+                            self.renaming.push_local();
+                        }
+                        Err(error) => {
+                            self.renaming.truncate(initial_renaming_len);
+                            return Err(error);
+                        }
+                    }
+                }
+
+                self.renaming.truncate(initial_renaming_len);
+                Ok(Expr::RecordType(result_fields.leak()))
+            }
+            Value::RecordLit(fields) => {
+                // FIXME: leaks on error
+                let mut result_fields = Vec::new_in(self.bump);
+                for (label, value) in fields {
+                    let expr = self.rename(meta_var, value)?;
+                    result_fields.push((*label, expr));
+                }
+                Ok(Expr::RecordLit(result_fields.leak()))
+            }
         }
     }
 

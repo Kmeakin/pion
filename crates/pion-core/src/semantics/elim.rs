@@ -27,6 +27,17 @@ impl<'env, 'core> ElimEnv<'env, 'core> {
         apply_closure(closure, arg, self.bump, self.opts, self.metas)
     }
 
+    pub fn split_telescope<'tele>(
+        self,
+        telescope: &'tele mut Telescope<'core>,
+    ) -> Option<(
+        Symbol<'core>,
+        Value<'core>,
+        impl FnOnce(Value<'core>) + 'tele,
+    )> {
+        split_telescope(telescope, self.bump, self.opts, self.metas)
+    }
+
     pub fn subst_metas(self, value: &Value<'core>) -> Value<'core> {
         subst_metas(value, self.bump, self.opts, self.metas)
     }

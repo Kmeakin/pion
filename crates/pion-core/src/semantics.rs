@@ -3,7 +3,7 @@ pub use ecow::{eco_vec, EcoVec};
 use crate::env::{DeBruijnLevel, EnvLen, SharedEnv, SliceEnv};
 use crate::prim::PrimVar;
 use crate::symbol::Symbol;
-use crate::syntax::{Expr, FunArg, FunParam, Lit, LocalVar, MetaVar};
+use crate::syntax::{Expr, FunArg, FunParam, Lit, LocalVar, MetaVar, RecordFields};
 
 pub mod convertible;
 pub mod elim;
@@ -33,8 +33,6 @@ pub enum Value<'core> {
     RecordType(Telescope<'core>),
     RecordLit(RecordFields<'core, Self>),
 }
-
-pub type RecordFields<'core, Field> = &'core [(Symbol<'core>, Field)];
 
 impl<'core> Value<'core> {
     pub const ERROR: Self = Self::Neutral(Head::Error, EcoVec::new());

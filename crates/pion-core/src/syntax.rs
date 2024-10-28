@@ -1,6 +1,5 @@
 use crate::env::{DeBruijn, DeBruijnIndex, DeBruijnLevel, EnvLen};
 use crate::prim::PrimVar;
-use crate::semantics::RecordFields;
 use crate::symbol::Symbol;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -23,6 +22,19 @@ pub enum Expr<'core> {
 
     RecordType(RecordFields<'core, Self>),
     RecordLit(RecordFields<'core, Self>),
+}
+
+pub type RecordFields<'core, Field> = &'core [(Symbol<'core>, Field)];
+
+pub fn record_labels_equal<L, R>(lhs: RecordFields<'_, L>, rhs: RecordFields<'_, R>) -> bool {
+    if lhs.len() != rhs.len() {
+        return false;
+    }
+
+    let lhs = lhs.iter().map(|(label, _)| label);
+    let rhs = rhs.iter().map(|(label, _)| label);
+
+    lhs.eq(rhs)
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

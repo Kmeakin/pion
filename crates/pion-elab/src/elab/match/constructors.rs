@@ -21,7 +21,7 @@ impl PartialEq for Constructor<'_> {
             (Self::Lit(left_lit), Self::Lit(right_lit)) => left_lit == right_lit,
             #[cfg(false)]
             (Self::Record(left_fields), Self::Record(right_fields)) => {
-                pion_core::syntax::record_keys_equal(left_fields, right_fields)
+                pion_core::syntax::record_labels_equal(left_fields, right_fields)
             }
             _ => false,
         }
