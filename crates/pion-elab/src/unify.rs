@@ -416,6 +416,8 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                 let (param, body) = self.rename_closure(meta_var, param, closure)?;
                 Ok(Expr::FunLit(param, body))
             }
+            Value::RecordType(_) => todo!(),
+            Value::RecordLit(_) => todo!(),
         }
     }
 

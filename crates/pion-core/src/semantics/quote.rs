@@ -45,6 +45,10 @@ pub fn quote<'core>(
             let (param, body) = quote_funs(&param, &body, bump, locals, metas);
             Expr::FunLit(param, body)
         }
+        Value::RecordType(telescope) => todo!(),
+        Value::RecordLit(fields) => Expr::RecordLit(bump.alloc_slice_fill_iter(
+            (fields.iter()).map(|(label, value)| (*label, quote(value, bump, locals, metas))),
+        )),
     }
 }
 

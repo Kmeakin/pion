@@ -1,5 +1,6 @@
 use crate::env::{DeBruijn, DeBruijnIndex, DeBruijnLevel, EnvLen};
 use crate::prim::PrimVar;
+use crate::semantics::RecordFields;
 use crate::symbol::Symbol;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -19,6 +20,9 @@ pub enum Expr<'core> {
     Do(&'core [Stmt<'core>], Option<&'core Self>),
     MatchBool(&'core Self, &'core Self, &'core Self),
     MatchInt(&'core Self, &'core [(u32, Self)], &'core Self),
+
+    RecordType(RecordFields<'core, Self>),
+    RecordLit(RecordFields<'core, Self>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -106,6 +110,10 @@ impl<'core> Expr<'core> {
                 .chain(cases.iter().map(|(_, expr)| expr))
                 .chain(std::iter::once(*default))
                 .any(|expr| expr.binds_local(var)),
+            Expr::RecordType(fields) => DeBruijnIndex::iter_from(var)
+                .zip(fields.iter())
+                .any(|(var, (_, expr))| expr.binds_local(var)),
+            Expr::RecordLit(fields) => fields.iter().any(|(_, expr)| expr.binds_local(var)),
         }
     }
 
@@ -119,7 +127,7 @@ impl<'core> Expr<'core> {
         fn recur<'core>(
             expr: &Expr<'core>,
             bump: &'core bumpalo::Bump,
-            min: DeBruijnIndex,
+            mut min: DeBruijnIndex,
             amount: EnvLen,
         ) -> Expr<'core> {
             // Skip traversing and rebuilding the term if it would make no change.
@@ -160,7 +168,6 @@ impl<'core> Expr<'core> {
                     Expr::FunApp(fun, FunArg::new(arg.plicity, arg_expr))
                 }
                 Expr::Do(stmts, expr) => {
-                    let mut min = min;
                     let stmts = bump.alloc_slice_fill_iter(stmts.iter().map(|stmt| match stmt {
                         Stmt::Expr(expr) => Stmt::Expr(recur(expr, bump, min, amount)),
                         Stmt::Let(let_binding) => {
@@ -184,14 +191,22 @@ impl<'core> Expr<'core> {
                 Expr::MatchInt(scrut, cases, default) => {
                     let scrut = recur(scrut, bump, min, amount);
                     let cases = bump.alloc_slice_fill_iter(
-                        cases
-                            .iter()
-                            .map(|(n, expr)| (*n, recur(expr, bump, min, amount))),
+                        (cases.iter()).map(|(n, expr)| (*n, recur(expr, bump, min, amount))),
                     );
                     let default = recur(default, bump, min, amount);
                     let (scrut, default) = bump.alloc((scrut, default));
                     Expr::MatchInt(scrut, cases, default)
                 }
+                Expr::RecordType(fields) => Expr::RecordType(bump.alloc_slice_fill_iter(
+                    (fields.iter()).map(|(label, expr)| {
+                        let expr = recur(expr, bump, min, amount);
+                        min = min.succ();
+                        (*label, expr)
+                    }),
+                )),
+                Expr::RecordLit(fields) => Expr::RecordLit(bump.alloc_slice_fill_iter(
+                    (fields.iter()).map(|(label, expr)| (*label, recur(expr, bump, min, amount))),
+                )),
             }
         }
     }

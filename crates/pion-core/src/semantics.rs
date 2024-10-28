@@ -2,6 +2,7 @@ pub use ecow::{eco_vec, EcoVec};
 
 use crate::env::{DeBruijnLevel, EnvLen, SharedEnv, SliceEnv};
 use crate::prim::PrimVar;
+use crate::symbol::Symbol;
 use crate::syntax::{Expr, FunArg, FunParam, Lit, LocalVar, MetaVar};
 
 pub mod convertible;
@@ -28,7 +29,12 @@ pub enum Value<'core> {
 
     FunType(FunParam<'core, &'core Value<'core>>, Closure<'core>),
     FunLit(FunParam<'core, &'core Value<'core>>, Closure<'core>),
+
+    RecordType(Telescope<'core>),
+    RecordLit(RecordFields<'core, Self>),
 }
+
+pub type RecordFields<'core, Field> = &'core [(Symbol<'core>, Field)];
 
 impl<'core> Value<'core> {
     pub const ERROR: Self = Self::Neutral(Head::Error, EcoVec::new());
@@ -86,6 +92,26 @@ impl<'core> Closure<'core> {
     }
 
     pub const fn empty(body: &'core Expr<'core>) -> Self { Self::new(LocalValues::new(), body) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Telescope<'core> {
+    pub local_values: LocalValues<'core>,
+    pub fields: RecordFields<'core, Expr<'core>>,
+}
+
+impl<'core> Telescope<'core> {
+    pub const fn empty() -> Self { Self::new(LocalValues::new(), &[]) }
+
+    pub const fn new(
+        local_values: LocalValues<'core>,
+        fields: RecordFields<'core, Expr<'core>>,
+    ) -> Self {
+        Self {
+            local_values,
+            fields,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]

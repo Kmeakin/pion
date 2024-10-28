@@ -22,9 +22,11 @@ impl Prec {
             | Expr::PrimVar(_)
             | Expr::LocalVar(_)
             | Expr::MetaVar(_)
-            | Expr::Do(..) => Self::Atom,
-            Expr::FunType(..) | Expr::FunLit(..) => Self::Fun,
+            | Expr::Do(..)
+            | Expr::RecordType(..)
+            | Expr::RecordLit(..) => Self::Atom,
             Expr::FunApp(..) => Self::Call,
+            Expr::FunType(..) | Expr::FunLit(..) => Self::Fun,
             Expr::MatchBool(..) | Expr::MatchInt(..) => Self::Match,
         }
     }
@@ -144,6 +146,24 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
             write!(out, " _ => ")?;
             expr_prec(out, default, Prec::MAX)?;
             write!(out, ", ")?;
+            write!(out, "}}")?;
+        }
+        Expr::RecordType(fields) => {
+            write!(out, "{{")?;
+            for (label, expr) in *fields {
+                write!(out, "{label} : ",)?;
+                expr_prec(out, expr, Prec::MAX)?;
+                write!(out, ", ")?;
+            }
+            write!(out, "}}")?;
+        }
+        Expr::RecordLit(fields) => {
+            write!(out, "{{")?;
+            for (label, expr) in *fields {
+                write!(out, "{label} = ",)?;
+                expr_prec(out, expr, Prec::MAX)?;
+                write!(out, ", ")?;
+            }
             write!(out, "}}")?;
         }
     }

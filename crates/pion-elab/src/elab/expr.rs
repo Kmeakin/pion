@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use codespan_reporting::diagnostic::Diagnostic;
 use pion_core::prim::PrimVar;
-use pion_core::semantics::{Closure, Type, Value};
+use pion_core::semantics::{Closure, Telescope, Type, Value};
 use pion_core::syntax::{Expr, FunArg, FunParam, LocalVar, Plicity};
 use pion_surface::syntax::{self as surface, Located};
 use text_size::TextRange;
@@ -106,7 +106,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             }
             surface::Expr::RecordLit(_) => todo!(),
             surface::Expr::RecordType(_) => todo!(),
-            surface::Expr::Unit => todo!(),
+            surface::Expr::Unit => (Expr::RecordLit(&[]), Type::RecordType(Telescope::empty())),
         }
     }
 
@@ -154,7 +154,10 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             surface::Expr::Match(scrut, cases) => self.check_match_expr(*scrut, cases, expected),
             surface::Expr::RecordLit(_) => todo!(),
             surface::Expr::RecordType(_) => todo!(),
-            surface::Expr::Unit => todo!(),
+            surface::Expr::Unit => match expected {
+                Type::RecordType(_) => Expr::RecordLit(&[]),
+                _ => self.synth_and_coerce_expr(expr, expected),
+            },
         }
     }
 

@@ -95,6 +95,10 @@ pub(super) fn eval<'core, 'env>(
             let scrut = eval(scrut, bump, opts, locals, metas);
             elim::match_int(scrut, cases, default, bump, opts, locals, metas)
         }
+        Expr::RecordType(fields) => Value::RecordType(Telescope::new(locals.clone(), fields)),
+        Expr::RecordLit(fields) => Value::RecordLit(bump.alloc_slice_fill_iter(
+            (fields.iter()).map(|(label, expr)| (*label, eval(expr, bump, opts, locals, metas))),
+        )),
     }
 }
 
@@ -125,6 +129,7 @@ mod tests {
 
     use super::*;
     use crate::env::{DeBruijnIndex, UniqueEnv};
+    use crate::symbol::sym;
     use crate::syntax::LetBinding;
 
     #[track_caller]
@@ -316,5 +321,47 @@ mod tests {
 
         let expected = Value::int(5);
         assert_eval(expr, expected);
+    }
+
+    #[test]
+    fn eval_record_lit() {
+        // `{}`
+        let expr = Expr::RecordLit(&[]);
+        assert_eval(expr, Value::RecordLit(&[]));
+
+        // `{a = 42}`
+        let expr = Expr::RecordLit(&const { [(sym::a, Expr::int(42))] });
+        assert_eval(expr, Value::RecordLit(&[(sym::a, Value::int(42))]));
+
+        // `{a = 42, b = 24}`
+        let expr = Expr::RecordLit(&const { [(sym::a, Expr::int(42)), (sym::b, Expr::int(24))] });
+        assert_eval(
+            expr,
+            Value::RecordLit(&[(sym::a, Value::int(42)), (sym::b, Value::int(24))]),
+        );
+    }
+
+    #[test]
+    fn eval_record_type() {
+        // `{}`
+        let expr = Expr::RecordType(&[]);
+        assert_eval(expr, Value::RecordType(Telescope::empty()));
+
+        // `{a: Int}`
+        let expr = Expr::RecordType(&[(sym::a, Expr::INT)]);
+        assert_eval(
+            expr,
+            Value::RecordType(Telescope::new(SharedEnv::new(), &[(sym::a, Expr::INT)])),
+        );
+
+        // `{a: Int, b: Char}`
+        let expr = Expr::RecordType(&[(sym::a, Expr::INT), (sym::b, Expr::CHAR)]);
+        assert_eval(
+            expr,
+            Value::RecordType(Telescope::new(
+                SharedEnv::new(),
+                &[(sym::a, Expr::INT), (sym::b, Expr::CHAR)],
+            )),
+        );
     }
 }
