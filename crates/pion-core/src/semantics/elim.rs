@@ -258,6 +258,24 @@ pub(super) fn match_int<'core>(
     }
 }
 
+pub(super) fn split_telescope<'core, 'tele>(
+    telescope: &'tele mut Telescope<'core>,
+    bump: &'core bumpalo::Bump,
+    opts: UnfoldOpts,
+    metas: &MetaValues<'core>,
+) -> Option<(
+    Symbol<'core>,
+    Value<'core>,
+    impl FnOnce(Value<'core>) + 'tele,
+)> {
+    let ((label, expr), fields) = telescope.fields.split_first()?;
+    let value = eval::eval(expr, bump, opts, &mut telescope.local_values, metas);
+    Some((*label, value, move |prev| {
+        telescope.local_values.push(prev);
+        telescope.fields = fields;
+    }))
+}
+
 /// Substitute meta variables in neutral spines with their values, and reduce
 /// further if possible.
 pub(super) fn subst_metas<'core>(

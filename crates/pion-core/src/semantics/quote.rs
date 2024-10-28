@@ -30,7 +30,7 @@ impl<'env, 'core> QuoteEnv<'env, 'core> {
 pub fn quote<'core>(
     value: &Value<'core>,
     bump: &'core bumpalo::Bump,
-    locals: EnvLen,
+    mut locals: EnvLen,
     metas: &MetaValues<'core>,
 ) -> Expr<'core> {
     let value = elim::subst_metas(value, bump, UnfoldOpts::for_quote(), metas);
@@ -45,7 +45,19 @@ pub fn quote<'core>(
             let (param, body) = quote_funs(&param, &body, bump, locals, metas);
             Expr::FunLit(param, body)
         }
-        Value::RecordType(telescope) => todo!(),
+        Value::RecordType(mut telescope) => {
+            let mut expr_fields = Vec::new_in(bump);
+            while let Some((name, value, update_telescope)) =
+                elim::split_telescope(&mut telescope, bump, UnfoldOpts::for_quote(), metas)
+            {
+                let var = Value::local_var(LocalVar::new(Some(name), locals.to_level()));
+                update_telescope(var);
+                let expr = quote(&value, bump, locals, metas);
+                expr_fields.push((name, expr));
+                locals.push();
+            }
+            Expr::RecordType(expr_fields.leak())
+        }
         Value::RecordLit(fields) => Expr::RecordLit(bump.alloc_slice_fill_iter(
             (fields.iter()).map(|(label, value)| (*label, quote(value, bump, locals, metas))),
         )),
@@ -147,6 +159,7 @@ mod tests {
 
     use super::*;
     use crate::env::{DeBruijnIndex, UniqueEnv};
+    use crate::symbol::sym;
 
     #[track_caller]
     #[allow(clippy::needless_pass_by_value, reason = "It's only a test")]
@@ -257,6 +270,46 @@ mod tests {
                 FunParam::explicit(None, &Expr::Error),
                 &Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0))),
             ),
+        );
+    }
+
+    #[test]
+    fn quote_record_lit() {
+        // `{}`
+        let value = Value::RecordLit(&[]);
+        assert_quote(value, Expr::RecordLit(&[]));
+
+        // `{a=42}`
+        let value = Value::RecordLit(const { &[(sym::a, Value::int(42))] });
+        assert_quote(value, Expr::RecordLit(&[(sym::a, Expr::int(42))]));
+
+        // `{a=42, b=24}`
+        let value =
+            Value::RecordLit(const { &[(sym::a, Value::int(42)), (sym::b, Value::int(24))] });
+        assert_quote(
+            value,
+            Expr::RecordLit(&[(sym::a, Expr::int(42)), (sym::b, Expr::int(24))]),
+        );
+    }
+
+    #[test]
+    fn quote_record_type() {
+        // `{}`
+        let value = Value::RecordType(Telescope::empty());
+        assert_quote(value, Expr::RecordType(&[]));
+
+        // `{a: Int}`
+        let value = Value::RecordType(Telescope::new(LocalValues::new(), &[(sym::a, Expr::INT)]));
+        assert_quote(value, Expr::RecordType(&[(sym::a, Expr::INT)]));
+
+        // `{a: Int, b: Char}`
+        let value = Value::RecordType(Telescope::new(
+            LocalValues::new(),
+            &[(sym::a, Expr::INT), (sym::b, Expr::CHAR)],
+        ));
+        assert_quote(
+            value,
+            Expr::RecordType(&[(sym::a, Expr::INT), (sym::b, Expr::CHAR)]),
         );
     }
 }
