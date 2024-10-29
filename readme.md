@@ -25,8 +25,7 @@
     * [ ] termination checking
 
 * [ ] aggregate types
-    * [ ] dependent pairs
-    * [ ] record types
+    * [x] record types
     * [ ] sum types
     * [ ] row types
 
@@ -34,6 +33,7 @@
     * [x] `if` expressions
     * [x] single-layer pattern matching over integers and booleans
     * [x] multi-layer pattern matching compilation w/ coverage checking
+    * [ ] record patterns
     * [ ] dependent pattern matching
     * [ ] or-patterns
     * [ ] and-patterns
