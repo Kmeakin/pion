@@ -40,8 +40,6 @@ define_prims!(PrimVar {
     Int = "Int",
     Char = "Char",
     String = "String",
-    Unit = "Unit",
-    unit = "unit",
 
     add = "add",
     sub = "sub",
@@ -81,13 +79,7 @@ impl PrimVar {
             // `Int: Type`
             // `Char: Type`
             // `String: Type`
-            // `Unit: Type`
-            Self::Type | Self::Bool | Self::Int | Self::Char | Self::String | Self::Unit => {
-                Type::TYPE
-            }
-
-            // `unit: Unit`
-            Self::unit => Type::UNIT_TYPE,
+            Self::Type | Self::Bool | Self::Int | Self::Char | Self::String => Type::TYPE,
 
             // `add: Int -> Int -> Int`
             // `sub: Int -> Int -> Int`

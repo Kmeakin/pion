@@ -6,8 +6,6 @@ Bool : Type
 Int : Type
 String : Type
 Char : Type
-Unit : Type
-unit : Unit
 
 """
 

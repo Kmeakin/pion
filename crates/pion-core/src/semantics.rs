@@ -42,8 +42,8 @@ impl<'core> Value<'core> {
     pub const INT: Self = Self::prim_var(PrimVar::Int);
     pub const STRING: Self = Self::prim_var(PrimVar::String);
     pub const CHAR: Self = Self::prim_var(PrimVar::Char);
-    pub const UNIT_TYPE: Self = Self::prim_var(PrimVar::Unit);
-    pub const UNIT_VALUE: Self = Self::prim_var(PrimVar::unit);
+    pub const UNIT_TYPE: Self = Self::RecordType(Telescope::empty());
+    pub const UNIT_VALUE: Self = Self::RecordLit(&[]);
 
     pub const fn local_var(var: LocalVar<'core, DeBruijnLevel>) -> Self {
         Self::Neutral(Head::LocalVar(var), EcoVec::new())

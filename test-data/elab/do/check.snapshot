@@ -14,7 +14,7 @@ error: Type mismatch: expected `Int`, found `Bool`
 2 │ #check (do { false }) : Int;
   │              ^^^^^
 
-error: Type mismatch: expected `Int`, found `Unit`
+error: Type mismatch: expected `Int`, found `{}`
   ┌─ test-data/elab/do/check.pion:3:9
   │
 3 │ #check (do {}) : Int;

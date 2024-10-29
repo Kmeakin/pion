@@ -181,8 +181,6 @@ fn prim_app<'core>(
         | PrimVar::Int
         | PrimVar::Char
         | PrimVar::String
-        | PrimVar::Unit
-        | PrimVar::unit
         | PrimVar::Eq
         | PrimVar::refl
         | PrimVar::subst

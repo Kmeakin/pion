@@ -88,8 +88,8 @@ impl<'core> Expr<'core> {
     pub const INT: Self = Self::PrimVar(PrimVar::Int);
     pub const STRING: Self = Self::PrimVar(PrimVar::String);
     pub const CHAR: Self = Self::PrimVar(PrimVar::Char);
-    pub const UNIT_TYPE: Self = Self::PrimVar(PrimVar::Unit);
-    pub const UNIT_VALUE: Self = Self::PrimVar(PrimVar::unit);
+    pub const UNIT_TYPE: Self = Self::RecordType(&[]);
+    pub const UNIT_VALUE: Self = Self::RecordLit(&[]);
 
     pub const fn bool(b: bool) -> Self { Self::Lit(Lit::Bool(b)) }
     pub const fn int(n: u32) -> Self { Self::Lit(Lit::Int(n)) }
