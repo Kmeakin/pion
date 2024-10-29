@@ -25,7 +25,7 @@ impl Prec {
             | Expr::Do(..)
             | Expr::RecordType(..)
             | Expr::RecordLit(..) => Self::Atom,
-            Expr::FunApp(..) => Self::Call,
+            Expr::FunApp(..) | Expr::RecordProj(..) => Self::Call,
             Expr::FunType(..) | Expr::FunLit(..) => Self::Fun,
             Expr::MatchBool(..) | Expr::MatchInt(..) => Self::Match,
         }
@@ -165,6 +165,10 @@ pub fn expr_prec(out: &mut impl Write, expr: &Expr, prec: Prec) -> fmt::Result {
                 write!(out, ", ")?;
             }
             write!(out, "}}")?;
+        }
+        Expr::RecordProj(scrut, symbol) => {
+            expr_prec(out, scrut, Prec::Call)?;
+            write!(out, ".{symbol}")?;
         }
     }
     if parens {

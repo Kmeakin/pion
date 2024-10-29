@@ -125,6 +125,7 @@ fn quote_neutral<'core>(
             let (head, default) = bump.alloc((head, default));
             Expr::MatchInt(head, cases, default)
         }
+        Elim::RecordProj(label) => Expr::RecordProj(bump.alloc(head), label),
     })
 }
 

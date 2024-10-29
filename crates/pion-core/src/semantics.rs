@@ -74,6 +74,7 @@ pub enum Head<'core> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Elim<'core> {
     FunApp(FunArg<Value<'core>>),
+    RecordProj(Symbol<'core>),
     MatchBool(LocalValues<'core>, &'core Expr<'core>, &'core Expr<'core>),
     MatchInt(
         LocalValues<'core>,

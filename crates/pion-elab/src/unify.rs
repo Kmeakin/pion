@@ -304,6 +304,8 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
 
                     self.unify(&lhs_default, &rhs_default)?;
                 }
+                (Elim::RecordProj(lhs_label), Elim::RecordProj(rhs_label))
+                    if lhs_label == rhs_label => {}
                 _ => return Err(UnifyError::Mismatch),
             }
         }
@@ -381,6 +383,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                     _ => return Err(SpineError::NonLocalFunApp),
                 },
                 Elim::MatchBool(..) | Elim::MatchInt(..) => return Err(SpineError::Match),
+                Elim::RecordProj(..) => return Err(SpineError::RecordProj),
             }
         }
         Ok(())
@@ -462,6 +465,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                         let (scrut, default) = self.bump.alloc((head, default));
                         Ok(Expr::MatchInt(scrut, out_cases.leak(), default))
                     }
+                    Elim::RecordProj(label) => Ok(Expr::RecordProj(self.bump.alloc(head), *label)),
                 })
             }
             Value::FunType(param, closure) => {
@@ -557,6 +561,9 @@ impl<'core> UnifyError<'core> {
             Self::Spine(SpineError::Match) => {
                 Diagnostic::error().with_message("`match` expression in problem spine")
             }
+            Self::Spine(SpineError::RecordProj) => {
+                Diagnostic::error().with_message("record projection expression in problem spine")
+            }
 
             Self::Rename(RenameError::EscapingLocalVar(_)) => {
                 Diagnostic::error().with_message("escaping local variable in problem spine")
@@ -625,6 +632,7 @@ pub enum SpineError<'core> {
     /// variable.
     NonLocalFunApp,
     Match,
+    RecordProj,
 }
 
 /// An error that occurred when renaming the solution.

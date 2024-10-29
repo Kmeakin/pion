@@ -1,0 +1,2 @@
+#check {x=5}.y;
+#eval {x=5}.y;

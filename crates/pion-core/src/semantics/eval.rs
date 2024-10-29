@@ -99,6 +99,10 @@ pub(super) fn eval<'core, 'env>(
         Expr::RecordLit(fields) => Value::RecordLit(bump.alloc_slice_fill_iter(
             (fields.iter()).map(|(label, expr)| (*label, eval(expr, bump, opts, locals, metas))),
         )),
+        Expr::RecordProj(scrut, label) => {
+            let scrut = eval(scrut, bump, opts, locals, metas);
+            elim::record_proj(scrut, *label)
+        }
     }
 }
 

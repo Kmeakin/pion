@@ -1,0 +1,11 @@
+#check {x = 5}.x;
+#eval {x = 5}.x;
+
+#check {x = 5, y = false}.y;
+#eval {x = 5, y = false}.y;
+
+#check ({A = Int, a = 5} : {A: Type, a: A}).A;
+#eval ({A = Int, a = 5} : {A: Type, a: A}).A;
+
+#check ({A = Int, a = 5} : {A: Type, a: A}).a;
+#eval ({A = Int, a = 5} : {A: Type, a: A}).a;

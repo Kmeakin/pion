@@ -1,0 +1,23 @@
+exit status: 0
+
+stdout = """
+#error : #error
+#error ⇝ #error
+
+"""
+
+stderr = """
+error: Field `y` not found
+  ┌─ test-data/elab/record-proj/field-not-found.pion:1:8
+  │
+1 │ #check {x=5}.y;
+  │        ^^^^^
+
+error: Field `y` not found
+  ┌─ test-data/elab/record-proj/field-not-found.pion:2:7
+  │
+2 │ #eval {x=5}.y;
+  │       ^^^^^
+
+
+"""

@@ -1,0 +1,16 @@
+exit status: 0
+
+stdout = """
+#error : #error
+
+"""
+
+stderr = """
+error: Expected record, found `Type`
+  ┌─ test-data/elab/record-proj/not-record.pion:1:8
+  │
+1 │ #check Int.x;
+  │        ^^^
+
+
+"""

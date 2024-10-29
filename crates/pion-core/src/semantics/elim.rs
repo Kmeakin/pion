@@ -41,6 +41,10 @@ impl<'env, 'core> ElimEnv<'env, 'core> {
     pub fn subst_metas(self, value: &Value<'core>) -> Value<'core> {
         subst_metas(value, self.bump, self.opts, self.metas)
     }
+
+    pub fn record_proj(&self, scrut: Value<'core>, label: Symbol<'core>) -> Value<'core> {
+        record_proj(scrut, label)
+    }
 }
 
 fn apply_eliminator<'core>(
@@ -58,6 +62,7 @@ fn apply_eliminator<'core>(
         Elim::MatchInt(mut locals, cases, default) => {
             match_int(head, cases, default, bump, opts, &mut locals, metas)
         }
+        Elim::RecordProj(label) => record_proj(head, label),
     }
 }
 
@@ -265,6 +270,20 @@ pub(super) fn match_int<'core>(
             spine.push(Elim::MatchInt(locals.clone(), cases, default));
             Value::Neutral(head, spine)
         }
+        _ => Value::ERROR,
+    }
+}
+
+pub(super) fn record_proj<'core>(scrut: Value<'core>, label: Symbol<'core>) -> Value<'core> {
+    match scrut {
+        Value::Neutral(head, mut spine) => {
+            spine.push(Elim::RecordProj(label));
+            Value::Neutral(head, spine)
+        }
+        Value::RecordLit(fields) => match fields.iter().find(|(l, _)| *l == label) {
+            Some((_, value)) => value.clone(),
+            None => Value::ERROR,
+        },
         _ => Value::ERROR,
     }
 }

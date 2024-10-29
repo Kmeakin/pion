@@ -173,7 +173,52 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 )
             }
             surface::Expr::Unit => (Expr::RecordLit(&[]), Type::RecordType(Telescope::empty())),
-            surface::Expr::RecordProj(..) => todo!(),
+            surface::Expr::RecordProj(scrut, label) => {
+                let (scrut_expr, scrut_type) = self.synth_expr(*scrut);
+                let scrut_type = self.elim_env().subst_metas(&scrut_type);
+
+                let proj_label = self.intern(label.data);
+
+                match scrut_type {
+                    Value::RecordType(mut telescope) => {
+                        let Some(_pos) =
+                            (telescope.fields.iter()).find(|(label, _)| *label == proj_label)
+                        else {
+                            self.diagnostic(
+                                scrut.range,
+                                Diagnostic::error()
+                                    .with_message(format!("Field `{proj_label}` not found")),
+                            );
+                            return (Expr::Error, Type::ERROR);
+                        };
+
+                        let scrut_value = self.eval_env().eval(&scrut_expr);
+                        while let Some((label, r#type, update_telescope)) =
+                            self.elim_env().split_telescope(&mut telescope)
+                        {
+                            if label == proj_label {
+                                let expr = Expr::RecordProj(self.bump.alloc(scrut_expr), label);
+                                return (expr, r#type);
+                            }
+
+                            let projected = self.elim_env().record_proj(scrut_value.clone(), label);
+                            update_telescope(projected);
+                        }
+
+                        unreachable!()
+                    }
+                    _ => {
+                        self.diagnostic(
+                            scrut.range,
+                            Diagnostic::error().with_message(format!(
+                                "Expected record, found `{}`",
+                                self.quote_env().quote(&scrut_type)
+                            )),
+                        );
+                        (Expr::Error, Type::ERROR)
+                    }
+                }
+            }
         }
     }
 

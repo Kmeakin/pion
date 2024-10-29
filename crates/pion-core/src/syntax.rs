@@ -22,6 +22,7 @@ pub enum Expr<'core> {
 
     RecordType(RecordFields<'core, Self>),
     RecordLit(RecordFields<'core, Self>),
+    RecordProj(&'core Self, Symbol<'core>),
 }
 
 pub type RecordFields<'core, Field> = &'core [(Symbol<'core>, Field)];
@@ -126,6 +127,7 @@ impl<'core> Expr<'core> {
                 .zip(fields.iter())
                 .any(|(var, (_, expr))| expr.binds_local(var)),
             Expr::RecordLit(fields) => fields.iter().any(|(_, expr)| expr.binds_local(var)),
+            Expr::RecordProj(scrut, _) => scrut.binds_local(var),
         }
     }
 
@@ -219,6 +221,10 @@ impl<'core> Expr<'core> {
                 Expr::RecordLit(fields) => Expr::RecordLit(bump.alloc_slice_fill_iter(
                     (fields.iter()).map(|(label, expr)| (*label, recur(expr, bump, min, amount))),
                 )),
+                Expr::RecordProj(scrut, label) => {
+                    let scrut = recur(scrut, bump, min, amount);
+                    Expr::RecordProj(bump.alloc(scrut), *label)
+                }
             }
         }
     }
