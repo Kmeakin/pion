@@ -1,0 +1,18 @@
+exit status: 0
+
+stdout = """
+{x : Int, y : Bool, } : Type
+
+"""
+
+stderr = """
+error: Duplicate record field `x`
+  ┌─ test-data/elab/record-type/duplicate-fields.pion:1:26
+  │
+1 │ #check {x: Int, y: Bool, x: Char};
+  │         -                ^
+  │         │                 
+  │         Help: `x` is already defined here
+
+
+"""

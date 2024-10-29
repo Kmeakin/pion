@@ -1,0 +1,12 @@
+exit status: 0
+
+stdout = """
+{} : {}
+{x = 1, } : {x : Int, }
+{A = Int, a = 5, } : {A : Type, a : A, }
+
+"""
+
+stderr = """
+
+"""

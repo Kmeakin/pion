@@ -1,0 +1,16 @@
+exit status: 0
+
+stdout = """
+#error : {x : Int, y : Bool, }
+
+"""
+
+stderr = """
+error: Type mismatch: expected `{x : Int, y : Bool, }`, found `{x : Int, }`
+  ┌─ test-data/elab/record-literal/check-mismatch.pion:1:8
+  │
+1 │ #check {x = 1} : {x: Int, y: Bool};
+  │        ^^^^^^^
+
+
+"""

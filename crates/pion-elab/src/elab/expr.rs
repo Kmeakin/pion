@@ -1,7 +1,8 @@
 use std::borrow::Cow;
 use std::str::FromStr;
 
-use codespan_reporting::diagnostic::Diagnostic;
+use codespan_reporting::diagnostic::{Diagnostic, Label};
+use pion_core::env::EnvLen;
 use pion_core::prim::PrimVar;
 use pion_core::semantics::{Closure, Telescope, Type, Value};
 use pion_core::syntax::{Expr, FunArg, FunParam, LocalVar, Plicity};
@@ -104,8 +105,73 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let expr = self.check_match_expr(*scrut, cases, &r#type);
                 (expr, r#type)
             }
-            surface::Expr::RecordLit(_) => todo!(),
-            surface::Expr::RecordType(_) => todo!(),
+            surface::Expr::RecordType(fields) => {
+                let mut type_fields = Vec::new_in(self.bump);
+                let local_len = self.env.locals.len();
+
+                for field in *fields {
+                    let label = field.label;
+                    let symbol = self.intern(label.data);
+
+                    if let Some(index) = type_fields.iter().position(|(n, _)| *n == symbol) {
+                        let diagnostic = Diagnostic::error()
+                            .with_message(format!("Duplicate record field `{symbol}`"))
+                            .with_labels(vec![
+                                Label::primary(self.file_id, label.range),
+                                Label::secondary(self.file_id, fields[index].label.range)
+                                    .with_message(format!(
+                                        "Help: `{symbol}` is already defined here"
+                                    )),
+                            ]);
+                        self.diagnostics.push(diagnostic);
+                        continue;
+                    }
+
+                    let r#type = self.check_expr(field.expr.as_ref(), &Type::TYPE);
+                    let r#type_value = self.eval_env().eval(&r#type);
+                    type_fields.push((symbol, r#type));
+                    self.env.locals.push_param(Some(symbol), r#type_value);
+                }
+                self.env.locals.truncate(local_len);
+
+                (Expr::RecordType(type_fields.leak()), Type::TYPE)
+            }
+            surface::Expr::RecordLit(fields) => {
+                let mut expr_fields = Vec::new_in(self.bump);
+                let mut type_fields = Vec::new_in(self.bump);
+
+                for surface_field in *fields {
+                    let label = surface_field.label;
+                    let symbol = self.intern(label.data);
+
+                    if let Some(index) = expr_fields.iter().position(|(n, _)| *n == symbol) {
+                        let diagnostic = Diagnostic::error()
+                            .with_message(format!("Duplicate record field `{symbol}`"))
+                            .with_labels(vec![
+                                Label::primary(self.file_id, label.range),
+                                Label::secondary(self.file_id, fields[index].label.range)
+                                    .with_message(format!(
+                                        "Help: `{symbol}` is already defined here"
+                                    )),
+                            ]);
+                        self.diagnostics.push(diagnostic);
+                        continue;
+                    }
+
+                    let (expr, r#type) = self.synth_expr(surface_field.expr.as_ref());
+                    let r#type = self
+                        .quote_env()
+                        .quote_offset(&r#type, EnvLen::from(expr_fields.len()));
+                    expr_fields.push((symbol, expr));
+                    type_fields.push((symbol, r#type));
+                }
+
+                let telescope = Telescope::new(self.env.locals.values.clone(), type_fields.leak());
+                (
+                    Expr::RecordLit(expr_fields.leak()),
+                    Type::RecordType(telescope),
+                )
+            }
             surface::Expr::Unit => (Expr::RecordLit(&[]), Type::RecordType(Telescope::empty())),
         }
     }
@@ -123,7 +189,8 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             | surface::Expr::TypeAnnotation(..)
             | surface::Expr::FunCall(..)
             | surface::Expr::FunType(..)
-            | surface::Expr::FunArrow(..) => self.synth_and_coerce_expr(expr, expected),
+            | surface::Expr::FunArrow(..)
+            | surface::Expr::RecordType(..) => self.synth_and_coerce_expr(expr, expected),
             surface::Expr::Paren(expr) => self.check_expr(*expr, expected),
             surface::Expr::FunExpr(params, body) => self.check_fun_expr(params, *body, expected),
             surface::Expr::Do(stmts, Some(trailing_expr)) => {
@@ -152,10 +219,37 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 Expr::MatchBool(cond, then, r#else)
             }
             surface::Expr::Match(scrut, cases) => self.check_match_expr(*scrut, cases, expected),
-            surface::Expr::RecordLit(_) => todo!(),
-            surface::Expr::RecordType(_) => todo!(),
+            surface::Expr::RecordLit(fields) => {
+                let Type::RecordType(telescope) = expected else {
+                    return self.synth_and_coerce_expr(expr, expected);
+                };
+
+                if fields.len() != telescope.fields.len() {
+                    return self.synth_and_coerce_expr(expr, expected);
+                }
+
+                // FIXME: better error message if fields don't match
+                if (fields.iter())
+                    .map(|field| self.intern(field.label.data))
+                    .ne(telescope.fields.iter().map(|(label, _)| *label))
+                {
+                    return self.synth_and_coerce_expr(expr, expected);
+                }
+
+                let mut telescope = telescope.clone();
+                let mut expr_fields = Vec::new_in(self.bump);
+                for surface_field in *fields {
+                    let (name, r#type, update_telescope) =
+                        self.elim_env().split_telescope(&mut telescope).unwrap();
+                    let expr = self.check_expr(surface_field.expr.as_ref(), &r#type);
+                    let value = self.eval_env().eval(&expr);
+                    update_telescope(value);
+                    expr_fields.push((name, expr));
+                }
+                Expr::RecordLit(expr_fields.leak())
+            }
             surface::Expr::Unit => match expected {
-                Type::RecordType(_) => Expr::RecordLit(&[]),
+                _ if expected.is_type() => Expr::RecordType(&[]),
                 _ => self.synth_and_coerce_expr(expr, expected),
             },
         }

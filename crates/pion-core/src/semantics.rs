@@ -57,6 +57,10 @@ impl<'core> Value<'core> {
     pub const fn int(n: u32) -> Self { Self::Lit(Lit::Int(n)) }
     pub const fn char(c: char) -> Self { Self::Lit(Lit::Char(c)) }
     pub const fn string(s: &'core str) -> Self { Self::Lit(Lit::String(s)) }
+
+    pub fn is_type(&self) -> bool {
+        matches!(self, Self::Neutral(Head::PrimVar(PrimVar::Type), spine) if spine.is_empty())
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
