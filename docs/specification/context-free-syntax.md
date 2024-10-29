@@ -16,6 +16,12 @@
     | "if" <Expr> "then" <Expr> "else" <Expr>
     | "match" <Expr> "{" <MatchCase>,* "}"
     | <Expr> ":" <Expr>
+    | "{" "}"
+    | "{" <RecordTypeField>","+ "}"
+    | "{" <RecordLitField>","+ "}"
+
+RecordTypeField ::= <Ident> ":" <Expr>
+RecordLitField ::= <Ident> "=" <Expr>
 
 MatchCase ::=
     | <Pat> "=>" <Expr>
