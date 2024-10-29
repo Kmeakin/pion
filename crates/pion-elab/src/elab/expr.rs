@@ -173,6 +173,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 )
             }
             surface::Expr::Unit => (Expr::RecordLit(&[]), Type::RecordType(Telescope::empty())),
+            surface::Expr::RecordProj(..) => todo!(),
         }
     }
 
@@ -190,7 +191,8 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             | surface::Expr::FunCall(..)
             | surface::Expr::FunType(..)
             | surface::Expr::FunArrow(..)
-            | surface::Expr::RecordType(..) => self.synth_and_coerce_expr(expr, expected),
+            | surface::Expr::RecordType(..)
+            | surface::Expr::RecordProj(..) => self.synth_and_coerce_expr(expr, expected),
             surface::Expr::Paren(expr) => self.check_expr(*expr, expected),
             surface::Expr::FunExpr(params, body) => self.check_fun_expr(params, *body, expected),
             surface::Expr::Do(stmts, Some(trailing_expr)) => {

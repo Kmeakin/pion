@@ -22,7 +22,7 @@ fn infix_binding_power<'text, 'surface>(
 
 fn postfix_binding_power(token: TokenKind) -> Option<u8> {
     match token {
-        TokenKind::LParen => Some(11),
+        TokenKind::LParen | TokenKind::Punct('.') => Some(11),
         _ => None,
     }
 }
@@ -161,6 +161,9 @@ where
                 expr = match token.kind {
                     TokenKind::LParen => {
                         self.fun_call_expr(expr.map(|expr| &*self.bump.alloc(expr)))
+                    }
+                    TokenKind::Punct('.') => {
+                        self.record_proj_expr(expr.map(|expr| &*self.bump.alloc(expr)))
                     }
                     _ => unreachable!(),
                 };
@@ -613,6 +616,32 @@ where
         Located::new(
             TextRange::new(start_range.start(), end_range.end()),
             Expr::FunCall(callee, args),
+        )
+    }
+
+    fn record_proj_expr(
+        &mut self,
+        scrut: Located<&'surface Expr<'text, 'surface>>,
+    ) -> Located<Expr<'text, 'surface>> {
+        let start_range = scrut.range;
+        let label = match self.next_token() {
+            Some(token) if token.kind == TokenKind::Ident => token,
+            _ => {
+                let end_range = self.range;
+                self.diagnostic(
+                    end_range,
+                    Diagnostic::error().with_message("Expected identifier"),
+                );
+                return Located::new(
+                    TextRange::new(start_range.start(), end_range.end()),
+                    Expr::Error,
+                );
+            }
+        };
+        let end_range = self.range;
+        Located::new(
+            TextRange::new(start_range.start(), end_range.end()),
+            Expr::RecordProj(scrut, Located::new(label.range, label.text())),
         )
     }
 

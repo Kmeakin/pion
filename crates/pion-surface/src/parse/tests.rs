@@ -514,6 +514,26 @@ fn record_expr() {
 }
 
 #[test]
+fn record_proj_expr() {
+    assert_parse_expr(
+        "a.b",
+        expect![[r#"
+    0..3 @ Expr::RecordProj
+     0..1 @ Expr::Var("a")
+     Located(2..3, "b")"#]],
+    );
+    assert_parse_expr(
+        "a.b.c",
+        expect![[r#"
+            0..5 @ Expr::RecordProj
+             0..3 @ Expr::RecordProj
+              0..1 @ Expr::Var("a")
+              Located(2..3, "b")
+             Located(4..5, "c")"#]],
+    );
+}
+
+#[test]
 fn commands() {
     assert_parse_expr(
         "do { #check 1; }",

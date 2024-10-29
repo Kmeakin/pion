@@ -150,6 +150,13 @@ impl<W: Write> Printer<W> {
                     Ok(())
                 })
             }
+            Expr::RecordProj(scrut, label) => {
+                writeln!(self, "Expr::RecordProj")?;
+                self.with_indent(|this| {
+                    this.located(scrut)?;
+                    writeln!(this, "{label:?}")
+                })
+            }
         }
     }
 

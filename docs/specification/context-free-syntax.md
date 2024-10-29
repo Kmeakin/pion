@@ -19,6 +19,7 @@
     | "{" "}"
     | "{" <RecordTypeField>","+ "}"
     | "{" <RecordLitField>","+ "}"
+    | <Expr> "." <Ident>
 
 RecordTypeField ::= <Ident> ":" <Expr>
 RecordLitField ::= <Ident> "=" <Expr>

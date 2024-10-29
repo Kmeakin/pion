@@ -69,6 +69,7 @@ pub enum Expr<'text, 'surface> {
 
     RecordLit(&'surface [RecordLitField<'text, 'surface>]),
     RecordType(&'surface [RecordTypeField<'text, 'surface>]),
+    RecordProj(Located<&'surface Self>, Located<&'text str>),
     Unit,
 }
 
