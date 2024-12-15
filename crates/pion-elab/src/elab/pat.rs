@@ -120,7 +120,38 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             surface::Pat::TypeAnnotation(..) | surface::Pat::Lit(..) => {
                 self.synth_and_coerce_pat(pat, expected)
             }
-            surface::Pat::RecordLit(_) => self.synth_and_coerce_pat(pat, expected),
+            surface::Pat::RecordLit(fields) => {
+                let Type::RecordType(telescope) = expected else {
+                    return self.synth_and_coerce_pat(pat, expected);
+                };
+
+                if fields.len() != telescope.fields.len() {
+                    return self.synth_and_coerce_pat(pat, expected);
+                }
+
+                // FIXME: better error message if fields don't match
+                if (fields.iter())
+                    .map(|field| self.intern(field.label.data))
+                    .ne(telescope.fields.iter().map(|(label, _)| *label))
+                {
+                    return self.synth_and_coerce_pat(pat, expected);
+                }
+
+                let mut telescope = telescope.clone();
+                let mut pat_fields = Vec::new_in(self.bump);
+                for surface_field in *fields {
+                    let (name, r#type, update_telescope) =
+                        self.elim_env().split_telescope(&mut telescope).unwrap();
+                    let expr = self.check_pat(surface_field.pat.as_ref(), &r#type);
+                    let value = Value::local_var(LocalVar::new(
+                        Some(name),
+                        self.env.locals.len().to_level(),
+                    ));
+                    update_telescope(value);
+                    pat_fields.push((name, expr));
+                }
+                Pat::RecordLit(pat_fields.leak())
+            }
         }
     }
 
