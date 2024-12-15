@@ -40,7 +40,9 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let (expr, r#type) = self.synth_expr(*expr);
                 let r#type = self.quote_env().quote(&r#type);
                 let printer = Printer::new(self.bump);
-                let doc = printer.type_ann_expr(&expr, &r#type).into_doc();
+                let doc = printer
+                    .type_ann_expr(&expr, &r#type, &mut self.env.locals.names)
+                    .into_doc();
                 let out = doc.pretty(80).to_string();
                 self.command_output.push(out);
             }
@@ -51,9 +53,9 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
 
                 let printer = Printer::new(self.bump);
                 let doc = printer
-                    .expr_prec(&expr, Prec::MAX)
+                    .expr_prec(&expr, Prec::MAX, &mut self.env.locals.names)
                     .append(" ⇝ ")
-                    .append(printer.expr_prec(&value, Prec::MAX))
+                    .append(printer.expr_prec(&value, Prec::MAX, &mut self.env.locals.names))
                     .into_doc();
                 let out = doc.pretty(80).to_string();
                 self.command_output.push(out);
@@ -63,19 +65,22 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let r#type = self.quote_env().quote(&r#type);
                 match expr {
                     Expr::LocalVar(var) => {
+                        let name = self.env.locals.names.get(var.de_bruijn).unwrap();
+
                         match self.env.locals.infos.get(var.de_bruijn).unwrap() {
                             LocalInfo::Param => {
-                                self.command_output.push(format!(
-                                    "parameter {} : {}",
-                                    var.name.unwrap(),
-                                    r#type
-                                ));
+                                let name = name.unwrap();
+                                let ty = self.pretty(&r#type);
+                                self.command_output
+                                    .push(format!("parameter {name} : {ty}",));
                             }
                             LocalInfo::Let(init) => {
                                 let printer = Printer::new(self.bump);
                                 let init = init.shift(self.bump, self.env.locals.len());
-                                let binding = LetBinding::new(var.name, r#type, init);
-                                let doc = printer.let_stmt(&binding).into_doc();
+                                let binding = LetBinding::new(*name, r#type, init);
+                                let doc = printer
+                                    .let_stmt(&binding, &mut self.env.locals.names)
+                                    .into_doc();
                                 let out = doc.pretty(80).to_string();
                                 self.command_output.push(out);
                             }
@@ -83,7 +88,9 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     }
                     _ => {
                         let printer = Printer::new(self.bump);
-                        let doc = printer.type_ann_expr(&expr, &r#type).into_doc();
+                        let doc = printer
+                            .type_ann_expr(&expr, &r#type, &mut self.env.locals.names)
+                            .into_doc();
                         let out = doc.pretty(80).to_string();
                         self.command_output.push(out);
                     }

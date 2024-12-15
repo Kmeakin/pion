@@ -2,7 +2,7 @@ use core::fmt;
 
 use crate::env::DeBruijnIndex;
 use crate::semantics::{Closure, Type};
-use crate::symbol::{sym, Symbol};
+use crate::symbol::sym;
 use crate::syntax::*;
 
 macro_rules! define_prims {
@@ -69,8 +69,8 @@ impl fmt::Display for PrimVar {
 
 impl PrimVar {
     pub const fn r#type(&self) -> Type<'static> {
-        pub const fn var(name: Option<Symbol<'static>>, index: usize) -> Expr<'static> {
-            Expr::LocalVar(LocalVar::new(name, DeBruijnIndex::new(index)))
+        pub const fn var(index: usize) -> Expr<'static> {
+            Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(index)))
         }
 
         match self {
@@ -110,13 +110,10 @@ impl PrimVar {
                 Closure::empty(
                     &const {
                         Expr::FunType(
-                            FunParam::explicit(Some(sym::A), &const { var(Some(sym::A), 0) }),
+                            FunParam::explicit(Some(sym::A), &const { var(0) }),
                             &const {
                                 Expr::FunType(
-                                    FunParam::explicit(
-                                        Some(sym::A),
-                                        &const { var(Some(sym::A), 1) },
-                                    ),
+                                    FunParam::explicit(Some(sym::A), &const { var(1) }),
                                     &Expr::TYPE,
                                 )
                             },
@@ -131,7 +128,7 @@ impl PrimVar {
                 Closure::empty(
                     &const {
                         Expr::FunType(
-                            FunParam::explicit(Some(sym::a), &const { var(Some(sym::A), 0) }),
+                            FunParam::explicit(Some(sym::a), &const { var(0) }),
                             &const {
                                 Expr::FunApp(
                                     &const {
@@ -139,15 +136,13 @@ impl PrimVar {
                                             &const {
                                                 Expr::FunApp(
                                                     &Expr::PrimVar(Self::Eq),
-                                                    FunArg::implicit(
-                                                        &const { var(Some(sym::A), 1) },
-                                                    ),
+                                                    FunArg::implicit(&const { var(1) }),
                                                 )
                                             },
-                                            FunArg::explicit(&const { var(Some(sym::a), 0) }),
+                                            FunArg::explicit(&const { var(0) }),
                                         )
                                     },
-                                    FunArg::explicit(&const { var(Some(sym::a), 0) }),
+                                    FunArg::explicit(&const { var(0) }),
                                 )
                             },
                         )
@@ -166,23 +161,17 @@ impl PrimVar {
                                 Some(sym::p),
                                 &const {
                                     Expr::FunType(
-                                        FunParam::explicit(None, &const { var(Some(sym::A), 0) }),
+                                        FunParam::explicit(None, &const { var(0) }),
                                         &Expr::TYPE,
                                     )
                                 },
                             ),
                             &const {
                                 Expr::FunType(
-                                    FunParam::implicit(
-                                        Some(sym::a),
-                                        &const { var(Some(sym::A), 1) },
-                                    ),
+                                    FunParam::implicit(Some(sym::a), &const { var(1) }),
                                     &const {
                                         Expr::FunType(
-                                            FunParam::implicit(
-                                                Some(sym::b),
-                                                &const { var(Some(sym::A), 2) },
-                                            ),
+                                            FunParam::implicit(Some(sym::b), &const { var(2) }),
                                             &const {
                                                 Expr::FunType(
                                                     FunParam::explicit(
@@ -197,22 +186,16 @@ impl PrimVar {
                                                                                     Self::Eq,
                                                                                 ),
                                                                                 FunArg::implicit(
-                                                                                    &const {
-                                                                                        var(Some(sym::A), 3)
-                                                                                    },
+                                                                                    &const { var(3) },
                                                                                 ),
                                                                             )
                                                                         },
                                                                         FunArg::explicit(
-                                                                            &const {
-                                                                                var(Some(sym::a), 1)
-                                                                            },
+                                                                            &const { var(1) },
                                                                         ),
                                                                     )
                                                                 },
-                                                                FunArg::explicit(
-                                                                    &const { var(Some(sym::b), 0) },
-                                                                ),
+                                                                FunArg::explicit(&const { var(0) }),
                                                             )
                                                         },
                                                     ),
@@ -222,20 +205,18 @@ impl PrimVar {
                                                                 None,
                                                                 &const {
                                                                     Expr::FunApp(
-                                                                        &const { var(Some(sym::p), 3) },
+                                                                        &const { var(3) },
                                                                         FunArg::explicit(
-                                                                            &const {
-                                                                                var(Some(sym::a), 2)
-                                                                            },
+                                                                            &const { var(2) },
                                                                         ),
                                                                     )
                                                                 },
                                                             ),
                                                             &const {
                                                                 Expr::FunApp(
-                                                                    &const { var(Some(sym::p), 4) },
+                                                                    &const { var(4) },
                                                                     FunArg::explicit(
-                                                                        &const { var(Some(sym::b), 2) },
+                                                                        &const { var(2) },
                                                                     ),
                                                                 )
                                                             },
@@ -272,19 +253,16 @@ impl PrimVar {
                                                         Expr::FunType(
                                                             FunParam::explicit(
                                                                 None,
-                                                                &const { var(None, 1) },
+                                                                &const { var(1) },
                                                             ),
-                                                            &const { var(None, 1) },
+                                                            &const { var(1) },
                                                         )
                                                     },
                                                 ),
                                                 &const {
                                                     Expr::FunType(
-                                                        FunParam::explicit(
-                                                            None,
-                                                            &const { var(None, 2) },
-                                                        ),
-                                                        &const { var(None, 2) },
+                                                        FunParam::explicit(None, &const { var(2) }),
+                                                        &const { var(2) },
                                                     )
                                                 },
                                             )
@@ -292,8 +270,8 @@ impl PrimVar {
                                     ),
                                     &const {
                                         Expr::FunType(
-                                            FunParam::explicit(None, &const { var(None, 2) }),
-                                            &const { var(None, 2) },
+                                            FunParam::explicit(None, &const { var(2) }),
+                                            &const { var(2) },
                                         )
                                     },
                                 )
@@ -322,7 +300,7 @@ impl PrimVar {
                                             None,
                                             &const {
                                                 Expr::FunApp(
-                                                    &const { var(None, 1) },
+                                                    &const { var(1) },
                                                     FunArg::explicit(&const { Expr::bool(true) }),
                                                 )
                                             },
@@ -333,7 +311,7 @@ impl PrimVar {
                                                     None,
                                                     &const {
                                                         Expr::FunApp(
-                                                            &const { var(None, 2) },
+                                                            &const { var(2) },
                                                             FunArg::explicit(
                                                                 &const { Expr::bool(false) },
                                                             ),
@@ -342,8 +320,8 @@ impl PrimVar {
                                                 ),
                                                 &const {
                                                     Expr::FunApp(
-                                                        &const { var(None, 3) },
-                                                        FunArg::explicit(&const { var(None, 2) }),
+                                                        &const { var(3) },
+                                                        FunArg::explicit(&const { var(2) }),
                                                     )
                                                 },
                                             )

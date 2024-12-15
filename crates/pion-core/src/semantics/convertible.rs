@@ -54,8 +54,8 @@ fn convertible<'core>(
 }
 
 fn convertible_neutral<'core>(
-    (lhs_head, lhs_spine): (Head<'core>, &Spine<'core>),
-    (rhs_head, rhs_spine): (Head<'core>, &Spine<'core>),
+    (lhs_head, lhs_spine): (Head, &Spine<'core>),
+    (rhs_head, rhs_spine): (Head, &Spine<'core>),
     bump: &'core bumpalo::Bump,
     locals: EnvLen,
     metas: &MetaValues<'core>,
@@ -113,7 +113,7 @@ fn fun_eta_convertible<'core>(
     locals: EnvLen,
     metas: &MetaValues<'core>,
 ) -> bool {
-    let var = Value::local_var(LocalVar::new(lhs_param.name, locals.to_level()));
+    let var = Value::local_var(LocalVar::new(locals.to_level()));
     let lhs = elim::apply_closure(
         lhs_body.clone(),
         var.clone(),
@@ -151,7 +151,7 @@ fn convertible_funs<'core>(
 
     let lhs = elim::apply_closure(
         lhs.clone(),
-        Value::local_var(LocalVar::new(None, locals.to_level())),
+        Value::local_var(LocalVar::new(locals.to_level())),
         bump,
         UnfoldOpts::for_quote(),
         metas,
@@ -159,7 +159,7 @@ fn convertible_funs<'core>(
 
     let rhs = elim::apply_closure(
         rhs.clone(),
-        Value::local_var(LocalVar::new(None, locals.to_level())),
+        Value::local_var(LocalVar::new(locals.to_level())),
         bump,
         UnfoldOpts::for_quote(),
         metas,
@@ -261,7 +261,7 @@ mod tests {
                     Expr::FunApp(
                         &Expr::BOOL,
                         FunArg::explicit(
-                            &const { Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0))) },
+                            &const { Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0))) },
                         ),
                     )
                 },

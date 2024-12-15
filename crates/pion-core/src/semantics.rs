@@ -25,7 +25,7 @@ pub type Spine<'core> = EcoVec<Elim<'core>>;
 pub enum Value<'core> {
     Lit(Lit<'core>),
 
-    Neutral(Head<'core>, Spine<'core>),
+    Neutral(Head, Spine<'core>),
 
     FunType(FunParam<'core, &'core Value<'core>>, Closure<'core>),
     FunLit(FunParam<'core, &'core Value<'core>>, Closure<'core>),
@@ -45,7 +45,7 @@ impl<'core> Value<'core> {
     pub const UNIT_TYPE: Self = Self::RecordType(Telescope::empty());
     pub const UNIT_VALUE: Self = Self::RecordLit(&[]);
 
-    pub const fn local_var(var: LocalVar<'core, DeBruijnLevel>) -> Self {
+    pub const fn local_var(var: LocalVar<DeBruijnLevel>) -> Self {
         Self::Neutral(Head::LocalVar(var), EcoVec::new())
     }
 
@@ -64,9 +64,9 @@ impl<'core> Value<'core> {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Head<'core> {
+pub enum Head {
     Error,
-    LocalVar(LocalVar<'core, DeBruijnLevel>),
+    LocalVar(LocalVar<DeBruijnLevel>),
     MetaVar(MetaVar),
     PrimVar(PrimVar),
 }
@@ -135,7 +135,7 @@ mod tests {
     #[cfg(target_pointer_width = "64")]
     fn type_sizes() {
         assert_eq!(size_of::<Value>(), 64);
-        assert_eq!(size_of::<Head>(), 32);
+        assert_eq!(size_of::<Head>(), 16);
         assert_eq!(size_of::<Elim>(), 72);
         assert_eq!(size_of::<Closure>(), 24);
     }

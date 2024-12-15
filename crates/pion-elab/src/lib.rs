@@ -3,6 +3,7 @@
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use env::{ElabEnv, LocalInfo, MetaSource};
 use pion_core::env::{DeBruijn, DeBruijnLevel};
+use pion_core::print::{Prec, Printer};
 use pion_core::semantics::{ElimEnv, EvalEnv, QuoteEnv, Type, UnfoldOpts, Value};
 use pion_core::symbol::Symbol;
 use pion_core::syntax::{Expr, FunArg, LetBinding, LocalVar, MetaVar, Plicity};
@@ -59,15 +60,12 @@ impl<'core> Elaborator<'core> {
         self.env.metas.push(source, r#type);
 
         let mut expr = Expr::MetaVar(MetaVar::new(var));
-        for ((level, info), name) in DeBruijnLevel::iter()
-            .zip(self.env.locals.infos.iter())
-            .zip(self.env.locals.names.iter())
-        {
+        for (level, info) in DeBruijnLevel::iter().zip(self.env.locals.infos.iter()) {
             match info {
                 LocalInfo::Let(..) => {}
                 LocalInfo::Param => {
                     let index = level.to_index(self.env.locals.len()).unwrap();
-                    let arg = Expr::LocalVar(LocalVar::new(*name, index));
+                    let arg = Expr::LocalVar(LocalVar::new(index));
                     let (fun, arg) = self.bump.alloc((expr, arg));
                     let arg = FunArg::new(Plicity::Explicit, &*arg);
                     expr = Expr::FunApp(fun, arg);
@@ -140,5 +138,13 @@ impl<'core> Elaborator<'core> {
             let r#type = self.eval_env().eval(r#type);
             self.env.locals.push_let(*name, r#type, *init, value);
         }
+    }
+
+    fn pretty(&mut self, expr: &Expr<'core>) -> String {
+        let printer = Printer::new(self.bump);
+        let doc = printer
+            .expr_prec(expr, Prec::MAX, &mut self.env.locals.names)
+            .into_doc();
+        format!("{}", doc.pretty(80))
     }
 }

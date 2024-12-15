@@ -50,7 +50,7 @@ pub fn quote<'core>(
             while let Some((name, value, update_telescope)) =
                 elim::split_telescope(&mut telescope, bump, UnfoldOpts::for_quote(), metas)
             {
-                let var = Value::local_var(LocalVar::new(Some(name), locals.to_level()));
+                let var = Value::local_var(LocalVar::new(locals.to_level()));
                 update_telescope(var);
                 let expr = quote(&value, bump, locals, metas);
                 expr_fields.push((name, expr));
@@ -65,7 +65,7 @@ pub fn quote<'core>(
 }
 
 fn quote_head<'core>(
-    head: Head<'core>,
+    head: Head,
     bump: &'core bumpalo::Bump,
     locals: EnvLen,
     metas: &MetaValues<'core>,
@@ -73,7 +73,7 @@ fn quote_head<'core>(
     match head {
         Head::Error => Expr::Error,
         Head::LocalVar(var) => match var.to_index(locals) {
-            Some(de_bruijn) => Expr::LocalVar(LocalVar::new(var.name, de_bruijn)),
+            Some(de_bruijn) => Expr::LocalVar(LocalVar::new(de_bruijn)),
             None => Expr::Error,
         },
         Head::MetaVar(var) => match metas.get(var) {
@@ -86,7 +86,7 @@ fn quote_head<'core>(
 }
 
 fn quote_neutral<'core>(
-    head: Head<'core>,
+    head: Head,
     spine: Spine<'core>,
     bump: &'core bumpalo::Bump,
     locals: EnvLen,
@@ -144,7 +144,7 @@ fn quote_funs<'core>(
 ) -> (FunParam<'core, &'core Expr<'core>>, &'core Expr<'core>) {
     let param_type = quote(param.r#type, bump, locals, metas);
 
-    let arg = Value::local_var(LocalVar::new(param.name, locals.to_level()));
+    let arg = Value::local_var(LocalVar::new(locals.to_level()));
     let body = elim::apply_closure(closure.clone(), arg, bump, UnfoldOpts::for_quote(), metas);
     let body = quote(&body, bump, locals.succ(), metas);
 
@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn quote_unbound_local_var() {
-        let value = Value::local_var(LocalVar::new(None, DeBruijnLevel::new(0)));
+        let value = Value::local_var(LocalVar::new(DeBruijnLevel::new(0)));
         assert_quote(value, Expr::Error);
     }
 
@@ -231,7 +231,7 @@ mod tests {
         let metas = UniqueEnv::new();
 
         let value = Value::Neutral(
-            Head::LocalVar(LocalVar::new(None, DeBruijnLevel::new(0))),
+            Head::LocalVar(LocalVar::new(DeBruijnLevel::new(0))),
             eco_vec![Elim::FunApp(FunArg::explicit(Value::int(42)))],
         );
 
@@ -240,7 +240,7 @@ mod tests {
             &metas,
             value,
             Expr::FunApp(
-                &Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0))),
+                &Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0))),
                 FunArg::explicit(&Expr::int(42)),
             ),
         );
@@ -249,13 +249,13 @@ mod tests {
     #[test]
     fn quote_fun_lit() {
         let ty = Type::ERROR;
-        let body = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
+        let body = Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0)));
         let fun = Value::FunLit(FunParam::explicit(None, &ty), Closure::empty(&body));
         assert_quote(
             fun,
             Expr::FunLit(
                 FunParam::explicit(None, &Expr::Error),
-                &Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0))),
+                &Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0))),
             ),
         );
     }
@@ -263,13 +263,13 @@ mod tests {
     #[test]
     fn quote_fun_type() {
         let ty = Type::ERROR;
-        let body = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
+        let body = Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0)));
         let fun = Value::FunType(FunParam::explicit(None, &ty), Closure::empty(&body));
         assert_quote(
             fun,
             Expr::FunType(
                 FunParam::explicit(None, &Expr::Error),
-                &Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0))),
+                &Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0))),
             ),
         );
     }

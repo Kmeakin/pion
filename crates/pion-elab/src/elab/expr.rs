@@ -209,12 +209,11 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                         unreachable!()
                     }
                     _ => {
+                        let found = self.pretty(&self.quote_env().quote(&scrut_type));
                         self.diagnostic(
                             scrut.range,
-                            Diagnostic::error().with_message(format!(
-                                "Expected record, found `{}`",
-                                self.quote_env().quote(&scrut_type)
-                            )),
+                            Diagnostic::error()
+                                .with_message(format!("Expected record, found `{found}`")),
                         );
                         (Expr::Error, Type::ERROR)
                     }
@@ -338,10 +337,14 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 // Unification may have unblocked some metas
                 let from = self.elim_env().subst_metas(&from);
                 let to = self.elim_env().subst_metas(to);
-                self.diagnostic(
-                    expr.range,
-                    err.to_diagnostic(&self.quote_env().quote(&from), &self.quote_env().quote(&to)),
-                );
+
+                let from = self.quote_env().quote(&from);
+                let to = self.quote_env().quote(&to);
+
+                let from = self.pretty(&from);
+                let to = self.pretty(&to);
+
+                self.diagnostic(expr.range, err.to_diagnostic(&from, &to));
                 Expr::Error
             }
         }
@@ -393,7 +396,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
 
                     let body_expr = {
                         let len = this.env.locals.len();
-                        let var = Expr::LocalVar(LocalVar::new(param.name, DeBruijnIndex::new(0)));
+                        let var = Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0)));
                         let bindings = this.destruct_pat(&pat, &var, &param_type, true);
 
                         this.env.locals.push_param(param.name, param_type);
@@ -427,7 +430,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let ((param, pat), r#param_type) = self.synth_fun_param(param.as_ref());
                 let (body_expr, body_type) = {
                     let len = self.env.locals.len();
-                    let var = Expr::LocalVar(LocalVar::new(param.name, DeBruijnIndex::new(0)));
+                    let var = Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0)));
                     let bindings = self.destruct_pat(&pat, &var, &param_type, true);
                     self.env.locals.push_param(param.name, param_type.clone());
                     self.push_let_bindings(&bindings);
@@ -479,10 +482,8 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             // function literal by wrapping it in an implicit function
             (surface::Plicity::Explicit, Plicity::Implicit) => {
                 let r#type = self.quote_env().quote(expected_param.r#type);
-                let arg_value = Value::local_var(LocalVar::new(
-                    expected_param.name,
-                    self.env.locals.values.len().to_level(),
-                ));
+                let arg_value =
+                    Value::local_var(LocalVar::new(self.env.locals.values.len().to_level()));
                 (self.env.locals).push_param(expected_param.name, expected_param.r#type.clone());
                 let expected = (self.elim_env()).apply_closure(expected_body.clone(), arg_value);
                 let body = self.check_fun_expr(params, body, &expected);
@@ -497,13 +498,11 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let (param, pat) = self.check_fun_param(param.as_ref(), expected_param.r#type);
                 let body_expr = {
                     let len = self.env.locals.len();
-                    let var = Expr::LocalVar(LocalVar::new(param.name, DeBruijnIndex::new(0)));
+                    let var = Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0)));
                     let bindings = self.destruct_pat(&pat, &var, expected_param.r#type, true);
 
-                    let arg_value = Value::local_var(LocalVar::new(
-                        param.name,
-                        self.env.locals.values.len().to_level(),
-                    ));
+                    let arg_value =
+                        Value::local_var(LocalVar::new(self.env.locals.values.len().to_level()));
                     (self.env.locals).push_param(param.name, expected_param.r#type.clone());
                     self.push_let_bindings(&bindings);
                     let expected =
@@ -549,6 +548,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     result_type = self.elim_env().apply_closure(body, arg_value);
                 }
                 Value::FunType(param, _) => {
+                    let callee_type = self.pretty(&self.quote_env().quote(&callee_type));
                     self.diagnostic(
                         arg.range,
                         Diagnostic::error()
@@ -559,7 +559,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                             ))
                             .with_notes(vec![format!(
                                 "Help: the type of the callee is `{}`",
-                                self.quote_env().quote(&callee_type)
+                                callee_type
                             )]),
                     );
                     return (Expr::Error, Type::ERROR);
@@ -572,7 +572,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     };
                     let mut notes = vec![format!(
                         "Help: the type of the callee is `{}`",
-                        self.quote_env().quote(&callee_type)
+                        self.pretty(&self.quote_env().quote(&callee_type))
                     )];
                     if arity > 0 {
                         notes.push(format!(

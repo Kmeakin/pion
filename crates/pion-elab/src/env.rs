@@ -33,10 +33,10 @@ impl<'core> LocalEnv<'core> {
     pub fn lookup(
         &self,
         name: Symbol<'core>,
-    ) -> Option<(LocalVar<'core, DeBruijnIndex>, &Type<'core>, &Value<'core>)> {
+    ) -> Option<(LocalVar<DeBruijnIndex>, &Type<'core>, &Value<'core>)> {
         let index = self.names.find(&Some(name))?;
         Some((
-            LocalVar::new(Some(name), index),
+            LocalVar::new(index),
             self.types.get(index).unwrap(),
             self.values.get(index).unwrap(),
         ))
@@ -56,7 +56,7 @@ impl<'core> LocalEnv<'core> {
     }
 
     pub fn push_param(&mut self, name: Name<'core>, r#type: Type<'core>) {
-        let value = Value::local_var(LocalVar::new(name, self.names.len().to_level()));
+        let value = Value::local_var(LocalVar::new(self.names.len().to_level()));
         self.push(name, LocalInfo::Param, r#type, value);
     }
 

@@ -6,7 +6,7 @@ use pion_core::semantics::{
     self, Closure, Elim, Head, LocalValues, MetaValues, Type, UnfoldOpts, Value,
 };
 use pion_core::symbol::Symbol;
-use pion_core::syntax::{Expr, FunArg, FunParam, LocalVar, MetaVar, Name};
+use pion_core::syntax::{Expr, FunArg, FunParam, LocalVar, MetaVar};
 
 /// Unification environment.
 pub struct UnifyEnv<'env, 'core> {
@@ -35,8 +35,8 @@ impl PartialRenaming {
         self.target.clear();
     }
 
-    fn next_local_var<'core>(&self, name: Name<'core>) -> Value<'core> {
-        Value::local_var(LocalVar::new(name, self.source.len().to_level()))
+    fn next_local_var<'core>(&self) -> Value<'core> {
+        Value::local_var(LocalVar::new(self.source.len().to_level()))
     }
 
     /// Set a local source variable to local target variable mapping, ensuring
@@ -79,15 +79,9 @@ impl PartialRenaming {
 
     /// Rename a local variable in the source environment to a local variable in
     /// the target environment.
-    fn rename_local<'core>(
-        &self,
-        source_var: LocalVar<'core, DeBruijnLevel>,
-    ) -> Option<LocalVar<'core, DeBruijnIndex>> {
+    fn rename_local(&self, source_var: LocalVar<DeBruijnLevel>) -> Option<LocalVar<DeBruijnIndex>> {
         let target_var = self.get_local(source_var)?;
-        Some(LocalVar::new(
-            source_var.name,
-            target_var.to_index(self.target).unwrap(),
-        ))
+        Some(LocalVar::new(target_var.to_index(self.target).unwrap()))
     }
 
     fn len(&self) -> (EnvLen, EnvLen) { (self.source.len(), self.target) }
@@ -169,8 +163,8 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
             // Unify a function literal with a value, using eta-conversion:
             // `(fun x => f x) ?= f`
             (Value::FunLit(param, closure), value) | (value, Value::FunLit(param, closure)) => {
-                let left_var = Value::local_var(LocalVar::new(param.name, self.locals.to_level()));
-                let right_var = Value::local_var(LocalVar::new(param.name, self.locals.to_level()));
+                let left_var = Value::local_var(LocalVar::new(self.locals.to_level()));
+                let right_var = Value::local_var(LocalVar::new(self.locals.to_level()));
 
                 let left_value = self.elim_env().apply_closure(closure, left_var);
                 let right_value = self
@@ -210,8 +204,8 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                 let local_len = self.locals;
 
                 while let Some((
-                    (lhs_label, lhs_value, lhs_update_telescope),
-                    (rhs_label, rhs_value, rhs_update_telescope),
+                    (_, lhs_value, lhs_update_telescope),
+                    (_, rhs_value, rhs_update_telescope),
                 )) = Option::zip(
                     self.elim_env().split_telescope(&mut lhs_telescope),
                     self.elim_env().split_telescope(&mut rhs_telescope),
@@ -221,10 +215,8 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                         return Err(error);
                     }
 
-                    let left_var =
-                        Value::local_var(LocalVar::new(Some(lhs_label), self.locals.to_level()));
-                    let right_var =
-                        Value::local_var(LocalVar::new(Some(rhs_label), self.locals.to_level()));
+                    let left_var = Value::local_var(LocalVar::new(self.locals.to_level()));
+                    let right_var = Value::local_var(LocalVar::new(self.locals.to_level()));
                     lhs_update_telescope(left_var);
                     rhs_update_telescope(right_var);
                     self.locals.push();
@@ -327,8 +319,8 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
 
         self.unify(left_param.r#type, right_param.r#type)?;
 
-        let left_var = Value::local_var(LocalVar::new(left_param.name, self.locals.to_level()));
-        let right_var = Value::local_var(LocalVar::new(right_param.name, self.locals.to_level()));
+        let left_var = Value::local_var(LocalVar::new(self.locals.to_level()));
+        let right_var = Value::local_var(LocalVar::new(self.locals.to_level()));
 
         let left_value = self.elim_env().apply_closure(left_closure, left_var);
         let right_value = self.elim_env().apply_closure(right_closure, right_var);
@@ -414,7 +406,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
         &mut self,
         meta_var: MetaVar,
         value: &Value<'core>,
-    ) -> Result<Expr<'core>, RenameError<'core>> {
+    ) -> Result<Expr<'core>, RenameError> {
         let value = self.elim_env().subst_metas(value);
         match value {
             Value::Lit(lit) => Ok(Expr::Lit(lit)),
@@ -488,7 +480,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                     match self.rename(meta_var, &value) {
                         Ok(expr) => {
                             result_fields.push((label, expr));
-                            let source_var = self.renaming.next_local_var(Some(label));
+                            let source_var = self.renaming.next_local_var();
                             update_telescope(source_var);
                             self.renaming.push_local();
                         }
@@ -520,10 +512,10 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
         meta_var: MetaVar,
         param: FunParam<'core, &'core Value<'core>>,
         closure: Closure<'core>,
-    ) -> Result<(FunParam<'core, &'core Expr<'core>>, &'core Expr<'core>), RenameError<'core>> {
+    ) -> Result<(FunParam<'core, &'core Expr<'core>>, &'core Expr<'core>), RenameError> {
         let param_type = self.rename(meta_var, param.r#type)?;
 
-        let var = self.renaming.next_local_var(param.name);
+        let var = self.renaming.next_local_var();
         let body = self.elim_env().apply_closure(closure, var);
 
         self.renaming.push_local();
@@ -546,11 +538,11 @@ pub enum UnifyError<'core> {
     /// An error that was found in the problem spine.
     Spine(SpineError<'core>),
     /// An error that occurred when renaming the solution.
-    Rename(RenameError<'core>),
+    Rename(RenameError),
 }
 
-impl<'core> UnifyError<'core> {
-    pub fn to_diagnostic(self, from: &Expr<'core>, to: &Expr<'core>) -> Diagnostic<usize> {
+impl UnifyError<'_> {
+    pub fn to_diagnostic(self, from: &str, to: &str) -> Diagnostic<usize> {
         let diag = Diagnostic::error()
             .with_message(format!("Type mismatch: expected `{to}`, found `{from}`"));
 
@@ -588,8 +580,8 @@ impl<'core> From<SpineError<'core>> for UnifyError<'core> {
     fn from(error: SpineError<'core>) -> Self { Self::Spine(error) }
 }
 
-impl<'core> From<RenameError<'core>> for UnifyError<'core> {
-    fn from(error: RenameError<'core>) -> Self { Self::Rename(error) }
+impl From<RenameError> for UnifyError<'_> {
+    fn from(error: RenameError) -> Self { Self::Rename(error) }
 }
 
 /// An error that was found in the spine of a unification problem.
@@ -636,7 +628,7 @@ pub enum SpineError<'core> {
     /// variables, even if the return type is dependent, local variables block
     /// all computation in the return type, and the pattern solution is
     /// guaranteed to be well-typed.
-    NonLinearSpine(LocalVar<'core, DeBruijnLevel>),
+    NonLinearSpine(LocalVar<DeBruijnLevel>),
     /// A function application was in the problem spine, but it wasn't a local
     /// variable.
     NonLocalFunApp,
@@ -646,7 +638,7 @@ pub enum SpineError<'core> {
 
 /// An error that occurred when renaming the solution.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum RenameError<'core> {
+pub enum RenameError {
     /// A free local variable in the compared value does not occur in the
     /// problem spine.
     ///
@@ -659,7 +651,7 @@ pub enum RenameError<'core> {
     /// There is no solution for this metavariable because `?α` is the
     /// topmost-level scope, so it can only abstract over `x` and `y`, but
     /// these don't occur in `z -> z`.
-    EscapingLocalVar(LocalVar<'core, DeBruijnLevel>),
+    EscapingLocalVar(LocalVar<DeBruijnLevel>),
 
     /// The metavariable occurs in the value being compared against.
     /// This is sometimes referred to as an 'occurs check' failure.
@@ -749,7 +741,7 @@ mod tests {
     #[test]
     fn unify_fun_type() {
         let bool = Type::BOOL;
-        let var = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
+        let var = Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0)));
         let lhs = Value::FunType(FunParam::explicit(None, &bool), Closure::empty(&var));
         let rhs = Value::FunType(FunParam::implicit(None, &bool), Closure::empty(&var));
 
@@ -762,7 +754,7 @@ mod tests {
     #[test]
     fn unify_fun_lit() {
         let bool = Type::BOOL;
-        let var = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
+        let var = Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0)));
         let lhs = Value::FunLit(FunParam::explicit(None, &bool), Closure::empty(&var));
         let rhs = Value::FunLit(FunParam::implicit(None, &bool), Closure::empty(&var));
 
@@ -776,7 +768,7 @@ mod tests {
     fn unify_fun_lit_eta() {
         // `fun(x : Int) => Bool(x) == Bool`
         let int = Type::INT;
-        let var = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
+        let var = Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0)));
         let body = Expr::FunApp(&Expr::BOOL, FunArg::explicit(&var));
         let lhs = Value::FunLit(FunParam::explicit(None, &int), Closure::empty(&body));
         let rhs = Value::BOOL;
@@ -796,19 +788,19 @@ mod tests {
 
     #[test]
     fn unify_locals() {
-        let lhs = Value::local_var(LocalVar::new(None, DeBruijnLevel::new(0)));
-        let rhs = Value::local_var(LocalVar::new(None, DeBruijnLevel::new(1)));
+        let lhs = Value::local_var(LocalVar::new(DeBruijnLevel::new(0)));
+        let rhs = Value::local_var(LocalVar::new(DeBruijnLevel::new(1)));
         assert_unify(&lhs, &lhs, Ok(()));
         assert_unify(&rhs, &rhs, Ok(()));
         assert_unify(&lhs, &rhs, Err(UnifyError::Mismatch));
         assert_unify(&rhs, &lhs, Err(UnifyError::Mismatch));
 
         let lhs = Value::Neutral(
-            Head::LocalVar(LocalVar::new(None, DeBruijnLevel::new(0))),
+            Head::LocalVar(LocalVar::new(DeBruijnLevel::new(0))),
             eco_vec![Elim::FunApp(FunArg::explicit(Value::int(42)))],
         );
         let rhs = Value::Neutral(
-            Head::LocalVar(LocalVar::new(None, DeBruijnLevel::new(0))),
+            Head::LocalVar(LocalVar::new(DeBruijnLevel::new(0))),
             eco_vec![Elim::FunApp(FunArg::explicit(Value::int(24)))],
         );
         assert_unify(&lhs, &lhs, Ok(()));

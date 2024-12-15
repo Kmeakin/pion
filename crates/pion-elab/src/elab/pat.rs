@@ -144,10 +144,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     let (name, r#type, update_telescope) =
                         self.elim_env().split_telescope(&mut telescope).unwrap();
                     let expr = self.check_pat(surface_field.pat.as_ref(), &r#type);
-                    let value = Value::local_var(LocalVar::new(
-                        Some(name),
-                        self.env.locals.len().to_level(),
-                    ));
+                    let value = Value::local_var(LocalVar::new(self.env.locals.len().to_level()));
                     update_telescope(value);
                     pat_fields.push((name, expr));
                 }
@@ -178,10 +175,14 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 // Unification may have unblocked some metas
                 let from = self.elim_env().subst_metas(from);
                 let to = self.elim_env().subst_metas(to);
-                self.diagnostic(
-                    pat.range,
-                    err.to_diagnostic(&self.quote_env().quote(&from), &self.quote_env().quote(&to)),
-                );
+
+                let from = self.quote_env().quote(&from);
+                let to = self.quote_env().quote(&to);
+
+                let from = self.pretty(&from);
+                let to = self.pretty(&to);
+
+                self.diagnostic(pat.range, err.to_diagnostic(&from, &to));
                 Pat::Error
             }
         }
@@ -228,10 +229,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                         let expr = Expr::RecordProj(ctx.bump.alloc(*expr), *pat_name);
 
                         recur(ctx, pat, &expr, &r#type, bindings, false);
-                        let var = Value::local_var(LocalVar::new(
-                            Some(*pat_name),
-                            ctx.env.locals.len().to_level(),
-                        ));
+                        let var = Value::local_var(LocalVar::new(ctx.env.locals.len().to_level()));
                         update_telescope(var);
                     }
                 }

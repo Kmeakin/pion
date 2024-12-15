@@ -11,7 +11,7 @@ pub enum Expr<'core> {
     Lit(Lit<'core>),
 
     PrimVar(PrimVar),
-    LocalVar(LocalVar<'core, DeBruijnIndex>),
+    LocalVar(LocalVar<DeBruijnIndex>),
     MetaVar(MetaVar),
 
     FunType(FunParam<'core, &'core Self>, &'core Self),
@@ -41,30 +41,26 @@ pub fn record_labels_equal<L, R>(lhs: RecordFields<'_, L>, rhs: RecordFields<'_,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct LocalVar<'core, V> {
-    pub name: Name<'core>,
+pub struct LocalVar<V> {
     pub de_bruijn: V,
 }
 
-impl<V: fmt::Display> fmt::Display for LocalVar<'_, V> {
+impl<V: fmt::Display> fmt::Display for LocalVar<V> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.name {
-            Some(name) => write!(f, "{name}"),
-            None => write!(f, "#var{}", self.de_bruijn),
-        }
+        write!(f, "#var({})", self.de_bruijn)
     }
 }
 
-impl<'core, V> LocalVar<'core, V> {
-    pub const fn new(name: Name<'core>, de_bruijn: V) -> Self { Self { name, de_bruijn } }
+impl<V> LocalVar<V> {
+    pub const fn new(de_bruijn: V) -> Self { Self { de_bruijn } }
 }
 
-impl DeBruijn for LocalVar<'_, DeBruijnIndex> {
+impl DeBruijn for LocalVar<DeBruijnIndex> {
     fn to_level(self, len: EnvLen) -> Option<DeBruijnLevel> { self.de_bruijn.to_level(len) }
     fn to_index(self, len: EnvLen) -> Option<DeBruijnIndex> { self.de_bruijn.to_index(len) }
 }
 
-impl DeBruijn for LocalVar<'_, DeBruijnLevel> {
+impl DeBruijn for LocalVar<DeBruijnLevel> {
     fn to_level(self, len: EnvLen) -> Option<DeBruijnLevel> { self.de_bruijn.to_level(len) }
     fn to_index(self, len: EnvLen) -> Option<DeBruijnIndex> { self.de_bruijn.to_index(len) }
 }
@@ -163,7 +159,7 @@ impl<'core> Expr<'core> {
 
             match expr {
                 Expr::LocalVar(var) if var.de_bruijn >= min => {
-                    Expr::LocalVar(LocalVar::new(var.name, var.de_bruijn + amount))
+                    Expr::LocalVar(LocalVar::new(var.de_bruijn + amount))
                 }
 
                 Expr::Error

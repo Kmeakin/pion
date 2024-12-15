@@ -13,7 +13,7 @@ let f2 : {x : Int, y : Bool} -> Bool = fun(r : {x : Int, y : Bool}) => do {
 };
 let f3 : forall(r : {A : Type, a : A}) -> r.A = fun(r : {A : Type, a : A}) => do {
     let B : Type = r.A;
-    let b : A = r.a;
+    let b : B = r.a;
     b
 };
 

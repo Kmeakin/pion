@@ -12,7 +12,7 @@ error: Type mismatch: expected `?3(n)`, found `?1`
 1 │ #check (fun(n) => n) : _ -> _;
   │                   ^
   │
-  = help: could not unify types because escaping local variable (`n`) appeared in problem spine
+  = help: could not unify types because escaping local variable (`#var(0)`) appeared in problem spine
 
 error: Could not infer expression to solve hole
   ┌─ test-data/elab/unification/escaping-local.pion:1:24

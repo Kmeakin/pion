@@ -2,7 +2,7 @@ use core::fmt;
 
 use pretty::{docs, DocAllocator as _};
 
-use crate::env::DeBruijnIndex;
+use crate::env::{DeBruijnIndex, UniqueEnv};
 use crate::syntax::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -63,66 +63,84 @@ impl<'bump, A: 'bump> pretty::DocAllocator<'bump, A> for Printer<'bump> {
 }
 
 pub type DocBuilder<'bump> = pretty::DocBuilder<'bump, Printer<'bump>>;
+pub type Names<'core> = UniqueEnv<Name<'core>>;
 
 impl<'bump> Printer<'bump> {
     pub fn new(bump: &'bump bumpalo::Bump) -> Self { Self { bump } }
 
-    pub fn type_ann_expr(&'bump self, expr: &Expr, r#type: &Expr) -> DocBuilder<'bump> {
-        let expr = self.expr_prec(expr, Prec::Call);
-        let r#type = self.expr_prec(r#type, Prec::Fun);
+    pub fn type_ann_expr<'core>(
+        &'bump self,
+        expr: &Expr<'core>,
+        r#type: &Expr<'core>,
+        names: &mut Names<'core>,
+    ) -> DocBuilder<'bump> {
+        let expr = self.expr_prec(expr, Prec::Call, names);
+        let r#type = self.expr_prec(r#type, Prec::Fun, names);
         docs![self, expr, " : ", r#type]
     }
 
-    pub fn expr_prec(&'bump self, expr: &Expr<'_>, prec: Prec) -> DocBuilder<'bump> {
+    pub fn expr_prec<'core>(
+        &'bump self,
+        expr: &Expr<'core>,
+        prec: Prec,
+        names: &mut Names<'core>,
+    ) -> DocBuilder<'bump> {
         let inner = match expr {
             Expr::Error => self.text("#error"),
             Expr::Lit(lit) => self.lit(*lit),
             Expr::PrimVar(var) => self.text(var.name()),
-            Expr::LocalVar(var) => match var.name {
-                Some(name) => self.text(format!("{name}")),
-                None => self.text(format!("#var({:?})", var.de_bruijn)),
+            Expr::LocalVar(var) => match names.get(var.de_bruijn) {
+                None => panic!("Unbound local variable: {var:?}"),
+                Some(Some(name)) => self.text(format!("{name}")),
+                Some(None) => self.text(format!("#var({:?})", var.de_bruijn)),
             },
             Expr::MetaVar(var) => self.text(format!("?{}", var.de_bruijn)),
             Expr::FunType(param, body) if !body.binds_local(DeBruijnIndex::new(0)) => {
                 let plicity = self.plicity(param.plicity);
-                let param_type = self.expr_prec(param.r#type, Prec::Call);
-                let ret_type = self.expr_prec(body, Prec::MAX);
+                let param_type = self.expr_prec(param.r#type, Prec::Call, names);
+                names.push(param.name);
+                let ret_type = self.expr_prec(body, Prec::MAX, names);
+                names.pop();
                 docs![self, plicity, param_type, " -> ", ret_type]
             }
             Expr::FunType(..) => {
+                let len = names.len();
                 let mut expr = expr;
                 let params = std::iter::from_fn(|| match expr {
                     Expr::FunType(param, body) if body.binds_local(DeBruijnIndex::new(0)) => {
                         expr = body;
-                        Some(param)
+                        let ret = self.fun_param(param, names);
+                        names.push(param.name);
+                        Some(ret)
                     }
                     body => {
                         expr = body;
                         None
                     }
                 });
-
-                let params = params.map(|param| self.fun_param(param));
                 let params = self.intersperse(params, docs![self, ", "]);
-                let body = self.expr_prec(expr, Prec::MAX);
+                let body = self.expr_prec(expr, Prec::MAX, names);
+                names.truncate(len);
                 docs![self, "forall(", params, ") -> ", body]
             }
             Expr::FunLit(..) => {
+                let len = names.len();
                 let mut expr = expr;
                 let params = std::iter::from_fn(|| match expr {
                     Expr::FunLit(param, body) => {
                         expr = body;
-                        Some(param)
+                        let ret = self.fun_param(param, names);
+                        names.push(param.name);
+                        Some(ret)
                     }
                     body => {
                         expr = body;
                         None
                     }
                 });
-
-                let params = params.map(|param| self.fun_param(param));
                 let params = self.intersperse(params, docs![self, ", "]);
-                let body = self.expr_prec(expr, Prec::MAX);
+                let body = self.expr_prec(expr, Prec::MAX, names);
+                names.truncate(len);
                 docs![self, "fun(", params, ") => ", body]
             }
             Expr::FunApp(..) => {
@@ -133,14 +151,14 @@ impl<'bump> Printer<'bump> {
                     args.push(arg);
                 }
 
-                let callee = self.expr_prec(callee, Prec::Call);
-                let args = args.into_iter().rev().map(|arg| self.fun_arg(arg));
+                let callee = self.expr_prec(callee, Prec::Call, names);
+                let args = args.into_iter().rev().map(|arg| self.fun_arg(arg, names));
                 let args = self.intersperse(args, docs![self, ", "]);
                 docs![self, callee, "(", args, ")"]
             }
             Expr::Do([], None) => docs![self, "do {}"],
             Expr::Do([], Some(trailing_expr)) => {
-                let trailing_expr = self.expr_prec(trailing_expr, Prec::MAX);
+                let trailing_expr = self.expr_prec(trailing_expr, Prec::MAX, names);
                 docs![
                     self,
                     "do {",
@@ -150,9 +168,12 @@ impl<'bump> Printer<'bump> {
                 .group()
             }
             Expr::Do(stmts, trailing_expr) => {
-                let stmts = stmts.iter().map(|stmt| self.stmt(stmt));
+                let len = names.len();
+                let stmts = stmts.iter().map(|stmt| self.stmt(stmt, names));
                 let stmts = self.intersperse(stmts, self.hardline());
-                let trailing_expr = trailing_expr.map(|expr| self.expr_prec(expr, Prec::MAX));
+                let trailing_expr =
+                    trailing_expr.map(|expr| self.expr_prec(expr, Prec::MAX, names));
+                names.truncate(len);
                 docs![
                     self,
                     "do {",
@@ -169,50 +190,60 @@ impl<'bump> Printer<'bump> {
                 ]
             }
             Expr::MatchBool(cond, then, r#else) => {
-                let cond = self.expr_prec(cond, Prec::MAX);
-                let then = self.expr_prec(then, Prec::MAX);
-                let r#else = self.expr_prec(r#else, Prec::MAX);
+                let cond = self.expr_prec(cond, Prec::MAX, names);
+                let then = self.expr_prec(then, Prec::MAX, names);
+                let r#else = self.expr_prec(r#else, Prec::MAX, names);
                 docs![self, "if ", cond, " then ", then, " else ", r#else]
             }
             Expr::MatchInt(scrut, cases, default) => {
-                let scrut = self.expr_prec(scrut, Prec::MAX);
+                let scrut = self.expr_prec(scrut, Prec::MAX, names);
                 let cases = cases.iter().map(|(n, expr)| {
-                    let expr = self.expr_prec(expr, Prec::MAX);
-                    docs![self, self.lit(Lit::Int(*n)), " => ", expr]
+                    let expr = self.expr_prec(expr, Prec::MAX, names);
+                    docs![self, self.lit(Lit::Int(*n)), " => ", expr, ","]
                 });
-                let cases = cases.chain(std::iter::once_with(|| {
-                    let expr = self.expr_prec(default, Prec::MAX);
-                    docs![self, "_ => ", expr]
-                }));
-                let cases = cases.map(|it| docs![self, it, ","]);
                 let cases = self.intersperse(cases, self.hardline());
+                let default = {
+                    let expr = self.expr_prec(default, Prec::MAX, names);
+                    docs![self, "_ => ", expr, ","]
+                };
                 docs![
                     self,
                     "match ",
                     scrut,
                     " {",
-                    docs![self, self.hardline(), cases, self.hardline()].nest(INDENT),
+                    docs![
+                        self,
+                        self.hardline(),
+                        cases,
+                        self.hardline(),
+                        default,
+                        self.hardline()
+                    ]
+                    .nest(INDENT),
                     "}"
                 ]
             }
             Expr::RecordType(fields) => {
+                let len = names.len();
                 let fields = fields.iter().map(|(label, expr)| {
-                    let expr = self.expr_prec(expr, Prec::MAX);
+                    let expr = self.expr_prec(expr, Prec::MAX, names);
+                    names.push(Some(*label));
                     docs![self, format!("{label}"), " : ", expr]
                 });
                 let fields = self.intersperse(fields, docs![self, ", "]);
+                names.truncate(len);
                 docs![self, "{", fields, "}"]
             }
             Expr::RecordLit(fields) => {
                 let fields = fields.iter().map(|(label, expr)| {
-                    let expr = self.expr_prec(expr, Prec::MAX);
+                    let expr = self.expr_prec(expr, Prec::MAX, names);
                     docs![self, format!("{label}"), " = ", expr]
                 });
                 let fields = self.intersperse(fields, docs![self, ", "]);
                 docs![self, "{", fields, "}"]
             }
             Expr::RecordProj(scrut, label) => {
-                let scrut = self.expr_prec(scrut, Prec::Call);
+                let scrut = self.expr_prec(scrut, Prec::Call, names);
                 docs![self, scrut, ".", format!("{label}")]
             }
         };
@@ -222,27 +253,40 @@ impl<'bump> Printer<'bump> {
         }
     }
 
-    pub fn stmt(&'bump self, stmt: &Stmt<'_>) -> DocBuilder<'bump> {
+    fn stmt<'core>(&'bump self, stmt: &Stmt<'core>, names: &mut Names<'core>) -> DocBuilder<'bump> {
         match stmt {
             Stmt::Expr(expr) => {
-                let expr = self.expr_prec(expr, Prec::MAX);
+                let expr = self.expr_prec(expr, Prec::MAX, names);
                 docs![self, expr, ";"]
             }
             Stmt::Let(binding) => {
                 let LetBinding { name, r#type, init } = binding;
-                let name = self.name(*name);
-                let r#type = self.expr_prec(r#type, Prec::MAX);
-                let init = self.expr_prec(init, Prec::MAX);
-                docs![self, "let ", name, " : ", r#type, " = ", init, ";"]
+                let r#type = self.expr_prec(r#type, Prec::MAX, names);
+                let init = self.expr_prec(init, Prec::MAX, names);
+                names.push(*name);
+                docs![
+                    self,
+                    "let ",
+                    self.name(*name),
+                    " : ",
+                    r#type,
+                    " = ",
+                    init,
+                    ";"
+                ]
             }
         }
     }
 
-    pub fn let_stmt(&'bump self, binding: &LetBinding<'_, Expr<'_>>) -> DocBuilder<'bump> {
+    pub fn let_stmt<'core>(
+        &'bump self,
+        binding: &LetBinding<'core, Expr<'core>>,
+        names: &mut Names<'core>,
+    ) -> DocBuilder<'bump> {
         let LetBinding { name, r#type, init } = binding;
         let name = self.name(*name);
-        let r#type = self.expr_prec(r#type, Prec::MAX);
-        let init = self.expr_prec(init, Prec::MAX);
+        let r#type = self.expr_prec(r#type, Prec::MAX, names);
+        let init = self.expr_prec(init, Prec::MAX, names);
         docs![self, "let ", name, " : ", r#type, " = ", init, ";"]
     }
 
@@ -263,7 +307,11 @@ impl<'bump> Printer<'bump> {
         }
     }
 
-    fn fun_param(&'bump self, param: &FunParam<'_, &Expr<'_>>) -> DocBuilder<'bump> {
+    fn fun_param<'core>(
+        &'bump self,
+        param: &FunParam<'core, &Expr<'core>>,
+        names: &mut Names<'core>,
+    ) -> DocBuilder<'bump> {
         let FunParam {
             plicity,
             name,
@@ -271,14 +319,18 @@ impl<'bump> Printer<'bump> {
         } = param;
         let plicity = self.plicity(*plicity);
         let name = self.name(*name);
-        let r#type = self.expr_prec(r#type, Prec::MAX);
+        let r#type = self.expr_prec(r#type, Prec::MAX, names);
         docs![self, plicity, name, " : ", r#type]
     }
 
-    fn fun_arg(&'bump self, arg: &FunArg<&Expr<'_>>) -> DocBuilder<'bump> {
+    fn fun_arg<'core>(
+        &'bump self,
+        arg: &FunArg<&Expr<'core>>,
+        names: &mut Names<'core>,
+    ) -> DocBuilder<'bump> {
         let FunArg { plicity, expr } = arg;
         let plicity = self.plicity(*plicity);
-        let expr = self.expr_prec(expr, Prec::MAX);
+        let expr = self.expr_prec(expr, Prec::MAX, names);
         docs![self, plicity, expr]
     }
 
@@ -287,16 +339,6 @@ impl<'bump> Printer<'bump> {
             None => self.text("_"),
             Some(name) => self.text(format!("{name}")),
         }
-    }
-}
-
-impl fmt::Display for Expr<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let bump = bumpalo::Bump::new();
-        let printer = Printer::new(&bump);
-        let doc_builder = printer.expr_prec(self, Prec::MAX);
-        let doc = doc_builder.into_doc();
-        doc.render_fmt(80, f)
     }
 }
 
@@ -322,7 +364,11 @@ mod tests {
     #[track_caller]
     #[allow(clippy::needless_pass_by_value, reason = "It's only a test")]
     fn assert_print_expr(expr: &Expr, expected: Expect) {
-        let actual = format!("{expr}");
+        let mut names = UniqueEnv::new();
+        let bump = bumpalo::Bump::new();
+        let printer = Printer::new(&bump);
+        let doc = printer.expr_prec(expr, Prec::MAX, &mut names).into_doc();
+        let actual = format!("{}", doc.pretty(80));
         expected.assert_eq(&actual);
     }
 
@@ -345,12 +391,6 @@ mod tests {
     fn print_expr_prim_var() {
         let expr = Expr::BOOL;
         assert_print_expr(&expr, expect!["Bool"]);
-    }
-
-    #[test]
-    fn print_expr_local_var() {
-        let expr = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
-        assert_print_expr(&expr, expect!["#var(DeBruijnIndex(0))"]);
     }
 
     #[test]
@@ -397,7 +437,7 @@ mod tests {
             &const {
                 Expr::FunLit(
                     FunParam::explicit(None, &Expr::BOOL),
-                    &const { Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0))) },
+                    &const { Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0))) },
                 )
             },
         );
@@ -425,7 +465,7 @@ mod tests {
             &const {
                 Expr::FunLit(
                     FunParam::explicit(None, &Expr::INT),
-                    &const { Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0))) },
+                    &const { Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0))) },
                 )
             },
             FunArg::explicit(&int),
@@ -445,7 +485,7 @@ mod tests {
                     Stmt::Let(LetBinding::new(None, Expr::BOOL, Expr::bool(true))),
                 ]
             },
-            Some(&const { Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0))) }),
+            Some(&const { Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0))) }),
         );
         assert_print_expr(
             &expr,

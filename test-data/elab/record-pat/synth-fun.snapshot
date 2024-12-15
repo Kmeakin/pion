@@ -13,7 +13,7 @@ stdout = """
 }) : {x : Int, y : Bool} -> Bool
 (fun(_ : {A : Type, a : A}) => do {
     let B : Type = #var(DeBruijnIndex(0)).A;
-    let b : A = #var(DeBruijnIndex(1)).a;
+    let b : B = #var(DeBruijnIndex(1)).a;
     b
 }) : forall(_ : {A : Type, a : A}) -> #var(DeBruijnIndex(0)).A
 

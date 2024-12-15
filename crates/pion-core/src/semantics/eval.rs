@@ -189,7 +189,7 @@ mod tests {
     #[test]
     fn eval_unbound_local_var() {
         let var = DeBruijnIndex::new(0);
-        assert_eval(Expr::LocalVar(LocalVar::new(None, var)), Value::ERROR);
+        assert_eval(Expr::LocalVar(LocalVar::new(var)), Value::ERROR);
     }
 
     #[test]
@@ -227,7 +227,7 @@ mod tests {
         // `do { let _ = 5; y }`
         let expr = Expr::Do(
             &const { [Stmt::Let(LetBinding::new(None, Expr::INT, Expr::int(5)))] },
-            Some(&const { Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0))) }),
+            Some(&const { Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0))) }),
         );
 
         let expected = Value::int(5);
@@ -250,7 +250,7 @@ mod tests {
     fn eval_fun_lit() {
         // `fun (x: Int) => x`
         let ty = Type::INT;
-        let body = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
+        let body = Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0)));
         let expr = Expr::FunLit(FunParam::explicit(None, &Expr::INT), &body);
         let expected = Value::FunLit(
             FunParam::explicit(None, &ty),
@@ -263,7 +263,7 @@ mod tests {
     fn eval_fun_app_beta_reduce() {
         // `(fun (x : Int) => x)(42)`
         let int = Expr::int(42);
-        let body = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
+        let body = Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0)));
         let fun = Expr::FunLit(FunParam::explicit(None, &Expr::INT), &body);
         let expr = Expr::FunApp(&fun, FunArg::explicit(&int));
         let expected = Value::int(42);
@@ -296,7 +296,7 @@ mod tests {
     fn eval_fun_app_plicity_mismatch() {
         // `(fun (x : Int) => x)(@42)`
         let int = Expr::int(42);
-        let body = Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(0)));
+        let body = Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0)));
         let fun = Expr::FunLit(FunParam::explicit(None, &Expr::INT), &body);
         let expr = Expr::FunApp(&fun, FunArg::implicit(&int));
         let expected = Value::ERROR;
@@ -314,7 +314,7 @@ mod tests {
                         &const {
                             Expr::FunLit(
                                 FunParam::explicit(None, &Expr::INT),
-                                &const { Expr::LocalVar(LocalVar::new(None, DeBruijnIndex::new(1))) },
+                                &const { Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(1))) },
                             )
                         },
                         FunArg::explicit(&const { Expr::int(24) }),

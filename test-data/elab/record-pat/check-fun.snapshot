@@ -13,7 +13,7 @@ let f3 : {x : Int, y : Bool} -> Bool = fun(_ : {x : Int, y : Bool}) => do {
 };
 let f4 : forall(r : {A : Type, a : A}) -> r.A = fun(_ : {A : Type, a : A}) => do {
     let B : Type = #var(DeBruijnIndex(0)).A;
-    let b : A = #var(DeBruijnIndex(1)).a;
+    let b : B = #var(DeBruijnIndex(1)).a;
     b
 };
 

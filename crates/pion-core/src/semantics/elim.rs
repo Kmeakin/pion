@@ -337,7 +337,7 @@ mod tests {
     fn test_apply_neutral() {
         // `_#0(42)``
         let bump = bumpalo::Bump::new();
-        let var = LocalVar::new(None, DeBruijnLevel::new(0));
+        let var = LocalVar::new(DeBruijnLevel::new(0));
         let callee = Value::local_var(var);
         let arg = FunArg::explicit(Value::int(42));
         let opts = UnfoldOpts::for_eval();
