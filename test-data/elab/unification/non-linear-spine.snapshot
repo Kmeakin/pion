@@ -6,11 +6,13 @@ it : forall(A : Type) -> (forall(_ : A) -> ?1(A, #var(DeBruijnIndex(0)))) -> A
 """
 
 stderr = """
-error: non-variable function application in problem spine
+error: Type mismatch: expected `A`, found `?1(A, ?3(A, a))`
   ┌─ test-data/elab/unification/non-linear-spine.pion:2:27
   │
 2 │     = fun(A) => fun(a) => a(_);
   │                           ^^^^
+  │
+  = help: could not unify types because non-variable function application appeared in problem spine
 
 error: Could not infer expression to solve hole
   ┌─ test-data/elab/unification/non-linear-spine.pion:1:37

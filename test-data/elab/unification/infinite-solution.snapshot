@@ -6,11 +6,13 @@ it : forall(Wrap : Type -> Type) -> (forall(A : Type) -> (A -> Wrap(A)) -> Type)
 """
 
 stderr = """
-error: infinite solution
+error: Type mismatch: expected `Wrap(?3(Wrap, f))`, found `?3(Wrap, f)`
   ┌─ test-data/elab/unification/infinite-solution.pion:3:38
   │
 3 │     = fun(Wrap, f) => f(_, fun(a) => a);
   │                                      ^
+  │
+  = help: could not unify types because solution would be infinite
 
 error: Could not infer expression to solve hole
   ┌─ test-data/elab/unification/infinite-solution.pion:3:25

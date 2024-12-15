@@ -121,12 +121,13 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 self.synth_and_coerce_pat(pat, expected)
             }
             surface::Pat::RecordLit(fields) => {
-                let Type::RecordType(telescope) = expected else {
-                    return self.synth_and_coerce_pat(pat, expected);
+                let expected = self.elim_env().subst_metas(expected);
+                let Type::RecordType(telescope) = &expected else {
+                    return self.synth_and_coerce_pat(pat, &expected);
                 };
 
                 if fields.len() != telescope.fields.len() {
-                    return self.synth_and_coerce_pat(pat, expected);
+                    return self.synth_and_coerce_pat(pat, &expected);
                 }
 
                 // FIXME: better error message if fields don't match
@@ -134,7 +135,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     .map(|field| self.intern(field.label.data))
                     .ne(telescope.fields.iter().map(|(label, _)| *label))
                 {
-                    return self.synth_and_coerce_pat(pat, expected);
+                    return self.synth_and_coerce_pat(pat, &expected);
                 }
 
                 let mut telescope = telescope.clone();

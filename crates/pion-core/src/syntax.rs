@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::env::{DeBruijn, DeBruijnIndex, DeBruijnLevel, EnvLen};
 use crate::prim::PrimVar;
 use crate::symbol::Symbol;
@@ -42,6 +44,15 @@ pub fn record_labels_equal<L, R>(lhs: RecordFields<'_, L>, rhs: RecordFields<'_,
 pub struct LocalVar<'core, V> {
     pub name: Name<'core>,
     pub de_bruijn: V,
+}
+
+impl<V: fmt::Display> fmt::Display for LocalVar<'_, V> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.name {
+            Some(name) => write!(f, "{name}"),
+            None => write!(f, "#var{}", self.de_bruijn),
+        }
+    }
 }
 
 impl<'core, V> LocalVar<'core, V> {

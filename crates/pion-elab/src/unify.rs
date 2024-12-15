@@ -5,6 +5,7 @@ use pion_core::env::{
 use pion_core::semantics::{
     self, Closure, Elim, Head, LocalValues, MetaValues, Type, UnfoldOpts, Value,
 };
+use pion_core::symbol::Symbol;
 use pion_core::syntax::{Expr, FunArg, FunParam, LocalVar, MetaVar, Name};
 
 /// Unification environment.
@@ -383,7 +384,7 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                     _ => return Err(SpineError::NonLocalFunApp),
                 },
                 Elim::MatchBool(..) | Elim::MatchInt(..) => return Err(SpineError::Match),
-                Elim::RecordProj(..) => return Err(SpineError::RecordProj),
+                Elim::RecordProj(label) => return Err(SpineError::RecordProj(*label)),
             }
         }
         Ok(())
@@ -550,28 +551,36 @@ pub enum UnifyError<'core> {
 
 impl<'core> UnifyError<'core> {
     pub fn to_diagnostic(self, from: &Expr<'core>, to: &Expr<'core>) -> Diagnostic<usize> {
-        match self {
-            Self::Mismatch => Diagnostic::error()
-                .with_message(format!("Type mismatch: expected `{to}`, found `{from}`")),
+        let diag = Diagnostic::error()
+            .with_message(format!("Type mismatch: expected `{to}`, found `{from}`"));
 
-            Self::Spine(SpineError::NonLinearSpine(..)) => Diagnostic::error()
-                .with_message("variable appeared more than once in problem spine"),
-            Self::Spine(SpineError::NonLocalFunApp) => Diagnostic::error()
-                .with_message("non-variable function application in problem spine"),
+        let reason = match self {
+            Self::Mismatch => return diag,
+
+            Self::Spine(SpineError::NonLinearSpine(var)) => {
+                format!("local variable (`{var}`) appeared more than once in problem spine")
+            }
+            Self::Spine(SpineError::NonLocalFunApp) => {
+                String::from("non-variable function application appeared in problem spine")
+            }
             Self::Spine(SpineError::Match) => {
-                Diagnostic::error().with_message("`match` expression in problem spine")
+                String::from("`match` expression appeared in problem spine")
             }
-            Self::Spine(SpineError::RecordProj) => {
-                Diagnostic::error().with_message("record projection expression in problem spine")
+            Self::Spine(SpineError::RecordProj(label)) => {
+                format!("record projection expression (`.{label}`) appeared in problem spine")
             }
 
-            Self::Rename(RenameError::EscapingLocalVar(_)) => {
-                Diagnostic::error().with_message("escaping local variable in problem spine")
+            Self::Rename(RenameError::EscapingLocalVar(var)) => {
+                format!("escaping local variable (`{var}`) appeared in problem spine")
             }
             Self::Rename(RenameError::InfiniteSolution) => {
-                Diagnostic::error().with_message("infinite solution")
+                String::from("solution would be infinite")
             }
-        }
+        };
+
+        diag.with_notes(vec![format!(
+            "help: could not unify types because {reason}"
+        )])
     }
 }
 
@@ -632,7 +641,7 @@ pub enum SpineError<'core> {
     /// variable.
     NonLocalFunApp,
     Match,
-    RecordProj,
+    RecordProj(Symbol<'core>),
 }
 
 /// An error that occurred when renaming the solution.

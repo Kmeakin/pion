@@ -6,11 +6,13 @@ stdout = """
 """
 
 stderr = """
-error: escaping local variable in problem spine
+error: Type mismatch: expected `?3(n)`, found `?1`
   ┌─ test-data/elab/unification/escaping-local.pion:1:19
   │
 1 │ #check (fun(n) => n) : _ -> _;
   │                   ^
+  │
+  = help: could not unify types because escaping local variable (`n`) appeared in problem spine
 
 error: Could not infer expression to solve hole
   ┌─ test-data/elab/unification/escaping-local.pion:1:24

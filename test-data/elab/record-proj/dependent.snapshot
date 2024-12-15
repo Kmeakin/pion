@@ -1,0 +1,10 @@
+exit status: 0
+
+stdout = """
+let f1 : forall(r : {A : Type, a : A}) -> r.A = fun(r : {A : Type, a : A}) => r.a;
+
+"""
+
+stderr = """
+
+"""

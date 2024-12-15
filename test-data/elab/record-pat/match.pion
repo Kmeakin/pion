@@ -1,23 +1,27 @@
 let f0 = fun (r : {}) => do {
-    let {} = r;
+    match r {
+        {} => {},
+    }
 };
 #show f0;
 
 let f1 = fun (r : {x : Int }) => do {
-    let {x = a} = r;
-    a
+    match r {
+        {x = a} => a,
+    }
 };
 #show f1;
 
 let f2 = fun (r : {x : Int,y : Bool }) => do {
-    let {x = a, y = b } = r;
-    b
+    match r {
+        {x = a, y = b} => b,
+    }
 };
 #show f2;
 
-// FIXME: fails if pattern is not annotated
 let f3: forall(r: {A: Type, a: A}) -> r.A = fun (r : {A : Type, a: A }) => do {
-    let {A = B, a = b} : {A: Type, a: A} = r;
-    b
+    match r {
+        {A = B, a = b} => b,
+    }
 };
 #show f3;

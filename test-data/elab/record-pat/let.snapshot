@@ -11,6 +11,11 @@ let f2 : {x : Int, y : Bool} -> Bool = fun(r : {x : Int, y : Bool}) => do {
     let b : Bool = r.y;
     b
 };
+let f3 : forall(r : {A : Type, a : A}) -> r.A = fun(r : {A : Type, a : A}) => do {
+    let B : Type = r.A;
+    let b : A = r.a;
+    b
+};
 
 """
 
