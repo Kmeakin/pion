@@ -1,0 +1,12 @@
+// FIXME: type annotations required on `y`, otherwise we get an
+// `escaping local variable` error when checking `a`.
+
+let foo = fun(x, y: Int) => match {x=x, y=y} {
+    {x=0, y=a} => a,
+    {x=b, y=0} => b,
+    {x=1, y=c} => c,
+    {x=d, y=1} => d,
+    {x=xx, y=yy} => xx,
+};
+
+#show foo;

@@ -1,0 +1,19 @@
+let and1 = fun(x, y) => match {x=x, y=y} {
+    {x=true, y=true} => true,
+    _ => false,
+};
+#show and1;
+
+let and2 = fun(x, y) => match {x=x, y=y} {
+    {x=true, y=true} => true,
+    {x=_, y=_} => false,
+};
+#show and2;
+
+let and3 = fun(x, y) => match {x=x, y=y} {
+    {x=true, y=true} => true,
+    {x=false, y=true} => false,
+    {x=true, y=false} => false,
+    {x=false, y=false} => false,
+};
+#show and3;

@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use internal_iterator::InternalIterator;
-use pion_core::syntax::Lit;
+use pion_core::syntax::{Lit, RecordFields};
 use smallvec::{smallvec, SmallVec};
 
 use super::matrix::PatMatrix;
@@ -11,15 +11,13 @@ use crate::elab::pat::Pat;
 #[derive(Debug, Copy, Clone)]
 pub enum Constructor<'core> {
     Lit(Lit<'core>),
-    #[cfg(false)]
-    Record(&'core [(Symbol<'core>, Pat<'core>)]),
+    Record(RecordFields<'core, Pat<'core>>),
 }
 
 impl PartialEq for Constructor<'_> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Lit(left_lit), Self::Lit(right_lit)) => left_lit == right_lit,
-            #[cfg(false)]
             (Self::Record(left_fields), Self::Record(right_fields)) => {
                 pion_core::syntax::record_labels_equal(left_fields, right_fields)
             }
@@ -35,7 +33,6 @@ impl Constructor<'_> {
     pub const fn arity(&self) -> usize {
         match self {
             Constructor::Lit(_) => 0,
-            #[cfg(false)]
             Constructor::Record(labels) => labels.len(),
         }
     }
@@ -43,15 +40,9 @@ impl Constructor<'_> {
 
 #[derive(Debug, Clone)]
 pub enum Constructors<'core> {
-    #[cfg(false)]
-    Record(&'core [(Symbol<'core>, Pat<'core>)]),
+    Record(RecordFields<'core, Pat<'core>>),
     Bools(BoolSet),
     Ints(SmallVec<[u32; 4]>),
-
-    Phantom(
-        std::convert::Infallible,
-        std::marker::PhantomData<&'core ()>,
-    ),
 }
 
 /// Non-empty set of `bool`s.
@@ -95,12 +86,10 @@ impl From<bool> for BoolSet {
 impl Constructors<'_> {
     pub fn is_exhaustive(&self) -> bool {
         match self {
-            #[cfg(false)]
             Constructors::Record(_) => true,
             Constructors::Bools(bools) => bools.is_full(),
             #[allow(clippy::as_conversions, reason = "usize will always fit in u128")]
             Constructors::Ints(ints) => ints.len() as u128 >= u128::from(u32::MAX),
-            Constructors::Phantom(d, _) => match *d {},
         }
     }
 }
@@ -127,8 +116,9 @@ impl<'core> InternalIterator for PatConstructors<'core> {
             match pat {
                 Pat::Error | Pat::Wildcard | Pat::Var(..) => ControlFlow::Continue(()),
                 Pat::Lit(.., lit) => on_ctor(Constructor::Lit(lit)),
-                // Pat::RecordLit(.., fields) => on_ctor(Constructor::Record(fields)),
-                // Pat::Or(pats) => pats.iter().try_for_each(|pat| recur(*pat, on_ctor)),
+                Pat::RecordLit(.., fields) => on_ctor(Constructor::Record(fields)),
+                #[cfg(false)]
+                Pat::Or(pats) => pats.iter().try_for_each(|pat| recur(*pat, on_ctor)),
             }
         }
 
@@ -150,7 +140,6 @@ impl<'core> PatMatrix<'core> {
             while let Some(pat) = column.next() {
                 match pat {
                     Pat::Error | Pat::Wildcard | Pat::Var(_) => continue,
-                    #[cfg(false)]
                     Pat::RecordLit(fields) => return Some(Constructors::Record(fields)),
                     Pat::Lit(Lit::Bool(value)) => {
                         return Some(Constructors::Bools(bools(column, BoolSet::from(value))))
@@ -198,7 +187,6 @@ impl<'core> PatMatrix<'core> {
                         }
                     }
                     Pat::Lit(..) => unreachable!(),
-                    #[cfg(false)]
                     Pat::RecordLit(..) => unreachable!(),
                     #[cfg(false)]
                     Pat::Or(alts) => {
@@ -226,7 +214,6 @@ impl<'core> PatMatrix<'core> {
                     }
                     Pat::Lit(..) => unreachable!(),
 
-                    #[cfg(false)]
                     Pat::RecordLit(..) => unreachable!(),
 
                     #[cfg(false)]

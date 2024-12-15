@@ -132,7 +132,6 @@ impl<'core> PatternCompiler<'core> {
 
         let ctors = matrix.column_constructors(0).unwrap();
         match ctors {
-            #[cfg(false)]
             Constructors::Record(fields) => {
                 let mut matrix = matrix.specialize(self.bump, Constructor::Record(fields));
                 self.compile_match(&mut matrix, bodies)

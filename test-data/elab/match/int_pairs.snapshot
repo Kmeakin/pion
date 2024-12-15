@@ -1,0 +1,10 @@
+exit status: 0
+
+stdout = """
+let foo : Int -> Int -> Int = fun(x : ?1, y : Int) => match {x = x, y = y, }.x { 0 => do {let a : Int = {x = x, y = y, }.y; a}, 1 => match {x = x, y = y, }.y { 0 => do {let b : Int = {x = x, y = y, }.x; b}, 1 => do {let c : Int = {x = x, y = y, }.y; c},  _ => do {let c : Int = {x = x, y = y, }.y; c}, },  _ => match {x = x, y = y, }.y { 0 => do {let b : Int = {x = x, y = y, }.x; b}, 1 => do {let d : Int = {x = x, y = y, }.x; d},  _ => do {let xx : Int = {x = x, y = y, }.x; let yy : Int = {x = x, y = y, }.y; xx}, }, };
+
+"""
+
+stderr = """
+
+"""

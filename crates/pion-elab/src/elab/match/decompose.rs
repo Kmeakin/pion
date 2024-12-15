@@ -36,7 +36,6 @@ impl<'core> PatMatrix<'core> {
                         matrix.extend_row(PatRow::new(pairs, rest.body));
                     }
                     Pat::Lit(.., lit) if ctor == Constructor::Lit(lit) => matrix.push_row(rest),
-                    #[cfg(false)]
                     Pat::RecordLit(.., fields) if ctor == Constructor::Record(fields) => {
                         let scrut_expr = bump.alloc(expr);
                         let pairs = fields
@@ -46,7 +45,6 @@ impl<'core> PatMatrix<'core> {
                         matrix.extend_row(PatRow::new(pairs, rest.body));
                     }
                     Pat::Lit(..) => {}
-                    #[cfg(false)]
                     Pat::RecordLit(..) => {}
                     #[cfg(false)]
                     Pat::Or(pats) => pats
@@ -81,7 +79,6 @@ impl<'core> PatMatrix<'core> {
                 match pat {
                     Pat::Error | Pat::Wildcard | Pat::Var(..) => matrix.push_row(rest),
                     Pat::Lit(..) => {}
-                    #[cfg(false)]
                     Pat::RecordLit(..) => {}
                     #[cfg(false)]
                     Pat::Or(pats) => pats.iter().for_each(|pat| recur(*pat, rest, matrix)),

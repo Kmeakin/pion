@@ -1,0 +1,10 @@
+// TODO: record field shorthand
+let fst = fun(A: Type, B: Type, p: {x: A, y: B}) => match p {
+    {x=x, y=y} => x,
+};
+let snd = fun(A: Type, B: Type, p: {x: A, y: B}) => match p {
+    {x=x, y=y} => y,
+};
+
+#show fst;
+#show snd;

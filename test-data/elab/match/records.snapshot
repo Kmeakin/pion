@@ -1,0 +1,11 @@
+exit status: 0
+
+stdout = """
+let fst : forall(A : Type, B : Type) -> {x : A, y : B, } -> A = fun(A : Type, B : Type, p : {x : A, y : B, }) => do {let x : A = p.x; let y : B = p.y; x};
+let snd : forall(A : Type, B : Type) -> {x : A, y : B, } -> B = fun(A : Type, B : Type, p : {x : A, y : B, }) => do {let x : A = p.x; let y : B = p.y; y};
+
+"""
+
+stderr = """
+
+"""

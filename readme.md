@@ -33,7 +33,7 @@
     * [x] `if` expressions
     * [x] single-layer pattern matching over integers and booleans
     * [x] multi-layer pattern matching compilation w/ coverage checking
-    * [ ] record patterns
+    * [x] record patterns
     * [ ] dependent pattern matching
     * [ ] or-patterns
     * [ ] and-patterns

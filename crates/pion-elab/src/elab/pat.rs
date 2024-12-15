@@ -1,7 +1,8 @@
+use codespan_reporting::diagnostic::{Diagnostic, Label};
 use pion_core::env::EnvLen;
-use pion_core::semantics::Type;
+use pion_core::semantics::{Telescope, Type, Value};
 use pion_core::symbol::Symbol;
-use pion_core::syntax::{Expr, LetBinding, Lit};
+use pion_core::syntax::{Expr, LetBinding, Lit, LocalVar, RecordFields};
 use pion_surface::syntax::{self as surface, Located};
 
 use super::{Check, Synth};
@@ -17,6 +18,7 @@ pub enum Pat<'core> {
     Wildcard,
     Var(Symbol<'core>),
     Lit(Lit<'core>),
+    RecordLit(RecordFields<'core, Self>),
 }
 
 impl<'core> Pat<'core> {
@@ -63,7 +65,42 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 };
                 (pat, r#type)
             }
-            surface::Pat::RecordLit(_) => todo!(),
+            surface::Pat::RecordLit(fields) => {
+                let mut pat_fields = Vec::new_in(self.bump);
+                let mut type_fields = Vec::new_in(self.bump);
+
+                for surface_field in *fields {
+                    let label = surface_field.label;
+                    let symbol = self.intern(label.data);
+
+                    if let Some(index) = pat_fields.iter().position(|(n, _)| *n == symbol) {
+                        let diagnostic = Diagnostic::error()
+                            .with_message(format!("Duplicate record field `{symbol}`"))
+                            .with_labels(vec![
+                                Label::primary(self.file_id, label.range),
+                                Label::secondary(self.file_id, fields[index].label.range)
+                                    .with_message(format!(
+                                        "Help: `{symbol}` is already defined here"
+                                    )),
+                            ]);
+                        self.diagnostics.push(diagnostic);
+                        continue;
+                    }
+
+                    let (pat, r#type) = self.synth_pat(surface_field.pat.as_ref());
+                    let r#type = self
+                        .quote_env()
+                        .quote_offset(&r#type, EnvLen::from(pat_fields.len()));
+                    pat_fields.push((symbol, pat));
+                    type_fields.push((symbol, r#type));
+                }
+
+                let telescope = Telescope::new(self.env.locals.values.clone(), type_fields.leak());
+                (
+                    Pat::RecordLit(pat_fields.leak()),
+                    Type::RecordType(telescope),
+                )
+            }
         }
     }
 
@@ -83,7 +120,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             surface::Pat::TypeAnnotation(..) | surface::Pat::Lit(..) => {
                 self.synth_and_coerce_pat(pat, expected)
             }
-            surface::Pat::RecordLit(_) => todo!(),
+            surface::Pat::RecordLit(_) => self.synth_and_coerce_pat(pat, expected),
         }
     }
 
@@ -144,12 +181,13 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     let expr = expr.shift(ctx.bump, EnvLen::from(bindings.len()));
                     bindings.push(LetBinding::new(name, r#type, expr));
                 }
-                #[cfg(false)]
                 Pat::RecordLit(pat_fields) => {
-                    let r#type = ctx.elim_env().update_metas(r#type);
+                    let r#type = ctx.elim_env().subst_metas(r#type);
                     let Type::RecordType(mut telescope) = r#type else {
                         unreachable!("expected record type, got {type:?}")
                     };
+
+                    debug_assert_eq!(pat_fields.len(), telescope.fields.len());
                     for (pat_name, pat) in *pat_fields {
                         let (telescope_name, r#type, update_telescope) =
                             ctx.elim_env().split_telescope(&mut telescope).unwrap();
@@ -158,7 +196,11 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                         let expr = Expr::RecordProj(ctx.bump.alloc(*expr), *pat_name);
 
                         recur(ctx, pat, &expr, &r#type, bindings, false);
-                        update_telescope(ctx.env.locals.next_var());
+                        let var = Value::local_var(LocalVar::new(
+                            Some(*pat_name),
+                            ctx.env.locals.len().to_level(),
+                        ));
+                        update_telescope(var);
                     }
                 }
                 #[cfg(false)]
