@@ -1,0 +1,12 @@
+let f0 = forall({}) -> {};
+#show f0;
+
+let f1 = forall({x=x} : {x : Type }) -> x;
+#show f1;
+
+let f2 = forall({x=a,y=b} : {x : Type, y : Type }) -> b;
+#show f2;
+
+// FIXME: fails if pattern is not annotated
+let f3 = forall({A=B,a=b}: {A: Type, a: A}) -> B;
+#show f3;

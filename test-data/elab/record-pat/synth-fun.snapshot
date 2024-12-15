@@ -1,0 +1,24 @@
+exit status: 0
+
+stdout = """
+(fun(_ : {}) => {}) : {} -> {}
+(fun(_ : {x : Int}) => do {
+    let x : Int = #var(DeBruijnIndex(0)).x;
+    x
+}) : {x : Int} -> Int
+(fun(_ : {x : Int, y : Bool}) => do {
+    let a : Int = #var(DeBruijnIndex(0)).x;
+    let b : Bool = #var(DeBruijnIndex(1)).y;
+    b
+}) : {x : Int, y : Bool} -> Bool
+(fun(_ : {A : Type, a : A}) => do {
+    let B : Type = #var(DeBruijnIndex(0)).A;
+    let b : A = #var(DeBruijnIndex(1)).a;
+    b
+}) : forall(_ : {A : Type, a : A}) -> #var(DeBruijnIndex(0)).A
+
+"""
+
+stderr = """
+
+"""

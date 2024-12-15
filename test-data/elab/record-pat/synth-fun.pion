@@ -1,0 +1,5 @@
+#check fun({}) => {};
+#check fun({x=x}: {x: Int}) => x;
+#check fun({x=a,y=b} : {x : Int, y : Bool }) => b;
+// FIXME: fails if pattern is not annotated
+#check fun({A=B,a=b}: {A: Type, a: A}) => b;

@@ -1,0 +1,11 @@
+let f1 : {} -> {} = fun({}) => {};
+#show f1;
+
+let f2 : {x: Int} -> Int = fun({x=x}) => x;
+#show f2;
+
+let f3: {x: Int, y: Bool} -> Bool = fun({x=a,y=b}) => b;
+#show f3;
+
+let f4: forall(r: {A: Type, a: A}) -> r.A = fun({A=B,a=b}) => b;
+#show f4;

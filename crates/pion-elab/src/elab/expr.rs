@@ -2,13 +2,14 @@ use std::borrow::Cow;
 use std::str::FromStr;
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
-use pion_core::env::EnvLen;
+use pion_core::env::{DeBruijnIndex, EnvLen};
 use pion_core::prim::PrimVar;
 use pion_core::semantics::{Closure, Telescope, Type, Value};
 use pion_core::syntax::{Expr, FunArg, FunParam, LocalVar, Plicity};
 use pion_surface::syntax::{self as surface, Located};
 use text_size::TextRange;
 
+use super::pat::Pat;
 use super::{Check, Synth};
 use crate::env::MetaSource;
 use crate::Elaborator;
@@ -349,7 +350,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
     fn synth_fun_param(
         &mut self,
         param: Located<&surface::FunParam<'text, 'surface>>,
-    ) -> Synth<'core, FunParam<'core, Expr<'core>>> {
+    ) -> Synth<'core, (FunParam<'core, Expr<'core>>, Pat<'core>)> {
         let surface::FunParam { plicity, pat } = param.data;
         let (pat, r#type) = self.synth_pat(pat.as_ref());
         let param = FunParam::new(
@@ -357,21 +358,22 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             pat.name(),
             self.quote_env().quote(&r#type),
         );
-        (param, r#type)
+        ((param, pat), r#type)
     }
 
     fn check_fun_param(
         &mut self,
         param: Located<&surface::FunParam<'text, 'surface>>,
         expected: &Type<'core>,
-    ) -> Check<FunParam<'core, Expr<'core>>> {
+    ) -> Check<(FunParam<'core, Expr<'core>>, Pat<'core>)> {
         let surface::FunParam { plicity, pat } = param.data;
         let pat = self.check_pat(pat.as_ref(), expected);
-        FunParam::new(
+        let param = FunParam::new(
             surface_plicity_to_core(*plicity),
             pat.name(),
             self.quote_env().quote(expected),
-        )
+        );
+        (param, pat)
     }
 
     fn synth_fun_type(
@@ -387,13 +389,18 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
             match params {
                 [] => this.check_expr(body, &Type::TYPE),
                 [param, params @ ..] => {
-                    let (param, r#param_type) = this.synth_fun_param(param.as_ref());
+                    let ((param, pat), r#param_type) = this.synth_fun_param(param.as_ref());
 
                     let body_expr = {
+                        let len = this.env.locals.len();
+                        let var = Expr::LocalVar(LocalVar::new(param.name, DeBruijnIndex::new(0)));
+                        let bindings = this.destruct_pat(&pat, &var, &param_type, true);
+
                         this.env.locals.push_param(param.name, param_type);
+                        this.push_let_bindings(&bindings);
                         let body_expr = recur(this, params, body);
-                        this.env.locals.pop();
-                        body_expr
+                        this.env.locals.truncate(len);
+                        Expr::wrap_in_lets(this.bump, &bindings, body_expr)
                     };
 
                     let (param_type, body_expr) = this.bump.alloc((param.r#type, body_expr));
@@ -417,14 +424,20 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         match params {
             [] => self.synth_expr(body),
             [param, params @ ..] => {
-                let (param, r#param_type) = self.synth_fun_param(param.as_ref());
-
+                let ((param, pat), r#param_type) = self.synth_fun_param(param.as_ref());
                 let (body_expr, body_type) = {
+                    let len = self.env.locals.len();
+                    let var = Expr::LocalVar(LocalVar::new(param.name, DeBruijnIndex::new(0)));
+                    let bindings = self.destruct_pat(&pat, &var, &param_type, true);
                     self.env.locals.push_param(param.name, param_type.clone());
+                    self.push_let_bindings(&bindings);
                     let (body_expr, body_type) = self.synth_fun_expr(params, body);
                     let body_type = self.quote_env().quote(&body_type);
-                    self.env.locals.pop();
-                    self.bump.alloc((body_expr, body_type))
+                    self.env.locals.truncate(len);
+                    let body_expr = Expr::wrap_in_lets(self.bump, &bindings, body_expr);
+                    let body_type = Expr::wrap_in_lets(self.bump, &bindings, body_type);
+                    let (body_expr, body_type) = self.bump.alloc((body_expr, body_type));
+                    (body_expr, body_type)
                 };
 
                 let (t1, t2) = self.bump.alloc((param.r#type, param_type));
@@ -481,18 +494,23 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
 
             (surface::Plicity::Explicit, Plicity::Explicit)
             | (surface::Plicity::Implicit, Plicity::Implicit) => {
-                let param = self.check_fun_param(param.as_ref(), expected_param.r#type);
+                let (param, pat) = self.check_fun_param(param.as_ref(), expected_param.r#type);
                 let body_expr = {
+                    let len = self.env.locals.len();
+                    let var = Expr::LocalVar(LocalVar::new(param.name, DeBruijnIndex::new(0)));
+                    let bindings = self.destruct_pat(&pat, &var, expected_param.r#type, true);
+
                     let arg_value = Value::local_var(LocalVar::new(
                         param.name,
                         self.env.locals.values.len().to_level(),
                     ));
                     (self.env.locals).push_param(param.name, expected_param.r#type.clone());
+                    self.push_let_bindings(&bindings);
                     let expected =
                         (self.elim_env()).apply_closure(expected_body.clone(), arg_value);
                     let body_expr = self.check_fun_expr(rest, body, &expected);
-                    self.env.locals.pop();
-                    body_expr
+                    self.env.locals.truncate(len);
+                    Expr::wrap_in_lets(self.bump, &bindings, body_expr)
                 };
                 let (param_type, body_expr) = self.bump.alloc((param.r#type, body_expr));
                 Expr::FunLit(
