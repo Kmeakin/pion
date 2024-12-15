@@ -148,6 +148,62 @@ fn string_pat() {
 }
 
 #[test]
+fn record_pat() {
+    assert_parse_pat(
+        r"{}",
+        expect![[r"
+            0..2 @ Pat::RecordLit
+        "]],
+    );
+
+    assert_parse_pat(
+        r"{x=1}",
+        expect![[r#"
+            0..5 @ Pat::RecordLit
+             RecordPatField
+              Located(1..2, "x")
+              3..4 @ Pat::Lit(Int("1"))
+        "#]],
+    );
+
+    assert_parse_pat(
+        r"{x=1,}",
+        expect![[r#"
+            0..6 @ Pat::RecordLit
+             RecordPatField
+              Located(1..2, "x")
+              3..4 @ Pat::Lit(Int("1"))
+        "#]],
+    );
+
+    assert_parse_pat(
+        r"{x=1,y=2}",
+        expect![[r#"
+            0..9 @ Pat::RecordLit
+             RecordPatField
+              Located(1..2, "x")
+              3..4 @ Pat::Lit(Int("1"))
+             RecordPatField
+              Located(5..6, "y")
+              7..8 @ Pat::Lit(Int("2"))
+        "#]],
+    );
+
+    assert_parse_pat(
+        r"{x=1,y=2,}",
+        expect![[r#"
+            0..10 @ Pat::RecordLit
+             RecordPatField
+              Located(1..2, "x")
+              3..4 @ Pat::Lit(Int("1"))
+             RecordPatField
+              Located(5..6, "y")
+              7..8 @ Pat::Lit(Int("2"))
+        "#]],
+    );
+}
+
+#[test]
 fn paren_expr() {
     assert_parse_expr(
         "(abc)",

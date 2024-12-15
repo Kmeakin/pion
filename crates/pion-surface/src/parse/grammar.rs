@@ -60,6 +60,83 @@ where
                     Pat::Paren(pat),
                 )
             }
+            TokenKind::LCurly => {
+                let start_range = token.range;
+
+                let first_label = match self.next_token() {
+                    Some(token) if token.kind == TokenKind::RCurly => {
+                        let end_range = self.range;
+                        return Located::new(
+                            TextRange::new(start_range.start(), end_range.end()),
+                            Pat::RecordLit(&[]),
+                        );
+                    }
+                    Some(token) if token.kind == TokenKind::Ident => {
+                        let text = token.text();
+                        Located::new(token.range, text)
+                    }
+                    _ => {
+                        self.diagnostic(
+                            self.range,
+                            Diagnostic::error().with_message(
+                                "Syntax error: expected `}` or field name while parsing record",
+                            ),
+                        );
+                        return Located::new(self.range, Pat::Error);
+                    }
+                };
+
+                self.expect_token(TokenKind::Punct('='));
+                let pat = self.pat();
+                let mut fields = Vec::new_in(self.bump);
+                fields.push(RecordPatField::new(first_label, pat));
+
+                loop {
+                    match self.next_token() {
+                        None => break,
+                        Some(token) if token.kind == TokenKind::RCurly => break,
+                        Some(token) if token.kind == TokenKind::Punct(',') => {}
+                        _ => {
+                            self.diagnostic(
+                                self.range,
+                                Diagnostic::error().with_message(
+                                    "Syntax error: expected ',' or '}' while parsing record \
+                                     pattern",
+                                ),
+                            );
+                            break;
+                        }
+                    }
+
+                    let label = match self.next_token() {
+                        Some(token) if token.kind == TokenKind::RCurly => break,
+                        Some(token) if token.kind == TokenKind::Ident => {
+                            let text = token.text();
+                            Located::new(token.range, text)
+                        }
+                        _ => {
+                            self.diagnostic(
+                                self.range,
+                                Diagnostic::error().with_message(
+                                    "Syntax error: expected field name while parsing record \
+                                     literal",
+                                ),
+                            );
+                            break;
+                        }
+                    };
+
+                    self.expect_token(TokenKind::Punct('='));
+                    let pat = self.pat();
+                    fields.push(RecordPatField::new(label, pat));
+                }
+
+                let end_range = self.range;
+                Located::new(
+                    TextRange::new(start_range.start(), end_range.end()),
+                    Pat::RecordLit(fields.leak()),
+                )
+            }
             got => {
                 self.diagnostic(
                     token.range,

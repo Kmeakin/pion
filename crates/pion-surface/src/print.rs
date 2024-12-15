@@ -178,6 +178,15 @@ impl<W: Write> Printer<W> {
         })
     }
 
+    fn record_pat_field(&mut self, field: &RecordPatField) -> fmt::Result {
+        writeln!(self, "RecordPatField")?;
+        let RecordPatField { label, pat } = field;
+        self.with_indent(|this| {
+            writeln!(this, "{label:?}")?;
+            this.located(pat)
+        })
+    }
+
     fn match_case(&mut self, case: &MatchCase) -> fmt::Result {
         writeln!(self, "MatchCase")?;
         let MatchCase { pat, expr } = case;
@@ -236,6 +245,15 @@ impl<W: Write> Printer<W> {
                 self.with_indent(|this| {
                     this.located(pat)?;
                     this.located(r#type)
+                })
+            }
+            Pat::RecordLit(fields) => {
+                writeln!(self, "Pat::RecordLit")?;
+                self.with_indent(|this| {
+                    for field in *fields {
+                        this.record_pat_field(field)?;
+                    }
+                    Ok(())
                 })
             }
         }

@@ -134,6 +134,19 @@ pub enum Pat<'text, 'surface> {
         Located<&'surface Self>,
         Located<&'surface Expr<'text, 'surface>>,
     ),
+    RecordLit(&'surface [RecordPatField<'text, 'surface>]),
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct RecordPatField<'text, 'surface> {
+    pub label: Located<&'text str>,
+    pub pat: Located<Pat<'text, 'surface>>,
+}
+
+impl<'text, 'surface> RecordPatField<'text, 'surface> {
+    pub fn new(label: Located<&'text str>, pat: Located<Pat<'text, 'surface>>) -> Self {
+        Self { label, pat }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]

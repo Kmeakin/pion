@@ -42,6 +42,8 @@ MatchCase ::=
     | <Literal>
     | "(" <Pat> ")"
     | <Pat> ":" <Expr>
+    | "{" <RecordPatField> ","*  "}"
+RecordPatField ::= <Ident> "=" <Pat>
 
 <Literal> ::=
     | <Bool>
