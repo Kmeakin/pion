@@ -141,7 +141,13 @@ impl<'bump> Printer<'bump> {
             Expr::Do([], None) => docs![self, "do {}"],
             Expr::Do([], Some(trailing_expr)) => {
                 let trailing_expr = self.expr_prec(trailing_expr, Prec::MAX);
-                docs![self, "do { ", trailing_expr, " }"]
+                docs![
+                    self,
+                    "do {",
+                    docs![self, self.line(), trailing_expr, self.line()].nest(INDENT),
+                    "}"
+                ]
+                .group()
             }
             Expr::Do(stmts, trailing_expr) => {
                 let stmts = stmts.iter().map(|stmt| self.stmt(stmt));

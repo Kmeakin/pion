@@ -1,21 +1,21 @@
 exit status: 0
 
 stdout = """
-let f0 : {} -> {} = fun(r : {}) => do { {} };
-let f1 : {x : Int} -> Int = fun(r : {x : Int}) => do { do {
+let f0 : {} -> {} = fun(r : {}) => {};
+let f1 : {x : Int} -> Int = fun(r : {x : Int}) => do {
     let a : Int = r.x;
     a
-} };
-let f2 : {x : Int, y : Bool} -> Bool = fun(r : {x : Int, y : Bool}) => do { do {
+};
+let f2 : {x : Int, y : Bool} -> Bool = fun(r : {x : Int, y : Bool}) => do {
     let a : Int = r.x;
     let b : Bool = r.y;
     b
-} };
-let f3 : forall(r : {A : Type, a : A}) -> r.A = fun(r : {A : Type, a : A}) => do { do {
+};
+let f3 : forall(r : {A : Type, a : A}) -> r.A = fun(r : {A : Type, a : A}) => do {
     let B : Type = r.A;
     let b : A = r.a;
     b
-} };
+};
 
 """
 

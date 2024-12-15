@@ -1,27 +1,19 @@
-let f0 = fun (r : {}) => do {
-    match r {
-        {} => {},
-    }
+let f0 = fun (r : {}) => match r {
+    {} => {},
 };
 #show f0;
 
-let f1 = fun (r : {x : Int }) => do {
-    match r {
-        {x = a} => a,
-    }
+let f1 = fun (r : {x : Int }) => match r {
+    {x = a} => a,
 };
 #show f1;
 
-let f2 = fun (r : {x : Int,y : Bool }) => do {
-    match r {
-        {x = a, y = b} => b,
-    }
+let f2 = fun (r : {x : Int,y : Bool }) => match r {
+    {x = a, y = b} => b,
 };
 #show f2;
 
-let f3: forall(r: {A: Type, a: A}) -> r.A = fun (r : {A : Type, a: A }) => do {
-    match r {
-        {A = B, a = b} => b,
-    }
+let f3: forall(r: {A: Type, a: A}) -> r.A = fun (r : {A : Type, a: A }) => match r {
+    {A = B, a = b} => b,
 };
 #show f3;
