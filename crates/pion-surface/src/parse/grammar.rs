@@ -208,20 +208,56 @@ where
         )
     }
 
-    pub fn file(&mut self) -> File<'text, 'surface> {
-        let mut stmts = Vec::new_in(self.bump);
-
-        while let Some(token) = self.peek_token() {
-            match token.kind {
-                TokenKind::KwLet => {
-                    self.next_token();
-                    let binding = self.let_binding();
-                    stmts.push(Stmt::Let(binding));
-                }
-                TokenKind::Punct('#') => {
-                    self.next_token();
-                    match self.peek_token() {
-                        None => {
+    fn stmt(&mut self) -> Option<Stmt<'text, 'surface>> {
+        let Some(token) = self.peek_token() else {
+            unreachable!()
+        };
+        match token.kind {
+            TokenKind::KwLet => {
+                self.next_token();
+                let binding = self.let_binding();
+                Some(Stmt::Let(binding))
+            }
+            TokenKind::Punct('#') => {
+                self.next_token();
+                match self.peek_token() {
+                    None => {
+                        self.diagnostic(
+                            token.range,
+                            Diagnostic::error()
+                                .with_message("Syntax error: expected name of command after `#`")
+                                .with_notes(vec![String::from(
+                                    "Help: supported commands are `check` or `eval`",
+                                )]),
+                        );
+                        None
+                    }
+                    Some(token) => match token.kind {
+                        TokenKind::Ident if token.text() == "check" => {
+                            self.next_token();
+                            let expr = self.expr();
+                            self.expect_token(TokenKind::Punct(';'));
+                            Some(Stmt::Command(Command::Check(
+                                expr.map(|expr| &*self.bump.alloc(expr)),
+                            )))
+                        }
+                        TokenKind::Ident if token.text() == "eval" => {
+                            self.next_token();
+                            let expr = self.expr();
+                            self.expect_token(TokenKind::Punct(';'));
+                            Some(Stmt::Command(Command::Eval(
+                                expr.map(|expr| &*self.bump.alloc(expr)),
+                            )))
+                        }
+                        TokenKind::Ident if token.text() == "show" => {
+                            self.next_token();
+                            let expr = self.expr();
+                            self.expect_token(TokenKind::Punct(';'));
+                            Some(Stmt::Command(Command::Show(
+                                expr.map(|expr| &*self.bump.alloc(expr)),
+                            )))
+                        }
+                        _ => {
                             self.diagnostic(
                                 token.range,
                                 Diagnostic::error()
@@ -232,58 +268,26 @@ where
                                         "Help: supported commands are `check` or `eval`",
                                     )]),
                             );
+                            self.next_token();
+                            None
                         }
-                        Some(token) => match token.kind {
-                            TokenKind::Ident if token.text() == "check" => {
-                                self.next_token();
-                                let expr = self.expr();
-                                self.expect_token(TokenKind::Punct(';'));
-                                stmts.push(Stmt::Command(Command::Check(
-                                    expr.map(|expr| &*self.bump.alloc(expr)),
-                                )));
-                            }
-                            TokenKind::Ident if token.text() == "eval" => {
-                                self.next_token();
-                                let expr = self.expr();
-                                self.expect_token(TokenKind::Punct(';'));
-                                stmts.push(Stmt::Command(Command::Eval(
-                                    expr.map(|expr| &*self.bump.alloc(expr)),
-                                )));
-                            }
-                            TokenKind::Ident if token.text() == "show" => {
-                                self.next_token();
-                                let expr = self.expr();
-                                self.expect_token(TokenKind::Punct(';'));
-                                stmts.push(Stmt::Command(Command::Show(
-                                    expr.map(|expr| &*self.bump.alloc(expr)),
-                                )));
-                            }
-                            _ => {
-                                self.diagnostic(
-                                    token.range,
-                                    Diagnostic::error()
-                                        .with_message(
-                                            "Syntax error: expected name of command after `#`",
-                                        )
-                                        .with_notes(vec![String::from(
-                                            "Help: supported commands are `check` or `eval`",
-                                        )]),
-                                );
-                                self.next_token();
-                                continue;
-                            }
-                        },
-                    }
+                    },
                 }
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn file(&mut self) -> File<'text, 'surface> {
+        let mut stmts = Vec::new_in(self.bump);
+
+        while let Some(token) = self.peek_token() {
+            match token.kind {
+                TokenKind::KwLet | TokenKind::Punct('#') => stmts.extend(self.stmt()),
                 _ => {
                     let expr = self.expr();
-                    match self.peek_token() {
-                        Some(token) if token.kind == TokenKind::Punct(';') => {
-                            self.next_token();
-                            stmts.push(Stmt::Expr(expr.map(|expr| &*self.bump.alloc(expr))));
-                        }
-                        _ => continue,
-                    }
+                    self.expect_token(TokenKind::Punct(';'));
+                    stmts.push(Stmt::Expr(expr.map(|expr| &*self.bump.alloc(expr))));
                 }
             }
         }
@@ -439,74 +443,9 @@ where
         let mut tail_expr = None;
 
         while let Some(token) = self.peek_token() {
-            if token.kind == TokenKind::RCurly {
-                break;
-            }
-            tail_expr = None;
-
             match token.kind {
-                TokenKind::KwLet => {
-                    self.next_token();
-                    let binding = self.let_binding();
-                    stmts.push(Stmt::Let(binding));
-                }
-                TokenKind::Punct('#') => {
-                    self.next_token();
-                    match self.peek_token() {
-                        None => {
-                            self.diagnostic(
-                                token.range,
-                                Diagnostic::error()
-                                    .with_message(
-                                        "Syntax error: expected name of command after `#`",
-                                    )
-                                    .with_notes(vec![String::from(
-                                        "Help: supported commands are `check` or `eval`",
-                                    )]),
-                            );
-                        }
-                        Some(token) => match token.kind {
-                            TokenKind::Ident if token.text() == "check" => {
-                                self.next_token();
-                                let expr = self.expr();
-                                self.expect_token(TokenKind::Punct(';'));
-                                stmts.push(Stmt::Command(Command::Check(
-                                    expr.map(|expr| &*self.bump.alloc(expr)),
-                                )));
-                            }
-                            TokenKind::Ident if token.text() == "eval" => {
-                                self.next_token();
-                                let expr = self.expr();
-                                self.expect_token(TokenKind::Punct(';'));
-                                stmts.push(Stmt::Command(Command::Eval(
-                                    expr.map(|expr| &*self.bump.alloc(expr)),
-                                )));
-                            }
-                            TokenKind::Ident if token.text() == "show" => {
-                                self.next_token();
-                                let expr = self.expr();
-                                self.expect_token(TokenKind::Punct(';'));
-                                stmts.push(Stmt::Command(Command::Show(
-                                    expr.map(|expr| &*self.bump.alloc(expr)),
-                                )));
-                            }
-                            _ => {
-                                self.diagnostic(
-                                    token.range,
-                                    Diagnostic::error()
-                                        .with_message(
-                                            "Syntax error: expected name of command after `#`",
-                                        )
-                                        .with_notes(vec![String::from(
-                                            "Help: supported commands are `check` or `eval`",
-                                        )]),
-                                );
-                                self.next_token();
-                                continue;
-                            }
-                        },
-                    }
-                }
+                TokenKind::RCurly => break,
+                TokenKind::KwLet | TokenKind::Punct('#') => stmts.extend(self.stmt()),
                 _ => {
                     let expr = self.expr();
                     match self.peek_token() {
@@ -514,7 +453,10 @@ where
                             self.next_token();
                             stmts.push(Stmt::Expr(expr.map(|expr| &*self.bump.alloc(expr))));
                         }
-                        _ => tail_expr = Some(expr),
+                        _ => {
+                            tail_expr = Some(expr);
+                            break;
+                        }
                     }
                 }
             }
