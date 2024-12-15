@@ -1,7 +1,7 @@
 exit status: 0
 
 stdout = """
-{x = 1, y = 2, } : {x : Int, y : Int, }
+{x = 1, y = 2} : {x : Int, y : Int}
 
 """
 

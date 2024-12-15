@@ -1,6 +1,4 @@
-use std::fmt::Write;
-
-use pion_core::print::Prec;
+use pion_core::print::{Prec, Printer};
 use pion_core::syntax::*;
 use pion_surface::syntax as surface;
 
@@ -66,9 +64,10 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
         match command {
             surface::Command::Check(expr) => {
                 let (expr, r#type) = self.synth_expr(*expr);
-                let mut out = String::new();
                 let r#type = self.quote_env().quote(&r#type);
-                pion_core::print::type_ann_expr(&mut out, &expr, &r#type).unwrap();
+                let printer = Printer::new(self.bump);
+                let doc = printer.type_ann_expr(&expr, &r#type).into_doc();
+                let out = doc.pretty(80).to_string();
                 self.command_output.push(out);
             }
             surface::Command::Eval(expr) => {
@@ -76,10 +75,13 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let value = self.eval_env().eval(&expr);
                 let value = self.quote_env().quote(&value);
 
-                let mut out = String::new();
-                pion_core::print::expr_prec(&mut out, &expr, Prec::MAX).unwrap();
-                write!(out, " ⇝ ").unwrap();
-                pion_core::print::expr_prec(&mut out, &value, Prec::MAX).unwrap();
+                let printer = Printer::new(self.bump);
+                let doc = printer
+                    .expr_prec(&expr, Prec::MAX)
+                    .append(" ⇝ ")
+                    .append(printer.expr_prec(&value, Prec::MAX))
+                    .into_doc();
+                let out = doc.pretty(80).to_string();
                 self.command_output.push(out);
             }
             surface::Command::Show(expr) => {
@@ -96,17 +98,19 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                                 ));
                             }
                             LocalInfo::Let(init) => {
-                                let mut out = String::new();
+                                let printer = Printer::new(self.bump);
                                 let init = init.shift(self.bump, self.env.locals.len());
                                 let binding = LetBinding::new(var.name, r#type, init);
-                                pion_core::print::let_stmt(&mut out, &binding).unwrap();
+                                let doc = printer.let_stmt(&binding).into_doc();
+                                let out = doc.pretty(80).to_string();
                                 self.command_output.push(out);
                             }
                         }
                     }
                     _ => {
-                        let mut out = String::new();
-                        pion_core::print::type_ann_expr(&mut out, &expr, &r#type).unwrap();
+                        let printer = Printer::new(self.bump);
+                        let doc = printer.type_ann_expr(&expr, &r#type).into_doc();
+                        let out = doc.pretty(80).to_string();
                         self.command_output.push(out);
                     }
                 }

@@ -1,9 +1,9 @@
 exit status: 0
 
 stdout = """
-{x : Int, } : Type
-{x : Int, y : Bool, } : Type
-{A : Type, a : A, } : Type
+{x : Int} : Type
+{x : Int, y : Bool} : Type
+{A : Type, a : A} : Type
 
 """
 

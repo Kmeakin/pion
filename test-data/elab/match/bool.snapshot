@@ -5,7 +5,10 @@ let not1 : Bool -> Bool = fun(b : ?1) => if b then false else true;
 let not2 : Bool -> Bool = fun(b : ?4) => if b then false else true;
 let not3 : Bool -> Bool = fun(b : ?7) => if b then false else true;
 let bool-to-int : Bool -> Int = fun(b : ?10) => if b then 1 else 0;
-let apply : Bool -> (Bool -> Int) -> Int = fun(x : Bool, f : Bool -> Int) => if x then 1 else do {let z : Bool = x; f(z)};
+let apply : Bool -> (Bool -> Int) -> Int = fun(x : Bool, f : Bool -> Int) => if x then 1 else do {
+    let z : Bool = x;
+    f(z)
+};
 
 """
 

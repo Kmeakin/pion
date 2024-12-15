@@ -1,7 +1,7 @@
 exit status: 0
 
 stdout = """
-{x : Int, y : Bool, } : Type
+{x : Int, y : Bool} : Type
 
 """
 
