@@ -2,7 +2,6 @@ use pion_core::print::{Prec, Printer};
 use pion_core::syntax::*;
 use pion_surface::syntax as surface;
 
-use super::Synth;
 use crate::env::LocalInfo;
 use crate::Elaborator;
 
@@ -16,48 +15,23 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
     ) -> &'core [Stmt<'core>] {
         let mut collected = Vec::with_capacity_in(stmts.len(), self.bump);
         for stmt in stmts {
-            if let Some(stmt) = self.stmt(stmt) {
-                collected.push(stmt);
+            match stmt {
+                surface::Stmt::Command(command) => self.command(command),
+                surface::Stmt::Expr(expr) => {
+                    // TODO: should we store the inferred type somewhere?
+                    let (expr, _type) = self.synth_expr(*expr);
+                    collected.push(Stmt::Expr(expr));
+                }
+                surface::Stmt::Let(binding) => {
+                    let (pat, type_value) = self.synth_pat(binding.data.pat.as_ref());
+                    let init = self.check_expr(binding.data.init.as_ref(), &type_value);
+                    let bindings = self.destruct_pat(&pat, &init, &r#type_value, false);
+                    self.push_let_bindings(&bindings);
+                    collected.extend(bindings.into_iter().map(Stmt::Let));
+                }
             }
         }
         collected.leak()
-    }
-
-    /// Synthesize statement.
-    /// NOTE: may push onto local environment.
-    /// Don't forget to reset in the caller!
-    fn stmt(&mut self, stmt: &'surface surface::Stmt<'text, 'surface>) -> Option<Stmt<'core>> {
-        match stmt {
-            surface::Stmt::Expr(expr) => {
-                // TODO: should we store the inferred type somewhere?
-                let (expr, _type) = self.synth_expr(*expr);
-                Some(Stmt::Expr(expr))
-            }
-            surface::Stmt::Let(binding) => {
-                let (binding, r#type) = self.let_binding(binding.as_ref());
-                let value = self.eval_env().eval(&binding.init);
-                self.env
-                    .locals
-                    .push_let(binding.name, r#type, binding.init, value);
-                Some(Stmt::Let(binding))
-            }
-            surface::Stmt::Command(command) => {
-                self.command(command);
-                None
-            }
-        }
-    }
-
-    fn let_binding(
-        &mut self,
-        binding: surface::Located<&surface::LetBinding<'text, 'surface>>,
-    ) -> Synth<'core, LetBinding<'core, Expr<'core>>> {
-        let surface::LetBinding { pat, init } = binding.data;
-        let (pat, r#type_value) = self.synth_pat(pat.as_ref());
-        let init = self.check_expr(init.as_ref(), &r#type_value);
-        let r#type = self.quote_env().quote(&r#type_value);
-        let binding = LetBinding::new(pat.name(), r#type, init);
-        (binding, r#type_value)
     }
 
     fn command(&mut self, command: &surface::Command<'text, 'surface>) {

@@ -1,0 +1,16 @@
+let f0 = fun (r : {}) => do {
+    let {} = r;
+};
+#show f0;
+
+let f1 = fun (r : {x : Int }) => do {
+    let {x = a} = r;
+    a
+};
+#show f1;
+
+let f2 = fun (r : {x : Int,y : Bool }) => do {
+    let {x = a, y = b } = r;
+    b
+};
+#show f2;

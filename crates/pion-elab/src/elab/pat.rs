@@ -187,14 +187,14 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
     }
 
     pub(super) fn destruct_pat(
-        &mut self,
+        &self,
         pat: &Pat<'core>,
         expr: &Expr<'core>,
         r#type: &Type<'core>,
         toplevel_param: bool,
     ) -> Vec<LetBinding<'core, Expr<'core>>> {
         fn recur<'core>(
-            ctx: &mut Elaborator<'core>,
+            ctx: &Elaborator<'core>,
             pat: &Pat<'core>,
             expr: &Expr<'core>,
             r#type: &Type<'core>,

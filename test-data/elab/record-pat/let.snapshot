@@ -1,0 +1,19 @@
+exit status: 0
+
+stdout = """
+let f0 : {} -> {} = fun(r : {}) => do {};
+let f1 : {x : Int} -> Int = fun(r : {x : Int}) => do {
+    let a : Int = r.x;
+    a
+};
+let f2 : {x : Int, y : Bool} -> Bool = fun(r : {x : Int, y : Bool}) => do {
+    let a : Int = r.x;
+    let b : Bool = r.y;
+    b
+};
+
+"""
+
+stderr = """
+
+"""
