@@ -12,3 +12,6 @@
 ## Evaluation
 - [Stepping OCaml](https://arxiv.org/abs/1906.11422)
 - [A compiled implementation of strong reduction](https://dl.acm.org/doi/10.1145/581478.581501)
+
+## To be investigated
+- [A Simpler Encoding of Indexed Types](https://dl.acm.org/doi/10.1145/3471875.3472991)
