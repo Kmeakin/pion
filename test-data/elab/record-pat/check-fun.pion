@@ -9,3 +9,16 @@ let f3: {x: Int, y: Bool} -> Bool = fun({x=a,y=b}) => b;
 
 let f4: forall(r: {A: Type, a: A}) -> r.A = fun({A=B,a=b}) => b;
 #show f4;
+
+// fst : (A:Type) → (B : A → Type) → (p : { x2 : A | B x2 }) → A
+// fst = λA B p. let (x,y) = p in x
+let dfst : forall(A: Type, B: A -> Type) -> {x: A, y: B(x)} -> A
+= fun(A: Type, B: A -> Type, {x=x,y=y}: {x: A, y: B(x)}) => x;
+
+// snd : (A:Type) → (B : A → Type) → (p : { x2 : A | B x2 }) → B (fst A B p)
+// snd = λA B p. let (x,y) = p in y
+let dsnd: forall(A: Type, B: A -> Type, p: {x: A, y: B(x)}) -> B(p.x)
+= fun(A: Type, B: A -> Type, {x=x,y=y}: {x: A, y: B(x)}) => y;
+
+#show dfst;
+#show dsnd;

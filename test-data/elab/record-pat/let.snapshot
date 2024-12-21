@@ -16,6 +16,16 @@ let f3 : forall(r : {A : Type, a : A}) -> r.A = fun(r : {A : Type, a : A}) => do
     let b : B = r.a;
     b
 };
+let dfst : forall(A : Type, B : A -> Type) -> {x : A, y : B(x)} -> A = fun(A : Type, B : A -> Type, p : {x : A, y : B(x)}) => do {
+    let x : A = p.x;
+    let y : B(x) = p.y;
+    x
+};
+let dsnd : forall(A : Type, B : A -> Type, p : {x : A, y : B(x)}) -> B(p.x) = fun(A : Type, B : A -> Type, p : {x : A, y : B(x)}) => do {
+    let x : A = p.x;
+    let y : B(x) = p.y;
+    y
+};
 
 """
 

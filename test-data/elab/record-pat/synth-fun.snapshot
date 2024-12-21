@@ -16,6 +16,16 @@ stdout = """
     let b : B = #var(DeBruijnIndex(1)).a;
     b
 }) : forall(_ : {A : Type, a : A}) -> #var(DeBruijnIndex(0)).A
+(fun(A : Type, B : A -> Type, _ : {x : A, y : B(x)}) => do {
+    let x : A = #var(DeBruijnIndex(0)).x;
+    let y : B(x) = #var(DeBruijnIndex(1)).y;
+    x
+}) : forall(A : Type, B : A -> Type) -> {x : A, y : B(x)} -> A
+(fun(A : Type, B : A -> Type, _ : {x : A, y : B(x)}) => do {
+    let x : A = #var(DeBruijnIndex(0)).x;
+    let y : B(x) = #var(DeBruijnIndex(1)).y;
+    y
+}) : forall(A : Type, B : A -> Type, _ : {x : A, y : B(x)}) -> B(#var(DeBruijnIndex(0)).x)
 
 """
 

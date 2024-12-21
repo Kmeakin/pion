@@ -21,3 +21,23 @@ let f3: forall(r: {A: Type, a: A}) -> r.A = fun (r : {A : Type, a: A }) => do {
     b
 };
 #show f3;
+
+// Examples of "strong pairs" from pi-forall
+
+// fst : (A:Type) → (B : A → Type) → (p : { x2 : A | B x2 }) → A
+// fst = λA B p. let (x,y) = p in x
+let dfst = fun(A: Type, B: A -> Type, p: {x: A, y: B(x)}) => do {
+   let {x=x, y=y} : {x: A, y: B(x)} = p;
+   x
+};
+
+// snd : (A:Type) → (B : A → Type) → (p : { x2 : A | B x2 }) → B (fst A B p)
+// snd = λA B p. let (x,y) = p in y
+let dsnd = fun(A: Type, B: A -> Type, p: {x: A, y: B(x)}) => do {
+   let {x=x, y=y} : {x: A, y: B(x)} = p;
+   y
+};
+
+#show dfst;
+#show dsnd;
+

@@ -3,3 +3,13 @@
 #check fun({x=a,y=b} : {x : Int, y : Bool }) => b;
 // FIXME: fails if pattern is not annotated
 #check fun({A=B,a=b}: {A: Type, a: A}) => b;
+
+// Examples of "strong pairs" from pi-forall
+
+// fst : (A:Type) → (B : A → Type) → (p : { x2 : A | B x2 }) → A
+// fst = λA B p. let (x,y) = p in x
+#check fun(A: Type, B: A -> Type, {x=x,y=y}: {x: A, y: B(x)}) => x;
+
+// snd : (A:Type) → (B : A → Type) → (p : { x2 : A | B x2 }) → B (fst A B p)
+// snd = λA B p. let (x,y) = p in y
+#check fun(A: Type, B: A -> Type, {x=x,y=y}: {x: A, y: B(x)}) => y;

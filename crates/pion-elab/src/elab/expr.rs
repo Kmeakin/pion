@@ -397,9 +397,9 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     let body_expr = {
                         let len = this.env.locals.len();
                         let var = Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0)));
-                        let bindings = this.destruct_pat(&pat, &var, &param_type, true);
 
-                        this.env.locals.push_param(param.name, param_type);
+                        this.env.locals.push_param(param.name, param_type.clone());
+                        let bindings = this.destruct_pat(&pat, &var, &param_type, true);
                         this.push_let_bindings(&bindings);
                         let body_expr = recur(this, params, body);
                         this.env.locals.truncate(len);
@@ -431,8 +431,8 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let (body_expr, body_type) = {
                     let len = self.env.locals.len();
                     let var = Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0)));
-                    let bindings = self.destruct_pat(&pat, &var, &param_type, true);
                     self.env.locals.push_param(param.name, param_type.clone());
+                    let bindings = self.destruct_pat(&pat, &var, &param_type, true);
                     self.push_let_bindings(&bindings);
                     let (body_expr, body_type) = self.synth_fun_expr(params, body);
                     let body_type = self.quote_env().quote(&body_type);
@@ -499,11 +499,10 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let body_expr = {
                     let len = self.env.locals.len();
                     let var = Expr::LocalVar(LocalVar::new(DeBruijnIndex::new(0)));
-                    let bindings = self.destruct_pat(&pat, &var, expected_param.r#type, true);
-
                     let arg_value =
                         Value::local_var(LocalVar::new(self.env.locals.values.len().to_level()));
                     (self.env.locals).push_param(param.name, expected_param.r#type.clone());
+                    let bindings = self.destruct_pat(&pat, &var, expected_param.r#type, true);
                     self.push_let_bindings(&bindings);
                     let expected =
                         (self.elim_env()).apply_closure(expected_body.clone(), arg_value);
