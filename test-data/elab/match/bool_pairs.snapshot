@@ -1,9 +1,30 @@
 exit status: 0
 
 stdout = """
-let and1 : Bool -> Bool -> Bool = fun(x : ?1, y : ?2(x)) => if {x = x, y = y}.x then if {x = x, y = y}.y then true else false else false;
-let and2 : Bool -> Bool -> Bool = fun(x : ?5, y : ?6(x)) => if {x = x, y = y}.x then if {x = x, y = y}.y then true else false else false;
-let and3 : Bool -> Bool -> Bool = fun(x : ?9, y : ?10(x)) => if {x = x, y = y}.x then if {x = x, y = y}.y then true else false else if {x = x, y = y}.y then false else false;
+let and1 : Bool -> Bool -> Bool = fun(x : ?1, y : ?2(x)) => match {x = x, y = y}.x {
+    true => match {x = x, y = y}.y {
+        true => true,
+        false => false,
+    },
+    false => false,
+};
+let and2 : Bool -> Bool -> Bool = fun(x : ?5, y : ?6(x)) => match {x = x, y = y}.x {
+    true => match {x = x, y = y}.y {
+        true => true,
+        false => false,
+    },
+    false => false,
+};
+let and3 : Bool -> Bool -> Bool = fun(x : ?9, y : ?10(x)) => match {x = x, y = y}.x {
+    true => match {x = x, y = y}.y {
+        true => true,
+        false => false,
+    },
+    false => match {x = x, y = y}.y {
+        true => false,
+        false => false,
+    },
+};
 
 """
 

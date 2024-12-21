@@ -1,7 +1,10 @@
 exit status: 0
 
 stdout = """
-(if true then 1 else #error) : Int
+(match true {
+    true => 1,
+    false => #error,
+}) : Int
 
 """
 

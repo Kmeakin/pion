@@ -19,8 +19,20 @@ not-true-is-false : Eq(@Bool, false, false)
 not-true-is-false ⇝ refl(@Bool, false)
 not-false-is-true : Eq(@Bool, true, true)
 not-false-is-true ⇝ refl(@Bool, true)
-not_self_inverse : forall(b : Bool) -> Eq(@Bool, if if b then false else true then false else true, b)
-not_self_inverse ⇝ fun(b : Bool) => bool_rec(@fun(a : Bool) => Eq(@Bool, if if a then false else true then false else true, a), b, refl(@Bool, true), refl(@Bool, false))
+not_self_inverse : forall(b : Bool) -> Eq(@Bool, match match b {
+    true => false,
+    false => true,
+} {
+    true => false,
+    false => true,
+}, b)
+not_self_inverse ⇝ fun(b : Bool) => bool_rec(@fun(a : Bool) => Eq(@Bool, match match a {
+    true => false,
+    false => true,
+} {
+    true => false,
+    false => true,
+}, a), b, refl(@Bool, true), refl(@Bool, false))
 
 """
 

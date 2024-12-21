@@ -1,7 +1,10 @@
 exit status: 0
 
 stdout = """
-(if true then fun(x : Int) => x else fun(x : Int) => x) : Int -> Int
+(match true {
+    true => fun(x : Int) => x,
+    false => fun(x : Int) => x,
+}) : Int -> Int
 
 """
 

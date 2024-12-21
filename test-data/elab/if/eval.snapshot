@@ -1,9 +1,21 @@
 exit status: 0
 
 stdout = """
-if true then 1 else 0 ⇝ 1
-if false then 1 else 0 ⇝ 0
-fun(b : ?0) => if b then 1 else 0 ⇝ fun(b : Bool) => if b then 1 else 0
+match true {
+    true => 1,
+    false => 0,
+} ⇝ 1
+match false {
+    true => 1,
+    false => 0,
+} ⇝ 0
+fun(b : ?0) => match b {
+    true => 1,
+    false => 0,
+} ⇝ fun(b : Bool) => match b {
+    true => 1,
+    false => 0,
+}
 
 """
 

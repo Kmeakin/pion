@@ -193,7 +193,18 @@ impl<'bump> Printer<'bump> {
                 let cond = self.expr_prec(cond, Prec::MAX, names);
                 let then = self.expr_prec(then, Prec::MAX, names);
                 let r#else = self.expr_prec(r#else, Prec::MAX, names);
-                docs![self, "if ", cond, " then ", then, " else ", r#else]
+
+                let then = docs![self, "true => ", then, ",", self.hardline()];
+                let r#else = docs![self, "false => ", r#else, ","];
+
+                docs![
+                    self,
+                    "match ",
+                    cond,
+                    " {",
+                    docs![self, self.hardline(), then, r#else, self.hardline()].nest(INDENT),
+                    "}"
+                ]
             }
             Expr::MatchInt(scrut, cases, default) => {
                 let scrut = self.expr_prec(scrut, Prec::MAX, names);
@@ -505,6 +516,10 @@ mod tests {
             &const { Expr::int(1) },
             &const { Expr::int(2) },
         );
-        assert_print_expr(&expr, expect!["if true then 1 else 2"]);
+        assert_print_expr(&expr, expect![[r#"
+            match true {
+                true => 1,
+                false => 2,
+            }"#]]);
     }
 }

@@ -2,7 +2,10 @@ exit status: 0
 
 stdout = """
 let f1 : forall(b : Bool) -> ?1(b) = fun(b : Bool) => #error;
-let f2 : Bool -> Bool = fun(b : Bool) => if b then false else #error;
+let f2 : Bool -> Bool = fun(b : Bool) => match b {
+    true => false,
+    false => #error,
+};
 let f3 : Int -> Bool = fun(n : Int) => match n {
     1 => false,
     2 => true,
