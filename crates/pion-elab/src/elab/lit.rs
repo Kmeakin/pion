@@ -150,30 +150,34 @@ impl<'core> Elaborator<'core> {
         let text = text.strip_prefix('\'').expect("Guaranteed by lexer");
 
         let mut chars = text.chars();
-        match chars.next() {
-            None => todo!("Unterminated character"),
-            Some('\'') => {
+
+        let mut next = || match chars.next() {
+            None => {
+                self.diagnostic(
+                    range,
+                    Diagnostic::error().with_message("Unterminated character literal"),
+                );
+                Err(())
+            }
+            Some(c) => Ok(c),
+        };
+
+        match next()? {
+            '\'' => {
                 self.diagnostic(
                     range,
                     Diagnostic::error().with_message("Empty character literal"),
                 );
                 Err(())
             }
-            Some('\\') => match chars.next() {
-                None => {
-                    self.diagnostic(
-                        range,
-                        Diagnostic::error().with_message("Unterminated character literal"),
-                    );
-                    Err(())
-                }
-                Some('n') => Ok('\n'),
-                Some('r') => Ok('\r'),
-                Some('t') => Ok('\t'),
-                Some('\"') => Ok('\"'),
-                Some('\'') => Ok('\''),
-                Some('\\') => Ok('\\'),
-                Some(c) => {
+            '\\' => match next()? {
+                'n' => Ok('\n'),
+                'r' => Ok('\r'),
+                't' => Ok('\t'),
+                '\"' => Ok('\"'),
+                '\'' => Ok('\''),
+                '\\' => Ok('\\'),
+                c => {
                     self.diagnostic(
                         range,
                         Diagnostic::error()
@@ -182,10 +186,9 @@ impl<'core> Elaborator<'core> {
                     Err(())
                 }
             },
-            Some(c) => match chars.next() {
-                None => todo!("Unterminated character"),
-                Some('\'') => Ok(c),
-                Some(_) => {
+            c => match next()? {
+                '\'' => Ok(c),
+                _ => {
                     self.diagnostic(
                         range,
                         Diagnostic::error().with_message("Character literal too long"),
