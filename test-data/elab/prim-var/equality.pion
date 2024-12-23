@@ -75,4 +75,5 @@ let not_self_inverse: forall(b: Bool) -> Eq(not(not(b)), b)
         bool_rec(@p, b, p_true, p_false)
     };
 #check not_self_inverse;
+#show not_self_inverse;
 #eval not_self_inverse;

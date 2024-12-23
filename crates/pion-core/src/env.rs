@@ -12,6 +12,8 @@ pub struct DeBruijnLevel(usize);
 
 impl DeBruijnLevel {
     pub const fn new(value: usize) -> Self { Self(value) }
+
+    pub const fn get(self) -> usize { self.0 }
 }
 
 impl fmt::Display for DeBruijnLevel {
@@ -32,6 +34,8 @@ impl DeBruijnIndex {
 
     #[must_use]
     pub const fn succ(self) -> Self { Self(self.0 + 1) }
+
+    pub const fn get(self) -> usize { self.0 }
 
     #[must_use]
     pub fn pred(self) -> Option<Self> { self.0.checked_sub(1).map(Self) }
@@ -66,6 +70,8 @@ impl EnvLen {
     /// environment.
     pub const fn to_level(self) -> DeBruijnLevel { DeBruijnLevel(self.0) }
 
+    pub fn get(self) -> usize { self.0 }
+
     /// Get a new environment with one extra element.
     #[must_use]
     pub const fn succ(self) -> Self { Self(self.0 + 1) }
@@ -96,6 +102,10 @@ impl Add for EnvLen {
 
 impl From<usize> for EnvLen {
     fn from(value: usize) -> Self { Self(value) }
+}
+
+impl From<DeBruijnLevel> for EnvLen {
+    fn from(value: DeBruijnLevel) -> Self { Self(value.0) }
 }
 
 pub trait DeBruijn: Copy + fmt::Debug {

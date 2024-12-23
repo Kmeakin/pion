@@ -1,9 +1,10 @@
+use pion_core::env::{DeBruijn, EnvLen};
 use pion_core::print::{Prec, Printer};
 use pion_core::syntax::*;
 use pion_surface::syntax as surface;
 
-use crate::env::LocalInfo;
 use crate::Elaborator;
+use crate::env::LocalInfo;
 
 impl<'text, 'surface, 'core> Elaborator<'core> {
     /// Synthesize statements.
@@ -75,8 +76,11 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                                     .push(format!("parameter {name} : {ty}",));
                             }
                             LocalInfo::Let(init) => {
+                                let diff = self.env.locals.len().get()
+                                    - var.de_bruijn.to_level(self.env.locals.len()).unwrap().get();
+                                let init = init.shift(self.bump, EnvLen::from(diff));
+
                                 let printer = Printer::new(self.bump);
-                                let init = init.shift(self.bump, self.env.locals.len());
                                 let binding = LetBinding::new(*name, r#type, init);
                                 let doc = printer
                                     .let_stmt(&binding, &mut self.env.locals.names)

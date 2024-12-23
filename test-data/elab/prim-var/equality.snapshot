@@ -26,6 +26,18 @@ not_self_inverse : forall(b : Bool) -> Eq(@Bool, match match b {
     true => false,
     false => true,
 }, b)
+let not_self_inverse : forall(b : Bool) -> Eq(@Bool, match match b {
+    true => false,
+    false => true,
+} {
+    true => false,
+    false => true,
+}, b) = fun(b : Bool) => do {
+    let p : Bool -> Type = fun(a : ?37(b)) => Eq(@?38(b, a), not(not(a)), a);
+    let p_true : Eq(@?40(b), ?42(b), ?42(b)) = refl(@?40(b), ?42(b));
+    let p_false : Eq(@?44(b), ?46(b), ?46(b)) = refl(@?44(b), ?46(b));
+    bool_rec(@p, b, p_true, p_false)
+};
 not_self_inverse ⇝ fun(b : Bool) => bool_rec(@fun(a : Bool) => Eq(@Bool, match match a {
     true => false,
     false => true,
