@@ -30,7 +30,7 @@ pub enum Expr<'core> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct MatchBool<'core> {
     pub cond: &'core Expr<'core>,
-    pub motive: &'core Expr<'core>,
+    pub motive: Option<&'core Expr<'core>>,
     pub then: &'core Expr<'core>,
     pub r#else: &'core Expr<'core>,
 }
@@ -131,7 +131,15 @@ impl<'core> Expr<'core> {
                     }
                 }) || expr.map_or(false, |expr| expr.binds_local(var))
             }
-            Expr::MatchBool(m) => [m.cond, m.motive, m.then, m.r#else]
+            Expr::MatchBool(m @ MatchBool { motive: None, .. }) => [m.cond, m.then, m.r#else]
+                .iter()
+                .any(|expr| expr.binds_local(var)),
+            Expr::MatchBool(MatchBool {
+                cond,
+                motive: Some(motive),
+                then,
+                r#else,
+            }) => [cond, motive, then, r#else]
                 .iter()
                 .any(|expr| expr.binds_local(var)),
             Expr::MatchInt(scrut, cases, default) => std::iter::once(*scrut)
@@ -217,10 +225,11 @@ impl<'core> Expr<'core> {
                     r#else,
                 }) => {
                     let cond = recur(cond, bump, min, amount);
-                    let motive = recur(motive, bump, min, amount);
+                    let motive =
+                        motive.map(|motive| &*bump.alloc(recur(motive, bump, min, amount)));
                     let then = recur(then, bump, min, amount);
                     let r#else = recur(r#else, bump, min, amount);
-                    let (cond, motive, then, r#else) = bump.alloc((cond, motive, then, r#else));
+                    let (cond, then, r#else) = bump.alloc((cond, then, r#else));
                     Expr::MatchBool(MatchBool {
                         cond,
                         motive,

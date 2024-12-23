@@ -93,7 +93,47 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     None => (Expr::Do(stmts, None), Type::UNIT_TYPE),
                 }
             }
-            surface::Expr::If(cond, Some(motive), then, r#else) => todo!(),
+            surface::Expr::If(cond, Some(motive), then, r#else) => {
+                let cond = self.check_expr(*cond, &Type::BOOL);
+                let cond_value = self.eval_env().eval(&cond);
+
+                let motive = {
+                    const BOOL: &Type<'static> = &Type::BOOL;
+                    const EXPECTED: Type<'static> =
+                        Type::FunType(FunParam::explicit(None, BOOL), Closure::empty(&Expr::TYPE));
+                    self.check_expr(*motive, &EXPECTED)
+                };
+
+                let motive_value = self.eval_env().eval(&motive);
+
+                let then = {
+                    let expected = self
+                        .elim_env()
+                        .fun_app(motive_value.clone(), FunArg::explicit(Value::bool(true)));
+                    self.check_expr(*then, &expected)
+                };
+
+                let r#else = {
+                    let expected = self
+                        .elim_env()
+                        .fun_app(motive_value.clone(), FunArg::explicit(Value::bool(false)));
+                    self.check_expr(*r#else, &expected)
+                };
+
+                let ret_type = self
+                    .elim_env()
+                    .fun_app(motive_value, FunArg::explicit(cond_value));
+
+                let (cond, motive, then, r#else) = self.bump.alloc((cond, motive, then, r#else));
+                let it = MatchBool {
+                    cond,
+                    motive: Some(motive),
+                    then,
+                    r#else,
+                };
+                let expr = Expr::MatchBool(it);
+                (expr, ret_type)
+            }
             surface::Expr::If(cond, None, then, r#else) => {
                 let cond = self.check_expr(*cond, &Type::BOOL);
                 let (then, r#type) = self.synth_expr(*then);
@@ -101,7 +141,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
                 let it = MatchBool {
                     cond,
-                    motive: &Expr::Error,
+                    motive: None,
                     then,
                     r#else,
                 };
@@ -268,7 +308,7 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
                 let it = MatchBool {
                     cond,
-                    motive: &Expr::Error,
+                    motive: None,
                     then,
                     r#else,
                 };

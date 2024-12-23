@@ -1,0 +1,16 @@
+exit status: 0
+
+stdout = """
+let f : forall(b : Bool) -> match b {
+    true => Int,
+    false => Char,
+} = fun(b : ?1) => match b motive = T {
+    true => 0,
+    false => 'a',
+};
+
+"""
+
+stderr = """
+
+"""

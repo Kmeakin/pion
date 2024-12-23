@@ -154,7 +154,7 @@ impl<'core> PatternCompiler<'core> {
                 let (cond, then, r#else) = self.bump.alloc((*scrut, true_branch, false_branch));
                 let it = MatchBool {
                     cond,
-                    motive: &Expr::Error,
+                    motive: None,
                     then,
                     r#else,
                 };

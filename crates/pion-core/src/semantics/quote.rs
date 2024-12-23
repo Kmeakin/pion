@@ -113,7 +113,7 @@ fn quote_neutral<'core>(
             let (cond, then, r#else) = bump.alloc((head, then, r#else));
             let it = MatchBool {
                 cond,
-                motive: &Expr::Error,
+                motive: None,
                 then,
                 r#else,
             };

@@ -1,0 +1,5 @@
+// Example of "large elimination" from pi-forall
+
+let T: Bool -> Type = fun(b) => if b then Int else Char;
+let f = fun(b) => if b motive = T then 0 else 'a';
+#show f;

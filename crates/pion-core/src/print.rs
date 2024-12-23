@@ -189,7 +189,32 @@ impl<'bump> Printer<'bump> {
                     "}"
                 ]
             }
-            Expr::MatchBool(m) => {
+            Expr::MatchBool(MatchBool {
+                cond,
+                motive: Some(motive),
+                then,
+                r#else,
+            }) => {
+                let cond = self.expr_prec(cond, Prec::MAX, names);
+                let motive = self.expr_prec(motive, Prec::MAX, names);
+                let then = self.expr_prec(then, Prec::MAX, names);
+                let r#else = self.expr_prec(r#else, Prec::MAX, names);
+
+                let then = docs![self, "true => ", then, ",", self.hardline()];
+                let r#else = docs![self, "false => ", r#else, ","];
+
+                docs![
+                    self,
+                    "match ",
+                    cond,
+                    " motive = ",
+                    motive,
+                    " {",
+                    docs![self, self.hardline(), then, r#else, self.hardline()].nest(INDENT),
+                    "}"
+                ]
+            }
+            Expr::MatchBool(m @ MatchBool { motive: None, .. }) => {
                 let cond = self.expr_prec(m.cond, Prec::MAX, names);
                 let then = self.expr_prec(m.then, Prec::MAX, names);
                 let r#else = self.expr_prec(m.r#else, Prec::MAX, names);
@@ -513,7 +538,7 @@ mod tests {
     fn print_expr_if() {
         let expr = Expr::MatchBool(MatchBool {
             cond: &const { Expr::bool(true) },
-            motive: &const { Expr::bool(true) },
+            motive: None,
             then: &const { Expr::int(1) },
             r#else: &const { Expr::int(2) },
         });
