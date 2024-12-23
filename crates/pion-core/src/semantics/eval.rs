@@ -87,9 +87,9 @@ pub(super) fn eval<'core, 'env>(
             locals.truncate(len);
             result
         }
-        Expr::MatchBool(cond, then, r#else) => {
-            let cond = eval(cond, bump, opts, locals, metas);
-            elim::match_bool(cond, then, r#else, bump, opts, locals, metas)
+        Expr::MatchBool(m) => {
+            let cond = eval(m.cond, bump, opts, locals, metas);
+            elim::match_bool(cond, m.then, m.r#else, bump, opts, locals, metas)
         }
         Expr::MatchInt(scrut, cases, default) => {
             let scrut = eval(scrut, bump, opts, locals, metas);

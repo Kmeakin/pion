@@ -19,12 +19,20 @@ pub enum Expr<'core> {
     FunApp(&'core Self, FunArg<&'core Self>),
 
     Do(&'core [Stmt<'core>], Option<&'core Self>),
-    MatchBool(&'core Self, &'core Self, &'core Self),
+    MatchBool(MatchBool<'core>),
     MatchInt(&'core Self, &'core [(u32, Self)], &'core Self),
 
     RecordType(RecordFields<'core, Self>),
     RecordLit(RecordFields<'core, Self>),
     RecordProj(&'core Self, Symbol<'core>),
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct MatchBool<'core> {
+    pub cond: &'core Expr<'core>,
+    pub motive: &'core Expr<'core>,
+    pub then: &'core Expr<'core>,
+    pub r#else: &'core Expr<'core>,
 }
 
 pub type RecordFields<'core, Field> = &'core [(Symbol<'core>, Field)];
@@ -123,7 +131,7 @@ impl<'core> Expr<'core> {
                     }
                 }) || expr.map_or(false, |expr| expr.binds_local(var))
             }
-            Expr::MatchBool(cond, then, r#else) => [cond, then, r#else]
+            Expr::MatchBool(m) => [m.cond, m.motive, m.then, m.r#else]
                 .iter()
                 .any(|expr| expr.binds_local(var)),
             Expr::MatchInt(scrut, cases, default) => std::iter::once(*scrut)
@@ -202,12 +210,23 @@ impl<'core> Expr<'core> {
                         expr.map(|expr| &*bump.alloc(recur(expr, bump, min, amount)));
                     Expr::Do(stmts, trailing_expr)
                 }
-                Expr::MatchBool(cond, then, r#else) => {
+                Expr::MatchBool(MatchBool {
+                    cond,
+                    motive,
+                    then,
+                    r#else,
+                }) => {
                     let cond = recur(cond, bump, min, amount);
+                    let motive = recur(motive, bump, min, amount);
                     let then = recur(then, bump, min, amount);
                     let r#else = recur(r#else, bump, min, amount);
-                    let (cond, then, r#else) = bump.alloc((cond, then, r#else));
-                    Expr::MatchBool(cond, then, r#else)
+                    let (cond, motive, then, r#else) = bump.alloc((cond, motive, then, r#else));
+                    Expr::MatchBool(MatchBool {
+                        cond,
+                        motive,
+                        then,
+                        r#else,
+                    })
                 }
                 Expr::MatchInt(scrut, cases, default) => {
                     let scrut = recur(scrut, bump, min, amount);

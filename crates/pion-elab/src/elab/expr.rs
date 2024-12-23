@@ -5,7 +5,7 @@ use codespan_reporting::diagnostic::{Diagnostic, Label};
 use pion_core::env::{DeBruijnIndex, EnvLen};
 use pion_core::prim::PrimVar;
 use pion_core::semantics::{Closure, Telescope, Type, Value};
-use pion_core::syntax::{Expr, FunArg, FunParam, LocalVar, Plicity};
+use pion_core::syntax::{Expr, FunArg, FunParam, LocalVar, MatchBool, Plicity};
 use pion_surface::syntax::{self as surface, Located};
 use text_size::TextRange;
 
@@ -98,7 +98,13 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let (then, r#type) = self.synth_expr(*then);
                 let r#else = self.check_expr(*r#else, &r#type);
                 let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
-                let expr = Expr::MatchBool(cond, then, r#else);
+                let it = MatchBool {
+                    cond,
+                    motive: &Expr::Error,
+                    then,
+                    r#else,
+                };
+                let expr = Expr::MatchBool(it);
                 (expr, r#type)
             }
             surface::Expr::Match(scrut, cases) => {
@@ -258,7 +264,13 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                 let then = self.check_expr(*then, expected);
                 let r#else = self.check_expr(*r#else, expected);
                 let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
-                Expr::MatchBool(cond, then, r#else)
+                let it = MatchBool {
+                    cond,
+                    motive: &Expr::Error,
+                    then,
+                    r#else,
+                };
+                Expr::MatchBool(it)
             }
             surface::Expr::Match(scrut, cases) => self.check_match_expr(*scrut, cases, expected),
             surface::Expr::RecordLit(fields) => {

@@ -189,10 +189,10 @@ impl<'bump> Printer<'bump> {
                     "}"
                 ]
             }
-            Expr::MatchBool(cond, then, r#else) => {
-                let cond = self.expr_prec(cond, Prec::MAX, names);
-                let then = self.expr_prec(then, Prec::MAX, names);
-                let r#else = self.expr_prec(r#else, Prec::MAX, names);
+            Expr::MatchBool(m) => {
+                let cond = self.expr_prec(m.cond, Prec::MAX, names);
+                let then = self.expr_prec(m.then, Prec::MAX, names);
+                let r#else = self.expr_prec(m.r#else, Prec::MAX, names);
 
                 let then = docs![self, "true => ", then, ",", self.hardline()];
                 let r#else = docs![self, "false => ", r#else, ","];
@@ -511,15 +511,19 @@ mod tests {
 
     #[test]
     fn print_expr_if() {
-        let expr = Expr::MatchBool(
-            &const { Expr::bool(true) },
-            &const { Expr::int(1) },
-            &const { Expr::int(2) },
-        );
-        assert_print_expr(&expr, expect![[r#"
+        let expr = Expr::MatchBool(MatchBool {
+            cond: &const { Expr::bool(true) },
+            motive: &const { Expr::bool(true) },
+            then: &const { Expr::int(1) },
+            r#else: &const { Expr::int(2) },
+        });
+        assert_print_expr(
+            &expr,
+            expect![[r#"
             match true {
                 true => 1,
                 false => 2,
-            }"#]]);
+            }"#]],
+        );
     }
 }

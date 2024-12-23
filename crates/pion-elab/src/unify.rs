@@ -6,7 +6,7 @@ use pion_core::semantics::{
     self, Closure, Elim, Head, LocalValues, MetaValues, Type, UnfoldOpts, Value,
 };
 use pion_core::symbol::Symbol;
-use pion_core::syntax::{Expr, FunArg, FunParam, LocalVar, MetaVar};
+use pion_core::syntax::{Expr, FunArg, FunParam, LocalVar, MatchBool, MetaVar};
 
 /// Unification environment.
 pub struct UnifyEnv<'env, 'core> {
@@ -441,7 +441,13 @@ impl<'env, 'core> UnifyEnv<'env, 'core> {
                             self.rename(meta_var, &value)?
                         };
                         let (cond, then, r#else) = self.bump.alloc((head, then, r#else));
-                        Ok(Expr::MatchBool(cond, then, r#else))
+                        let it = MatchBool {
+                            cond,
+                            motive: &Expr::Error,
+                            then,
+                            r#else,
+                        };
+                        Ok(Expr::MatchBool(it))
                     }
                     Elim::MatchInt(locals, cases, default) => {
                         let mut locals = locals.clone();

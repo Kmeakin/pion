@@ -1,5 +1,6 @@
 use super::*;
 use crate::env::DeBruijn;
+use crate::syntax::MatchBool;
 
 #[derive(Debug, Copy, Clone)]
 pub struct QuoteEnv<'env, 'core> {
@@ -110,7 +111,13 @@ fn quote_neutral<'core>(
                 quote(&value, bump, locals, metas)
             };
             let (cond, then, r#else) = bump.alloc((head, then, r#else));
-            Expr::MatchBool(&*cond, &*then, &*r#else)
+            let it = MatchBool {
+                cond,
+                motive: &Expr::Error,
+                then,
+                r#else,
+            };
+            Expr::MatchBool(it)
         }
         Elim::MatchInt(mut values, cases, default) => {
             let cases = bump.alloc_slice_fill_iter(cases.iter().map(|(n, expr)| {

@@ -25,7 +25,7 @@
 // of missing patterns is described in part two of *Warnings for pattern
 // matching*
 
-use pion_core::syntax::{Expr, Lit};
+use pion_core::syntax::{Expr, Lit, MatchBool};
 use smallvec::{smallvec, SmallVec};
 
 use super::constructors::{has_constructors, Constructor, Constructors};
@@ -152,7 +152,13 @@ impl<'core> PatternCompiler<'core> {
                 let true_branch = do_branch(true);
                 let false_branch = do_branch(false);
                 let (cond, then, r#else) = self.bump.alloc((*scrut, true_branch, false_branch));
-                Expr::MatchBool(cond, then, r#else)
+                let it = MatchBool {
+                    cond,
+                    motive: &Expr::Error,
+                    then,
+                    r#else,
+                };
+                Expr::MatchBool(it)
             }
             Constructors::Ints(ref cases) => {
                 let cases = self.bump.alloc_slice_fill_iter(cases.iter().map(|int| {
