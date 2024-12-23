@@ -180,44 +180,39 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
 
                 let proj_label = self.intern(label.data);
 
-                match scrut_type {
-                    Value::RecordType(mut telescope) => {
-                        let Some(_pos) =
-                            (telescope.fields.iter()).find(|(label, _)| *label == proj_label)
-                        else {
-                            self.diagnostic(
-                                scrut.range,
-                                Diagnostic::error()
-                                    .with_message(format!("Field `{proj_label}` not found")),
-                            );
-                            return (Expr::Error, Type::ERROR);
-                        };
+                let Value::RecordType(mut telescope) = scrut_type else {
+                    let found = self.pretty(&self.quote_env().quote(&scrut_type));
+                    self.diagnostic(
+                        scrut.range,
+                        Diagnostic::error()
+                            .with_message(format!("Expected record, found `{found}`")),
+                    );
+                    return (Expr::Error, Type::ERROR);
+                };
 
-                        let scrut_value = self.eval_env().eval(&scrut_expr);
-                        while let Some((label, r#type, update_telescope)) =
-                            self.elim_env().split_telescope(&mut telescope)
-                        {
-                            if label == proj_label {
-                                let expr = Expr::RecordProj(self.bump.alloc(scrut_expr), label);
-                                return (expr, r#type);
-                            }
+                let Some(_pos) = (telescope.fields.iter()).find(|(label, _)| *label == proj_label)
+                else {
+                    self.diagnostic(
+                        scrut.range,
+                        Diagnostic::error().with_message(format!("Field `{proj_label}` not found")),
+                    );
+                    return (Expr::Error, Type::ERROR);
+                };
 
-                            let projected = self.elim_env().record_proj(scrut_value.clone(), label);
-                            update_telescope(projected);
-                        }
-
-                        unreachable!()
+                let scrut_value = self.eval_env().eval(&scrut_expr);
+                while let Some((label, r#type, update_telescope)) =
+                    self.elim_env().split_telescope(&mut telescope)
+                {
+                    if label == proj_label {
+                        let expr = Expr::RecordProj(self.bump.alloc(scrut_expr), label);
+                        return (expr, r#type);
                     }
-                    _ => {
-                        let found = self.pretty(&self.quote_env().quote(&scrut_type));
-                        self.diagnostic(
-                            scrut.range,
-                            Diagnostic::error()
-                                .with_message(format!("Expected record, found `{found}`")),
-                        );
-                        (Expr::Error, Type::ERROR)
-                    }
+
+                    let projected = self.elim_env().record_proj(scrut_value.clone(), label);
+                    update_telescope(projected);
                 }
+
+                unreachable!()
             }
         }
     }
