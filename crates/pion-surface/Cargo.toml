@@ -13,14 +13,6 @@ codespan-reporting = { workspace = true }
 text-size          = { workspace = true }
 
 [dev-dependencies]
-criterion   = { workspace = true }
 expect-test = { workspace = true }
 walkdir     = { workspace = true }
 
-[[bench]]
-harness = false
-name    = "lex"
-
-[[bench]]
-harness = false
-name    = "parse"
