@@ -93,7 +93,8 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     None => (Expr::Do(stmts, None), Type::UNIT_TYPE),
                 }
             }
-            surface::Expr::If(cond, then, r#else) => {
+            surface::Expr::If(cond, Some(motive), then, r#else) => todo!(),
+            surface::Expr::If(cond, None, then, r#else) => {
                 let cond = self.check_expr(*cond, &Type::BOOL);
                 let (then, r#type) = self.synth_expr(*then);
                 let r#else = self.check_expr(*r#else, &r#type);
@@ -259,7 +260,8 @@ impl<'text, 'surface, 'core> Elaborator<'core> {
                     expected,
                 )
             }
-            surface::Expr::If(cond, then, r#else) => {
+            surface::Expr::If(_, Some(_motive), ..) => self.synth_and_coerce_expr(expr, expected),
+            surface::Expr::If(cond, None, then, r#else) => {
                 let cond = self.check_expr(*cond, &Type::BOOL);
                 let then = self.check_expr(*then, expected);
                 let r#else = self.check_expr(*r#else, expected);

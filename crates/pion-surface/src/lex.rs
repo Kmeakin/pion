@@ -40,6 +40,7 @@ pub enum TokenKind {
     KwIf,
     KwLet,
     KwMatch,
+    KwMotive,
     KwThen,
     KwTrue,
 
@@ -64,6 +65,7 @@ impl TokenKind {
             ReservedIdent::If => Self::KwIf,
             ReservedIdent::Let => Self::KwLet,
             ReservedIdent::Match => Self::KwMatch,
+            ReservedIdent::Motive => Self::KwMotive,
             ReservedIdent::Then => Self::KwThen,
             ReservedIdent::True => Self::KwTrue,
         }
@@ -99,6 +101,7 @@ impl fmt::Display for TokenKind {
             Self::KwMatch => write!(f, "`match`"),
             Self::KwThen => write!(f, "`then`"),
             Self::KwTrue => write!(f, "`true`"),
+            Self::KwMotive => write!(f, "`motive`"),
 
             Self::Int => write!(f, "integer"),
             Self::Char => write!(f, "character"),
@@ -117,6 +120,7 @@ pub enum ReservedIdent {
     If,
     Let,
     Match,
+    Motive,
     Then,
     True,
 }
@@ -133,6 +137,7 @@ impl FromStr for ReservedIdent {
             "if" => Ok(Self::If),
             "let" => Ok(Self::Let),
             "match" => Ok(Self::Match),
+            "motive" => Ok(Self::Motive),
             "then" => Ok(Self::Then),
             "true" => Ok(Self::True),
             _ => Err(()),

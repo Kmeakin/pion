@@ -478,6 +478,14 @@ fn if_expr() {
 }
 
 #[test]
+fn if_motive_expr() { assert_parse_expr("if true motive = Int then 1 else 0", expect![[r#"
+    0..34 @ Expr::If
+     3..7 @ Expr::Lit(Bool(true))
+     17..20 @ Expr::Var("Int")
+     26..27 @ Expr::Lit(Int("1"))
+     33..34 @ Expr::Lit(Int("0"))"#]]); }
+
+#[test]
 fn match_expr() {
     assert_parse_expr(
         "match x {}",

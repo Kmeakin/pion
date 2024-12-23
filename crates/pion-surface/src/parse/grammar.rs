@@ -583,6 +583,17 @@ where
     fn if_expr(&mut self) -> Located<Expr<'text, 'surface>> {
         let start_range = self.range;
         let cond = self.expr().map(|expr| &*self.bump.alloc(expr));
+        let mut motive = None;
+
+        match self.peek_token() {
+            Some(token) if token.kind == TokenKind::KwMotive => {
+                self.next_token();
+                self.expect_token(TokenKind::Punct('='));
+                motive = Some(self.expr().map(|expr| &*self.bump.alloc(expr)));
+            }
+            _ => {}
+        }
+
         self.expect_token(TokenKind::KwThen);
         let then = self.expr().map(|expr| &*self.bump.alloc(expr));
         self.expect_token(TokenKind::KwElse);
@@ -590,7 +601,7 @@ where
         let end_range = self.range;
         Located::new(
             TextRange::new(start_range.start(), end_range.end()),
-            Expr::If(cond, then, r#else),
+            Expr::If(cond, motive, then, r#else),
         )
     }
 

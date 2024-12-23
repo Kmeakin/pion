@@ -113,10 +113,13 @@ impl<W: Write> Printer<W> {
                     Ok(())
                 })
             }
-            Expr::If(cond, then, r#else) => {
+            Expr::If(cond, motive, then, r#else) => {
                 writeln!(self, "Expr::If")?;
                 self.with_indent(|this| {
                     this.located(cond)?;
+                    if let Some(motive) = motive {
+                        this.located(motive)?;
+                    }
                     this.located(then)?;
                     this.located(r#else)
                 })
